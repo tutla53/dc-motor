@@ -1,11 +1,11 @@
 [package]
 edition = "2021"
-name = "remote-control"
+name = "dc-motor"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
 authors = ["Tutla"]
-description = "2 DOF Camera Robot"
-repository = "https://github.com/tutla53/2dof-robot"
+description = "DC Motor Control with Rotary Encoder"
+repository = "https://github.com/tutla53/dc-motor"
 
 [dependencies]
 embassy-embedded-hal = {git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
