@@ -1,0 +1,75 @@
+[package]
+edition = "2021"
+name = "remote-control"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+authors = ["Tutla"]
+description = "2 DOF Camera Robot"
+repository = "https://github.com/tutla53/2dof-robot"
+
+[dependencies]
+embassy-embedded-hal = {git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy", features = ["task-arena-size-98304", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
+embassy-time = {git = "https://github.com/embassy-rs/embassy", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-rp = {git = "https://github.com/embassy-rs/embassy", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy" }
+embassy-usb-logger = { git = "https://github.com/embassy-rs/embassy" }
+
+# Servo Builder Library
+rp2040-servo-pio = {git = "https://github.com/tutla53/embassy-rp-library.git"}
+
+# OLED Display SSD1306 128x64
+ssd1306 = { version = "0.9.0", features = ["graphics"] }
+itoa = { version = "1.0.11", features = ["no-panic"] }
+
+defmt = "0.3"
+defmt-rtt = "0.4"
+fixed = "1.23.1"
+fixed-macro = "1.2"
+
+# for assign resources example
+assign-resources = { git = "https://github.com/adamgreig/assign-resources", rev = "94ad10e2729afdf0fd5a77cd12e68409a982f58a" }
+
+heapless = { version = "0.8", default-features = false }
+
+#cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+cortex-m = { version = "0.7.6", features = ["inline-asm"] }
+cortex-m-rt = "0.7.0"
+critical-section = "1.1"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+mipidsi = "0.8.0"
+byte-slice-cast = { version = "1.2.0", default-features = false }
+rand_core = "0.6.4"
+
+embedded-hal-1 = { package = "embedded-hal", version = "1.0" }
+embedded-hal-async = "1.0"
+embedded-hal-bus = { version = "0.1", features = ["async"] }
+embedded-io-async = { version = "0.6.1", features = ["defmt-03"] }
+embedded-storage = { version = "0.3" }
+static_cell = "2.1"
+portable-atomic = { version = "1.5", features = ["critical-section"] }
+log = "0.4"
+pio-proc = "0.2"
+pio = "0.2.1"
+rand = { version = "0.8.5", default-features = false }
+embedded-sdmmc = "0.7.0"
+
+[profile.release]
+debug = 2
+lto = true
+opt-level = 'z'
+
+[profile.dev]
+debug = 2
+lto = true
+opt-level = "z"
+
+[patch.crates-io]
+embassy-rp = { git = "https://github.com/embassy-rs/embassy" }
+embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy" }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy" }
