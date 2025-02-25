@@ -16,7 +16,7 @@ use {
         pio::{InterruptHandler, Pio},
         pio_programs::rotary_encoder::{Direction, PioEncoder, PioEncoderProgram},
     },
-    embassy_time::{Ticker, Duration},
+    embassy_time::{Ticker, Duration, Instant, with_timeout},
     defmt::*,
     core::sync::atomic::{AtomicI32, Ordering},
     {defmt_rtt as _, panic_probe as _},
@@ -37,34 +37,39 @@ async fn logger_task(driver: Driver<'static, USB>) {
 
 #[embassy_executor::task]
 async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
+    const COUNT_THRESHOLD: i32 = 3;
+    const TIMEOUT: u64 = 100;
+
     let mut count = 0;
+    let mut delta_count: i32 = 0;
+    let mut start = Instant::now();
+
     loop {
-        count += match encoder.read().await {
-            Direction::Clockwise => 1,
-            Direction::CounterClockwise => -1,
+        match with_timeout(Duration::from_millis(TIMEOUT), encoder.read()).await {
+            Ok(value) => {
+                match value {
+                    Direction::Clockwise => {
+                        count += 1;
+                        delta_count += 1;
+                    },
+                    Direction::CounterClockwise =>{
+                        count -= 1;
+                        delta_count -= 1;
+                    },
+                }
+            },
+            Err (_) => {},
         };
+
+        let dt = start.elapsed().as_millis();
+        if (delta_count.abs() >= COUNT_THRESHOLD) || (dt > TIMEOUT) {
+            let speed = delta_count  * (1000 / dt as i32);
+            delta_count = 0;
+            start = Instant::now();
+            CURRENT_SPEED.store(speed, Ordering::Relaxed);
+        }
+
         CURRENT_POS.store(count, Ordering::Relaxed);
-    }
-}
-
-#[embassy_executor::task]
-async fn speed_0() {
-    //count/s
-    // 48.4  count/rotation
-    // 1 count = 1/48.4 rotation
-
-    let mut last_pos = 0;
-    let dt = 50; 
-    let mut ticker = Ticker::every(Duration::from_millis(dt));
-
-    loop {
-        let new_pos = CURRENT_POS.load(Ordering::Relaxed);
-        let speed = (new_pos - last_pos) * (1000/dt) as i32;
-        last_pos = new_pos;
-        
-        CURRENT_SPEED.store(speed, Ordering::Relaxed);
-
-        ticker.next().await;
     }
 }
 
@@ -82,13 +87,13 @@ async fn main(spawner: Spawner){
     
     unwrap!(spawner.spawn(logger_task(usb_driver)));
     spawner.must_spawn(encoder_0(encoder0));
-    spawner.must_spawn(speed_0());
+    // spawner.must_spawn(speed_0());
     
-    let mut ticker = Ticker::every(Duration::from_millis(100));
+    let mut ticker = Ticker::every(Duration::from_millis(10));
 
     loop {
         let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
-        log::info!("Pos: {}, Speed: {:.2}", CURRENT_POS.load(Ordering::Relaxed), rps);
+        log::info!("1500, -1500, {:.2}", rps*60.0);
         ticker.next().await;
     }
 }
