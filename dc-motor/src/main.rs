@@ -14,11 +14,14 @@ use {
         peripherals::PIO0,
         usb::{Driver, InterruptHandler as UsbInterruptHandler},
         pio::{InterruptHandler, Pio},
-        pio_programs::rotary_encoder::{Direction, PioEncoder, PioEncoderProgram},
+        pio_programs::{
+            rotary_encoder::{Direction, PioEncoder, PioEncoderProgram},
+            pwm::{PioPwmProgram, PioPwm},
+        },
     },
     embassy_time::{Ticker, Duration, Instant, with_timeout},
     defmt::*,
-    core::sync::atomic::{AtomicI32, Ordering},
+    core::{sync::atomic::{AtomicI32, Ordering}, time::Duration as CoreDuration},
     {defmt_rtt as _, panic_probe as _},
 };
 
@@ -29,6 +32,7 @@ bind_interrupts!(struct Irqs {
 
 static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
 static CURRENT_SPEED: AtomicI32 = AtomicI32::new(0); // count/s
+const REFRESH_INTERVAL: u64 = 1000; // us
 
 #[embassy_executor::task]
 async fn logger_task(driver: Driver<'static, USB>) {
@@ -37,8 +41,8 @@ async fn logger_task(driver: Driver<'static, USB>) {
 
 #[embassy_executor::task]
 async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
-    const COUNT_THRESHOLD: i32 = 3;
-    const TIMEOUT: u64 = 100;
+    const COUNT_THRESHOLD: i32 = 2;
+    const TIMEOUT: u64 = 200;
 
     let mut count = 0;
     let mut delta_count: i32 = 0;
@@ -61,9 +65,9 @@ async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
             Err (_) => {},
         };
 
-        let dt = start.elapsed().as_millis();
-        if (delta_count.abs() >= COUNT_THRESHOLD) || (dt > TIMEOUT) {
-            let speed = delta_count  * (1000 / dt as i32);
+        let dt = start.elapsed().as_micros();
+        if (delta_count.abs() >= COUNT_THRESHOLD) || (dt > TIMEOUT * 1_000) {
+            let speed = delta_count  * (1_000_000 / dt as i32);
             delta_count = 0;
             start = Instant::now();
             CURRENT_SPEED.store(speed, Ordering::Relaxed);
@@ -79,11 +83,23 @@ async fn main(spawner: Spawner){
     let usb_driver = Driver::new(p.USB, Irqs);
 
     let Pio {
-        mut common, sm0, ..
+        mut common, sm0, sm1, sm2, ..
     } = Pio::new(p.PIO0, Irqs);
 
-    let prg = PioEncoderProgram::new(&mut common);
-    let encoder0 = PioEncoder::new(&mut common, sm0, p.PIN_4, p.PIN_5, &prg);
+    let enc_prg = PioEncoderProgram::new(&mut common);
+    let pwm_prg = PioPwmProgram::new(&mut common);
+    
+    let encoder0 = PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg);
+    let mut pwm_pio_6 = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
+    let mut pwm_pio_7 = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
+
+    pwm_pio_6.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
+    pwm_pio_6.start();
+    pwm_pio_6.write(CoreDuration::from_micros(0));
+
+    pwm_pio_7.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
+    pwm_pio_7.start();
+    pwm_pio_7.write(CoreDuration::from_micros(REFRESH_INTERVAL));
     
     unwrap!(spawner.spawn(logger_task(usb_driver)));
     spawner.must_spawn(encoder_0(encoder0));
@@ -92,8 +108,8 @@ async fn main(spawner: Spawner){
     let mut ticker = Ticker::every(Duration::from_millis(10));
 
     loop {
-        let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
-        log::info!("1500, -1500, {:.2}", rps*60.0);
+        // let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
+        log::info!("1500, -1500, {:.4}", CURRENT_SPEED.load(Ordering::Relaxed));
         ticker.next().await;
     }
 }
