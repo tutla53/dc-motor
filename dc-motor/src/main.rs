@@ -20,23 +20,161 @@ use {
         },
     },
     embassy_time::{Ticker, Duration, Instant, with_timeout},
+    embassy_usb_logger::ReceiverHandler,
+    embassy_sync::{
+        signal::Signal,
+        blocking_mutex::raw::CriticalSectionRawMutex,
+    },
     defmt::*,
-    core::{sync::atomic::{AtomicI32, Ordering}, time::Duration as CoreDuration},
+    core::{str, sync::atomic::{AtomicI32, Ordering}, time::Duration as CoreDuration},
     {defmt_rtt as _, panic_probe as _},
 };
+
+static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
+static CURRENT_SPEED: AtomicI32 = AtomicI32::new(0); // count/s
+static DRIVE_CONTROL: Signal<CriticalSectionRawMutex, Command> = Signal::new();
+const REFRESH_INTERVAL: u64 = 1000; // us
+
+enum Command {
+    Clockwise(u16, u16),
+    CounterClockwise(u16, u16),
+    Stop,
+}
+
+fn send_command(command: Command) {
+    DRIVE_CONTROL.signal(command);
+}
+
+async fn wait_command() -> Command {
+    DRIVE_CONTROL.wait().await
+}
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
     USBCTRL_IRQ => UsbInterruptHandler<USB>;
 });
 
-static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
-static CURRENT_SPEED: AtomicI32 = AtomicI32::new(0); // count/s
-const REFRESH_INTERVAL: u64 = 1000; // us
+struct Handler;
+
+impl ReceiverHandler for Handler {
+    async fn handle_data(&self, data: &[u8]) {
+        if let Ok(data) = str::from_utf8(data) {
+
+            let mut data = data.trim().split_whitespace();
+            let mut cmd: &str = "";
+            let mut speed: i16 = 0;
+            let mut duration: i16 = 0;
+
+            match data.next() {
+                Some(value) => {
+                    cmd = value;
+                },
+                None =>{
+                    log::info!("Command not found");
+                },
+            }
+
+            match data.next() {
+                Some(value) => {
+                    match str_to_int(value){
+                        Some(num) =>{
+                            speed = num;
+                        },
+                        None => {
+                            speed = -1;
+                            log::info!("Invalid Number");
+                        },
+                    }
+                },
+                None =>{
+                    log::info!("Param 1 not found");
+                },
+            }
+
+            match data.next() {
+                Some(value) => {
+                    match str_to_int(value){
+                        Some(num) =>{
+                            duration = num;
+                        },
+                        None => {
+                            duration = -1;
+                            log::info!("Invalid Number");
+                        },
+                    }
+                },
+                None =>{
+                    log::info!("Param 2 not found");
+                },
+            }
+
+            match cmd {
+                "cw" => {
+                    if (speed != -1) && (duration != -1){
+                        send_command(Command::Clockwise(speed as u16, duration as u16));
+                    }
+                    else{
+                        log::info!("Invalid Number");
+                    }
+                }
+                "ccw" => {
+                    if (speed != -1) && (duration != -1){
+                        send_command(Command::CounterClockwise(speed as u16, duration as u16));
+                    }
+                    else{
+                        log::info!("Invalid Number");
+                    }
+                },
+                "stop" => {
+                    send_command(Command::Stop);
+                },
+                _ => log::info!("Unknown command"),
+            }
+
+        }
+    }
+
+    fn new() -> Self {
+        Self
+    }
+}
+
+fn str_to_int(s: &str) -> Option<i16> {
+    let mut result: i16 = 0;
+    let mut sign: i16 = 1;
+
+    let mut chars = s.chars();
+
+    if let Some(first_char) = chars.next() {
+        if first_char == '-' {
+            sign = -1;
+        } else if first_char.is_digit(10) {
+            result = (first_char as i16) - ('0' as i16);
+        } else {
+            return None; // Invalid starting character
+        }
+
+        for c in chars {
+            if c.is_digit(10) {
+                if let Some(new_result) = result.checked_mul(10).and_then(|r| r.checked_add((c as i16) - ('0' as i16))) {
+                    result = new_result;
+                } else {
+                    return None; // Overflow
+                }
+            } else {
+                return None; // Invalid character
+            }
+        }
+    } else {
+        return None; // empty string.
+    }
+
+    Some(result * sign)
+}
 
 #[embassy_executor::task]
 async fn logger_task(driver: Driver<'static, USB>) {
-    embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
+    embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver, Handler);
 }
 
 #[embassy_executor::task]
@@ -90,26 +228,52 @@ async fn main(spawner: Spawner){
     let pwm_prg = PioPwmProgram::new(&mut common);
     
     let encoder0 = PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg);
-    let mut pwm_pio_6 = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
-    let mut pwm_pio_7 = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
+    let mut pwm_ccw = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
+    let mut pwm_cw = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
 
-    pwm_pio_6.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
-    pwm_pio_6.start();
-    pwm_pio_6.write(CoreDuration::from_micros(0));
+    pwm_ccw.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
+    pwm_ccw.start();
+    pwm_ccw.write(CoreDuration::from_micros(0));
 
-    pwm_pio_7.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
-    pwm_pio_7.start();
-    pwm_pio_7.write(CoreDuration::from_micros(REFRESH_INTERVAL));
+    pwm_cw.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
+    pwm_cw.start();
+    pwm_cw.write(CoreDuration::from_micros(0));
     
     unwrap!(spawner.spawn(logger_task(usb_driver)));
     spawner.must_spawn(encoder_0(encoder0));
-    // spawner.must_spawn(speed_0());
     
-    let mut ticker = Ticker::every(Duration::from_millis(10));
-
     loop {
-        // let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
-        log::info!("1500, -1500, {:.4}", CURRENT_SPEED.load(Ordering::Relaxed));
-        ticker.next().await;
+        let command = wait_command().await;
+
+        match command{
+            Command::Clockwise(speed, duration) => {
+                log::info!("cw {} {}", speed, duration);
+                pwm_cw.write(CoreDuration::from_micros(speed as u64));
+                pwm_ccw.write(CoreDuration::from_micros(0));
+            },
+            Command::CounterClockwise(speed, duration) => {
+                log::info!("ccw {} {}", speed, duration);
+                pwm_cw.write(CoreDuration::from_micros(0));
+                pwm_ccw.write(CoreDuration::from_micros(speed as u64));
+            },
+            Command::Stop =>{
+                log::info!("Stop");
+                pwm_cw.write(CoreDuration::from_micros(0));
+                pwm_ccw.write(CoreDuration::from_micros(0));
+            },
+        }
     }
 }
+
+
+// TODO LIST
+/* async fn move_motor
+
+*/
+
+/* async fn logger
+        let mut ticker = Ticker::every(Duration::from_millis(10));
+        // let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
+        // log::info!("1500, -1500, {:.4}", CURRENT_SPEED.load(Ordering::Relaxed));
+        ticker.next().await;
+*/
