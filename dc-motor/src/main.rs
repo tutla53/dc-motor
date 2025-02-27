@@ -19,7 +19,7 @@ use {
             pwm::{PioPwmProgram, PioPwm},
         },
     },
-    embassy_time::{Ticker, Duration, Instant, with_timeout},
+    embassy_time::{Duration, Instant, with_timeout},
     embassy_usb_logger::ReceiverHandler,
     embassy_sync::{
         signal::Signal,
@@ -35,9 +35,13 @@ static CURRENT_SPEED: AtomicI32 = AtomicI32::new(0); // count/s
 static DRIVE_CONTROL: Signal<CriticalSectionRawMutex, Command> = Signal::new();
 const REFRESH_INTERVAL: u64 = 1000; // us
 
+struct MotionParam {
+    speed: i16,
+    duration: i16,
+}
+
 enum Command {
-    Clockwise(u16, u16),
-    CounterClockwise(u16, u16),
+    MoveMotor(MotionParam),
     Stop,
 }
 
@@ -57,80 +61,21 @@ bind_interrupts!(struct Irqs {
 struct Handler;
 
 impl ReceiverHandler for Handler {
-    async fn handle_data(&self, data: &[u8]) {
-        if let Ok(data) = str::from_utf8(data) {
+    async fn handle_data(&self, raw_data: &[u8]) {
+        if let Ok(raw_data) = str::from_utf8(raw_data) {
 
-            let mut data = data.trim().split_whitespace();
-            let mut cmd: &str = "";
-            let mut speed: i16 = 0;
-            let mut duration: i16 = 0;
+            let mut data = raw_data.trim().split_whitespace();
 
             match data.next() {
-                Some(value) => {
-                    cmd = value;
+                Some(cmd) => {
+                    match cmd {
+                        "move" => { handle_move_motor_command(raw_data) },
+                        "stop" => { send_command(Command::Stop); },
+                        _ => { log::info!("Command not found"); },
+                    }
                 },
-                None =>{
-                    log::info!("Command not found");
-                },
+                None =>{ log::info!("Command not found"); },
             }
-
-            match data.next() {
-                Some(value) => {
-                    match str_to_int(value){
-                        Some(num) =>{
-                            speed = num;
-                        },
-                        None => {
-                            speed = -1;
-                            log::info!("Invalid Number");
-                        },
-                    }
-                },
-                None =>{
-                    log::info!("Param 1 not found");
-                },
-            }
-
-            match data.next() {
-                Some(value) => {
-                    match str_to_int(value){
-                        Some(num) =>{
-                            duration = num;
-                        },
-                        None => {
-                            duration = -1;
-                            log::info!("Invalid Number");
-                        },
-                    }
-                },
-                None =>{
-                    log::info!("Param 2 not found");
-                },
-            }
-
-            match cmd {
-                "cw" => {
-                    if (speed != -1) && (duration != -1){
-                        send_command(Command::Clockwise(speed as u16, duration as u16));
-                    }
-                    else{
-                        log::info!("Invalid Number");
-                    }
-                }
-                "ccw" => {
-                    if (speed != -1) && (duration != -1){
-                        send_command(Command::CounterClockwise(speed as u16, duration as u16));
-                    }
-                    else{
-                        log::info!("Invalid Number");
-                    }
-                },
-                "stop" => {
-                    send_command(Command::Stop);
-                },
-                _ => log::info!("Unknown command"),
-            }
-
         }
     }
 
@@ -170,6 +115,48 @@ fn str_to_int(s: &str) -> Option<i16> {
     }
 
     Some(result * sign)
+}
+
+fn handle_move_motor_command(raw_data: &str) {
+    
+    let mut data = raw_data.trim().split_whitespace();
+    let _ = data.next();
+
+    let speed = match data.next() {
+        Some(value) => {
+            match str_to_int(value) {
+                Some(num) =>{ num },
+                None => { 
+                    log::info!("Invalid Number"); 
+                    0
+                },
+            }
+        },
+        None =>{ 
+            log::info!("Param 1 not found"); 
+            0
+        },
+    };
+
+    let duration = match data.next() {
+        Some(value) => {
+            match str_to_int(value) {
+                Some(num) =>{ num },
+                None => { 
+                    log::info!("Invalid Number"); 
+                    0
+                },
+            }
+        },
+        None =>{ 
+            log::info!("Param 2 not found"); 
+            0
+        },
+    };
+
+    if (speed != 0) && (duration != 0) {
+        send_command(Command::MoveMotor(MotionParam{speed, duration}));
+    }
 }
 
 #[embassy_executor::task]
@@ -246,15 +233,17 @@ async fn main(spawner: Spawner){
         let command = wait_command().await;
 
         match command{
-            Command::Clockwise(speed, duration) => {
-                log::info!("cw {} {}", speed, duration);
-                pwm_cw.write(CoreDuration::from_micros(speed as u64));
-                pwm_ccw.write(CoreDuration::from_micros(0));
-            },
-            Command::CounterClockwise(speed, duration) => {
-                log::info!("ccw {} {}", speed, duration);
-                pwm_cw.write(CoreDuration::from_micros(0));
-                pwm_ccw.write(CoreDuration::from_micros(speed as u64));
+            Command::MoveMotor(motion_param) => {
+                log::info!("MoveMotor {} {}", motion_param.speed, motion_param.duration);
+
+                if motion_param.speed > 0 {
+                    pwm_cw.write(CoreDuration::from_micros(motion_param.speed.abs() as u64));
+                    pwm_ccw.write(CoreDuration::from_micros(0));
+                }
+                else{
+                    pwm_cw.write(CoreDuration::from_micros(0));
+                    pwm_ccw.write(CoreDuration::from_micros(motion_param.speed.abs() as u64));
+                }
             },
             Command::Stop =>{
                 log::info!("Stop");
@@ -264,7 +253,6 @@ async fn main(spawner: Spawner){
         }
     }
 }
-
 
 // TODO LIST
 /* async fn move_motor
