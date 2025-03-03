@@ -27,6 +27,7 @@ use {
     },
     defmt::*,
     core::{str, sync::atomic::{AtomicI32, Ordering}, time::Duration as CoreDuration},
+    heapless::Vec,
     {defmt_rtt as _, panic_probe as _},
 };
 
@@ -64,18 +65,16 @@ impl ReceiverHandler for Handler {
     async fn handle_data(&self, raw_data: &[u8]) {
         if let Ok(raw_data) = str::from_utf8(raw_data) {
 
-            let mut data = raw_data.trim().split_whitespace();
+            let parts: Vec<&str, 8> = raw_data.split_whitespace().collect();
 
-            match data.next() {
-                Some(cmd) => {
-                    match cmd {
-                        "move" => { handle_move_motor_command(raw_data) },
-                        "stop" => { send_command(Command::Stop); },
-                        _ => { log::info!("Command not found"); },
-                    }
-                },
-                None =>{ log::info!("Command not found"); },
+            if !parts.is_empty() { 
+                match parts[0] {
+                    "move" => { handle_move_motor(&parts); },
+                    "stop" => { handle_stop_motor(); },
+                    _ => { log::info!("Command not found"); },
+                }
             }
+
         }
     }
 
@@ -84,79 +83,31 @@ impl ReceiverHandler for Handler {
     }
 }
 
-fn str_to_int(s: &str) -> Option<i16> {
-    let mut result: i16 = 0;
-    let mut sign: i16 = 1;
-
-    let mut chars = s.chars();
-
-    if let Some(first_char) = chars.next() {
-        if first_char == '-' {
-            sign = -1;
-        } else if first_char.is_digit(10) {
-            result = (first_char as i16) - ('0' as i16);
-        } else {
-            return None; // Invalid starting character
-        }
-
-        for c in chars {
-            if c.is_digit(10) {
-                if let Some(new_result) = result.checked_mul(10).and_then(|r| r.checked_add((c as i16) - ('0' as i16))) {
-                    result = new_result;
-                } else {
-                    return None; // Overflow
-                }
-            } else {
-                return None; // Invalid character
-            }
-        }
-    } else {
-        return None; // empty string.
+fn handle_move_motor(parts: &Vec<&str, 8>) {
+    if parts.len() < 3 {
+        log::info!("Insufficient Parameter: move <speed> <duration>");
+        return;
     }
 
-    Some(result * sign)
+    match parts[1].parse::<i16>() {
+        Ok(speed) => {
+            match parts[2].parse::<i16>() {
+                Ok(duration) => { 
+                    send_command(Command::MoveMotor(MotionParam{speed, duration})); 
+                },
+                Err(e) => {
+                    log::info!("Invalid Duration {:?}", e);
+                }
+            }
+        },
+        Err(e) => {
+            log::info!("Invalid Speed {:?}", e);
+        }
+    }
 }
 
-fn handle_move_motor_command(raw_data: &str) {
-    
-    let mut data = raw_data.trim().split_whitespace();
-    let _ = data.next();
-
-    let speed = match data.next() {
-        Some(value) => {
-            match str_to_int(value) {
-                Some(num) =>{ num },
-                None => { 
-                    log::info!("Invalid Number"); 
-                    0
-                },
-            }
-        },
-        None =>{ 
-            log::info!("Param 1 not found"); 
-            0
-        },
-    };
-
-    let duration = match data.next() {
-        Some(value) => {
-            match str_to_int(value) {
-                Some(num) =>{ num },
-                None => { 
-                    log::info!("Invalid Number"); 
-                    0
-                },
-            }
-        },
-        None =>{ 
-            log::info!("Param 2 not found"); 
-            0
-        },
-    };
-
-    if (speed != 0) && (duration != 0) {
-        send_command(Command::MoveMotor(MotionParam{speed, duration}));
-    }
+fn handle_stop_motor() {
+    send_command(Command::Stop);
 }
 
 #[embassy_executor::task]
