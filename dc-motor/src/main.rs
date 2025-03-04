@@ -19,39 +19,39 @@ use {
             pwm::{PioPwmProgram, PioPwm},
         },
     },
-    embassy_time::{Duration, Instant, with_timeout},
+    embassy_time::{Ticker, Duration, Instant, with_timeout, Timer},
     embassy_usb_logger::ReceiverHandler,
     embassy_sync::{
         signal::Signal,
+        mutex::Mutex,
+        channel::Channel,
         blocking_mutex::raw::CriticalSectionRawMutex,
     },
-    defmt::*,
-    core::{str, sync::atomic::{AtomicI32, Ordering}, time::Duration as CoreDuration},
+    core::{
+        str, 
+        sync::atomic::{AtomicI32, Ordering}, 
+        time::Duration as CoreDuration
+    },
     heapless::Vec,
     {defmt_rtt as _, panic_probe as _},
 };
 
 static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
 static CURRENT_SPEED: AtomicI32 = AtomicI32::new(0); // count/s
-static DRIVE_CONTROL: Signal<CriticalSectionRawMutex, Command> = Signal::new();
+static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
+static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
+static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogMask, 1024> = Channel::new();
+static MOTOR_CONTROL: Signal<CriticalSectionRawMutex, MotorCommand> = Signal::new();
 const REFRESH_INTERVAL: u64 = 1000; // us
 
-struct MotionParam {
-    speed: i16,
-    duration: i16,
-}
-
-enum Command {
-    MoveMotor(MotionParam),
+enum MotorCommand {
+    MoveMotor(i16),
     Stop,
 }
 
-fn send_command(command: Command) {
-    DRIVE_CONTROL.signal(command);
-}
-
-async fn wait_command() -> Command {
-    DRIVE_CONTROL.wait().await
+struct LogMask {
+    dt: u64,
+    motor_speed:i32,
 }
 
 bind_interrupts!(struct Irqs {
@@ -59,9 +59,9 @@ bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => UsbInterruptHandler<USB>;
 });
 
-struct Handler;
+struct UsbHandler;
 
-impl ReceiverHandler for Handler {
+impl ReceiverHandler for UsbHandler {
     async fn handle_data(&self, raw_data: &[u8]) {
         if let Ok(raw_data) = str::from_utf8(raw_data) {
 
@@ -69,12 +69,11 @@ impl ReceiverHandler for Handler {
 
             if !parts.is_empty() { 
                 match parts[0] {
-                    "move" => { handle_move_motor(&parts); },
-                    "stop" => { handle_stop_motor(); },
+                    "motor" => { handle_move_motor(&parts); },
+                    "log"  => { handle_firmware_logger(&parts).await; }
                     _ => { log::info!("Command not found"); },
                 }
             }
-
         }
     }
 
@@ -83,36 +82,71 @@ impl ReceiverHandler for Handler {
     }
 }
 
+#[embassy_executor::task]
+async fn usb_logger_task(driver: Driver<'static, USB>) {
+    embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver, UsbHandler);
+}
+
 fn handle_move_motor(parts: &Vec<&str, 8>) {
-    if parts.len() < 3 {
-        log::info!("Insufficient Parameter: move <speed> <duration>");
+    if parts.len() < 2 {
+        log::info!("Insufficient Parameter: move <start/stop>");
         return;
     }
 
-    match parts[1].parse::<i16>() {
-        Ok(speed) => {
+    match parts[1] {
+        "stop" =>{
+            MOTOR_CONTROL.signal(MotorCommand::Stop);
+        },
+        "start" => {
+            if parts.len() < 3 {
+                log::info!("Insufficient Parameter: move start <speed>");
+                return;
+            }
             match parts[2].parse::<i16>() {
-                Ok(duration) => { 
-                    send_command(Command::MoveMotor(MotionParam{speed, duration})); 
+                Ok(speed) => {
+                    MOTOR_CONTROL.signal(MotorCommand::MoveMotor(speed));
                 },
                 Err(e) => {
-                    log::info!("Invalid Duration {:?}", e);
+                    log::info!("Invalid Speed {:?}", e);
                 }
             }
         },
-        Err(e) => {
-            log::info!("Invalid Speed {:?}", e);
-        }
+        _ => { 
+            log::info!("Invalid Parameter: move <start/stop>");
+        },
     }
 }
 
-fn handle_stop_motor() {
-    send_command(Command::Stop);
-}
-
-#[embassy_executor::task]
-async fn logger_task(driver: Driver<'static, USB>) {
-    embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver, Handler);
+async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
+    if parts.len() < 2 {
+        log::info!("Insufficient Parameter: log <start/stop>");
+        return;
+    }
+    
+    match parts[1] {
+        "start" => {
+            if parts.len() < 3 {
+                log::info!("Insufficient Parameter: log start <time_sampling_ms>");
+                return;
+            }
+            
+            match parts[2].parse::<u64>() {
+                Ok(time_sampling_ms) => {
+                    log::info!("Start Loger {}", time_sampling_ms);
+                    set_logging_time_sampling(time_sampling_ms).await;
+                    set_logging_state(true).await;
+                },
+                Err(e) => {
+                    log::info!("Invalid Time Sampling {:?}", e);
+                }
+            } 
+        },
+        "stop" => { 
+            log::info!("Stop Logger");
+            set_logging_state(false).await;
+        },
+         _ => { log::info!("Invalid Parameter: log <start/stop>"); },
+    }
 }
 
 #[embassy_executor::task]
@@ -153,8 +187,61 @@ async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
     }
 }
 
+#[embassy_executor::task]
+async fn firmware_logger_task() {
+    let mut ticker = Ticker::every(Duration::from_millis(10));
+    let mut start = Instant::now();
+
+    loop {
+        let logging = is_logging_active().await;
+
+        if logging {
+            let _ = LOGGER_CONTROL.try_send(
+                LogMask{
+                    dt: start.elapsed().as_millis(),
+                    motor_speed: CURRENT_SPEED.load(Ordering::Relaxed)
+                }
+            );
+            ticker.next().await;
+        }
+        else {
+            Timer::after(Duration::from_millis(200)).await;
+            start = Instant::now();
+            let new_time_sampling = get_logging_time_sampling().await;
+            ticker = Ticker::every(Duration::from_millis(new_time_sampling));
+            ticker.reset();
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn send_logger_task() {
+    loop {
+        let command = LOGGER_CONTROL.receive().await;
+        log::info!("{} {}", command.dt, command.motor_speed);
+    }
+}
+
+async fn set_logging_state(state: bool) {
+    let mut logging = LOGGER_RUN.lock().await;
+    *logging = state;
+}
+
+async fn is_logging_active() -> bool {
+    return *LOGGER_RUN.lock().await;
+}
+
+async fn set_logging_time_sampling(time_sampling_ms: u64) {
+    let mut current = LOGGER_TIME_SAMPLING.lock().await;
+    *current = time_sampling_ms;
+}
+
+async fn get_logging_time_sampling() -> u64 {
+    return *LOGGER_TIME_SAMPLING.lock().await;
+}
+
 #[embassy_executor::main]
-async fn main(spawner: Spawner){
+async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
     let usb_driver = Driver::new(p.USB, Irqs);
 
@@ -177,42 +264,36 @@ async fn main(spawner: Spawner){
     pwm_cw.start();
     pwm_cw.write(CoreDuration::from_micros(0));
     
-    unwrap!(spawner.spawn(logger_task(usb_driver)));
+    spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_0(encoder0));
+    spawner.must_spawn(firmware_logger_task());
+    spawner.must_spawn(send_logger_task());
     
     loop {
-        let command = wait_command().await;
+        let command = MOTOR_CONTROL.wait().await;
 
         match command{
-            Command::MoveMotor(motion_param) => {
-                log::info!("MoveMotor {} {}", motion_param.speed, motion_param.duration);
+            MotorCommand::MoveMotor(speed) => {
+                if !is_logging_active().await {
+                    log::info!("MoveMotor {}", speed);
+                }
 
-                if motion_param.speed > 0 {
-                    pwm_cw.write(CoreDuration::from_micros(motion_param.speed.abs() as u64));
+                if speed > 0 {
+                    pwm_cw.write(CoreDuration::from_micros(speed.abs() as u64));
                     pwm_ccw.write(CoreDuration::from_micros(0));
                 }
                 else{
                     pwm_cw.write(CoreDuration::from_micros(0));
-                    pwm_ccw.write(CoreDuration::from_micros(motion_param.speed.abs() as u64));
+                    pwm_ccw.write(CoreDuration::from_micros(speed.abs() as u64));
                 }
             },
-            Command::Stop =>{
-                log::info!("Stop");
+            MotorCommand::Stop =>{
+                if !is_logging_active().await {
+                    log::info!("Motor Stop");
+                }
                 pwm_cw.write(CoreDuration::from_micros(0));
                 pwm_ccw.write(CoreDuration::from_micros(0));
             },
         }
     }
 }
-
-// TODO LIST
-/* async fn move_motor
-
-*/
-
-/* async fn logger
-        let mut ticker = Ticker::every(Duration::from_millis(10));
-        // let rps =  CURRENT_SPEED.load(Ordering::Relaxed)as f32 /48.4;
-        // log::info!("1500, -1500, {:.4}", CURRENT_SPEED.load(Ordering::Relaxed));
-        ticker.next().await;
-*/
