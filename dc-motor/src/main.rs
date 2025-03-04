@@ -132,7 +132,6 @@ async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
             
             match parts[2].parse::<u64>() {
                 Ok(time_sampling_ms) => {
-                    log::info!("Start Loger {}", time_sampling_ms);
                     set_logging_time_sampling(time_sampling_ms).await;
                     set_logging_state(true).await;
                 },
@@ -141,8 +140,7 @@ async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
                 }
             } 
         },
-        "stop" => { 
-            log::info!("Stop Logger");
+        "stop" => {
             set_logging_state(false).await;
         },
          _ => { log::info!("Invalid Parameter: log <start/stop>"); },
