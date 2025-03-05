@@ -22,7 +22,6 @@ use {
     embassy_time::{Ticker, Duration, Instant, with_timeout, Timer},
     embassy_usb_logger::ReceiverHandler,
     embassy_sync::{
-        signal::Signal,
         mutex::Mutex,
         channel::Channel,
         blocking_mutex::raw::CriticalSectionRawMutex,
@@ -40,14 +39,8 @@ static CURRENT_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0); // co
 static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
 static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogMask, 1024> = Channel::new();
-static MOTOR_CONTROL: Signal<CriticalSectionRawMutex, MotorCommand> = Signal::new();
-static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, i16> = Mutex::new(0);
+static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
 const REFRESH_INTERVAL: u64 = 1000; // us
-
-enum MotorCommand {
-    MoveMotor(i16),
-    Stop,
-}
 
 struct LogMask {
     dt: u64,
@@ -123,12 +116,12 @@ async fn get_current_speed() -> i32 {
     return *CURRENT_SPEED.lock().await;
 }
 
-async fn set_commanded_speed(speed: i16) {
+async fn set_commanded_speed(speed: i32) {
     let mut current_speed = COMMANDED_MOTOR_SPEED.lock().await;
     *current_speed = speed;
 }
 
-async fn get_commanded_speed() -> i16 {
+async fn get_commanded_speed() -> i32 {
     return *COMMANDED_MOTOR_SPEED.lock().await;
 }
 
@@ -140,7 +133,7 @@ async fn handle_move_motor(parts: &Vec<&str, 8>) {
 
     match parts[1] {
         "stop" =>{
-            MOTOR_CONTROL.signal(MotorCommand::Stop);
+            log::info!("{}", get_current_pos().await);
             set_commanded_speed(0).await;
         },
         "start" => {
@@ -150,8 +143,7 @@ async fn handle_move_motor(parts: &Vec<&str, 8>) {
             }
             match parts[2].parse::<i16>() {
                 Ok(speed) => {
-                    MOTOR_CONTROL.signal(MotorCommand::MoveMotor(speed));
-                    set_commanded_speed(speed).await;
+                    set_commanded_speed(speed as i32).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);
@@ -296,32 +288,50 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
     
+    const KP: i32 = 1;
+    const KI: i32 = 1;
+    const KD: i32 = 2;
+    
+    let mut i_term = 0;
+    let mut pre_error = 0;
+    let mut ticker = Ticker::every(Duration::from_millis(5));
+
     loop {
-        let command = MOTOR_CONTROL.wait().await;
+        let commanded_speed = get_commanded_speed().await;
+        let current_speed = get_current_speed().await;
+        
+        let error = commanded_speed - current_speed;
+        let p_term = error;
+        let d_term = error - pre_error;
+        pre_error = error;
+        i_term = i_term + error;
 
-        match command{
-            MotorCommand::MoveMotor(speed) => {
-                if !is_logging_active().await {
-                    log::info!("MoveMotor {}", speed);
-                }
+        let mut sig = (KP*p_term)/5 + (KI*i_term)/8 + (KD*d_term);
 
-                if speed > 0 {
-                    pwm_cw.write(CoreDuration::from_micros(speed.abs() as u64));
-                    pwm_ccw.write(CoreDuration::from_micros(0));
-                }
-                else{
-                    pwm_cw.write(CoreDuration::from_micros(0));
-                    pwm_ccw.write(CoreDuration::from_micros(speed.abs() as u64));
-                }
-            },
-            MotorCommand::Stop =>{
-                if !is_logging_active().await {
-                    log::info!("{}", get_current_pos().await);
-                    log::info!("Motor Stop");
-                }
-                pwm_cw.write(CoreDuration::from_micros(0));
-                pwm_ccw.write(CoreDuration::from_micros(0));
-            },
+        if sig > 1000 {
+            sig = 1000;
+            i_term -= error;
         }
+        else if sig < -1000 {
+            sig = -1000;
+            i_term -= error;
+        }
+
+        if commanded_speed == 0 {
+            pwm_cw.write(CoreDuration::from_micros(0));
+            pwm_ccw.write(CoreDuration::from_micros(0)); 
+            i_term = 0;
+            pre_error = 0;         
+        }
+        else if commanded_speed > 0 {
+            pwm_cw.write(CoreDuration::from_micros(sig.abs() as u64));
+            pwm_ccw.write(CoreDuration::from_micros(0));
+        }
+        else {
+            pwm_cw.write(CoreDuration::from_micros(0));
+            pwm_ccw.write(CoreDuration::from_micros(sig.abs() as u64));
+        }
+
+        ticker.next().await;
     }
 }
