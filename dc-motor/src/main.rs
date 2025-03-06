@@ -13,7 +13,7 @@ use {
         peripherals::USB,
         peripherals::PIO0,
         usb::{Driver, InterruptHandler as UsbInterruptHandler},
-        pio::{InterruptHandler, Pio},
+        pio::{InterruptHandler, Pio, Instance},
         pio_programs::{
             rotary_encoder::{Direction, PioEncoder, PioEncoderProgram},
             pwm::{PioPwmProgram, PioPwm},
@@ -45,9 +45,9 @@ static CURRENT_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0); // co
 static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
 static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogMask, 1024> = Channel::new();
-static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
-static KP: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.1);
-static KI: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.125);
+static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, CommandedSpeed> = Mutex::new(CommandedSpeed::Speed(0));
+static KP: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.2);
+static KI: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.05);
 static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
 
 const REFRESH_INTERVAL: u64 = 1000; // us
@@ -57,16 +57,71 @@ struct LogMask {
     motor_speed:i32,
 }
 
-struct PID {
+#[derive(Clone, Copy)]
+enum CommandedSpeed {
+    Speed(i32),
+    Stop,
+}
+
+struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
+    pwm_cw: PioPwm<'d, T, SM1>,
+    pwm_ccw: PioPwm<'d, T, SM2>,
+    period: u64,
+    pid_control: PIDcontrol,
+}
+
+impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
+    fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>) -> Self {
+        Self {
+            pwm_cw,
+            pwm_ccw,
+            period: REFRESH_INTERVAL,
+            pid_control: PIDcontrol::new(),
+        }
+    }
+    
+    fn set_period(&mut self, period: u64) {
+        self.period = period;
+        self.pwm_cw.set_period(CoreDuration::from_micros(period));
+        self.pwm_ccw.set_period(CoreDuration::from_micros(period));
+    }
+
+    fn enable(&mut self) {
+        self.set_period(self.period);
+        self.pwm_cw.start();
+        self.pwm_ccw.start();
+        self.pwm_cw.write(CoreDuration::from_micros(0));
+        self.pwm_ccw.write(CoreDuration::from_micros(0));
+    }
+
+    fn move_motor(&mut self, mut speed: i32) {
+        let threshold = self.period as i32;
+
+        if speed > 0 {
+            if speed > threshold { speed = threshold; }
+            self.pwm_cw.write(CoreDuration::from_micros(speed.abs() as u64));
+            self.pwm_ccw.write(CoreDuration::from_micros(0));
+        }
+        else {
+
+            if speed < -threshold { speed = -threshold; }
+            self.pwm_cw.write(CoreDuration::from_micros(0));
+            self.pwm_ccw.write(CoreDuration::from_micros(speed.abs() as u64));
+        }
+    }
+}
+
+struct PIDcontrol {
     // PID gains (Kp, Ki, Kd) in fixed-point
     kp: FixedI32::<U16>,
     ki: FixedI32::<U16>,
     kd: FixedI32::<U16>,
     integral: FixedI32::<U16>,
     prev_error: FixedI32::<U16>,
+    threshold: i32,
 }
 
-impl PID {
+impl PIDcontrol {
     fn new() -> Self {
         Self {
             kp: FixedI32::<U16>::from_num(0.2),
@@ -74,6 +129,7 @@ impl PID {
             kd: FixedI32::<U16>::from_num(2.0),
             integral: FixedI32::<U16>::from_num(0),
             prev_error: FixedI32::<U16>::from_num(0),
+            threshold: REFRESH_INTERVAL as i32,
         }
     }
 
@@ -96,12 +152,12 @@ impl PID {
         let sig_fixed = self.kp*error + self.ki*self.integral + self.kd*derivative;
         let mut sig = sig_fixed.to_num::<i32>();
 
-        if sig > 1000 {
-            sig = 1000;
+        if sig > self.threshold {
+            sig = self.threshold;
             self.integral -= error;
         }
-        else if sig < -1000 {
-            sig = -1000;
+        else if sig < -1*self.threshold {
+            sig = -1*self.threshold;
             self.integral -= error;
         }
 
@@ -174,12 +230,12 @@ async fn get_current_speed() -> i32 {
     return *CURRENT_SPEED.lock().await;
 }
 
-async fn set_commanded_speed(speed: i32) {
+async fn set_commanded_speed(speed: CommandedSpeed) {
     let mut current_speed = COMMANDED_MOTOR_SPEED.lock().await;
     *current_speed = speed;
 }
 
-async fn get_commanded_speed() -> i32 {
+async fn get_commanded_speed() -> CommandedSpeed {
     return *COMMANDED_MOTOR_SPEED.lock().await;
 }
 
@@ -220,16 +276,16 @@ async fn handle_move_motor(parts: &Vec<&str, 8>) {
     match parts[1] {
         "stop" =>{
             log::info!("{}", get_current_pos().await);
-            set_commanded_speed(0).await;
+            set_commanded_speed(CommandedSpeed::Stop).await;
         },
         "start" => {
             if parts.len() < 3 {
                 log::info!("Insufficient Parameter: move start <speed>");
                 return;
             }
-            match parts[2].parse::<i16>() {
+            match parts[2].parse::<i32>() {
                 Ok(speed) => {
-                    set_commanded_speed(speed as i32).await;
+                    set_commanded_speed(CommandedSpeed::Speed(speed)).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);
@@ -412,7 +468,14 @@ async fn send_logger_task() {
     loop {
         let command = LOGGER_CONTROL.receive().await;
         let commanded_speed = get_commanded_speed().await;
-        log::info!("{} {} {}", command.dt, command.motor_speed, commanded_speed);
+        match commanded_speed {
+            CommandedSpeed::Speed(value) => {
+                log::info!("{} {} {}", command.dt, command.motor_speed, value);
+            }
+            CommandedSpeed::Stop => {
+                log::info!("{} {} {}", command.dt, command.motor_speed, 0);
+            },
+        }
     }
 }
 
@@ -429,52 +492,38 @@ async fn main(spawner: Spawner) {
     let pwm_prg = PioPwmProgram::new(&mut common);
     
     let encoder0 = PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg);
-    let mut pwm_ccw = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
-    let mut pwm_cw = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
-
-    pwm_ccw.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
-    pwm_ccw.start();
-    pwm_ccw.write(CoreDuration::from_micros(0));
-
-    pwm_cw.set_period(CoreDuration::from_micros(REFRESH_INTERVAL));
-    pwm_cw.start();
-    pwm_cw.write(CoreDuration::from_micros(0));
+    let pwm_ccw = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
+    let pwm_cw = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
     
     spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_0(encoder0));
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
     
-    let mut pid = PID::new();
+    let mut dc_motor = DCMotor::new(pwm_cw, pwm_ccw);
+    dc_motor.enable();
+
     let mut ticker = Ticker::every(Duration::from_millis(5));
 
     loop {
-        let commanded_speed = get_commanded_speed().await;
-
-        if commanded_speed == 0 {
-            pwm_cw.write(CoreDuration::from_micros(0));
-            pwm_ccw.write(CoreDuration::from_micros(0)); 
-            pid.reset();
-            pid.update_pid_param().await;
-            Timer::after(Duration::from_millis(50)).await;
-            ticker.reset();         
-        }
-
-        else {
-            let current_speed = get_current_speed().await;
-            let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-            let sig = pid.compute(error);
-
-            if commanded_speed > 0 {
-                pwm_cw.write(CoreDuration::from_micros(sig.abs() as u64));
-                pwm_ccw.write(CoreDuration::from_micros(0));
-            }
-            else {
-                pwm_cw.write(CoreDuration::from_micros(0));
-                pwm_ccw.write(CoreDuration::from_micros(sig.abs() as u64));
-            }
-
-            ticker.next().await;
+        let command = get_commanded_speed().await;
+        
+        match command {
+            CommandedSpeed::Speed(commanded_speed) => {
+                let current_speed = get_current_speed().await;
+                let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+                let sig = dc_motor.pid_control.compute(error);
+                
+                dc_motor.move_motor(sig);
+                ticker.next().await;    
+            },
+            CommandedSpeed::Stop => {
+                dc_motor.move_motor(0);
+                dc_motor.pid_control.reset();
+                dc_motor.pid_control.update_pid_param().await;
+                Timer::after(Duration::from_millis(50)).await;
+                ticker.reset();
+            },
         }
     }
 }
