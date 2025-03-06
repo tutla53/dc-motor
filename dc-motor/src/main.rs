@@ -31,6 +31,7 @@ use {
         time::Duration as CoreDuration
     },
     heapless::Vec,
+    fixed::{types::extra::U16, FixedI32},
     {defmt_rtt as _, panic_probe as _},
 };
 
@@ -40,6 +41,10 @@ static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
 static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogMask, 1024> = Channel::new();
 static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
+static KP: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.1);
+static KI: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.125);
+static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
+
 const REFRESH_INTERVAL: u64 = 1000; // us
 
 struct LogMask {
@@ -63,7 +68,8 @@ impl ReceiverHandler for UsbHandler {
             if !parts.is_empty() { 
                 match parts[0] {
                     "motor" => { handle_move_motor(&parts).await; },
-                    "log"  => { handle_firmware_logger(&parts).await; }
+                    "log"  => { handle_firmware_logger(&parts).await; },
+                    "motor_pid" => { handle_motor_pid(&parts).await; },
                     _ => { log::info!("Command not found"); },
                 }
             }
@@ -125,6 +131,34 @@ async fn get_commanded_speed() -> i32 {
     return *COMMANDED_MOTOR_SPEED.lock().await;
 }
 
+async fn set_kp(kp: f32) {
+    let mut current_kp = KP.lock().await;
+    *current_kp = kp;
+}
+
+async fn get_kp() -> f32 {
+    return *KP.lock().await;
+}
+
+async fn set_ki(ki: f32) {
+    let mut current_ki = KI.lock().await;
+    *current_ki = ki;
+}
+
+async fn get_ki() -> f32 {
+    return *KI.lock().await;
+}
+
+async fn set_kd(kd: f32) {
+    let mut current_kd = KD.lock().await;
+    *current_kd = kd;
+}
+
+async fn get_kd() -> f32 {
+    return *KD.lock().await;
+}
+
+
 async fn handle_move_motor(parts: &Vec<&str, 8>) {
     if parts.len() < 2 {
         log::info!("Insufficient Parameter: move <start/stop>");
@@ -183,6 +217,77 @@ async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
             set_logging_state(false).await;
         },
          _ => { log::info!("Invalid Parameter: log <start/stop>"); },
+    }
+}
+
+async fn handle_motor_pid(parts: &Vec<&str, 8>) {
+    if parts.len() < 2 {
+        log::info!("Insufficient Parameter: motor_pid <get/set>");
+        return;
+    }
+    
+    match parts[1] {
+        "set" => {
+            if parts.len() < 3 {
+                log::info!("Insufficient Parameter: motor_pid set <kp/ki/kd>");
+                return;
+            }
+            
+            match parts[2] {
+                "kp" => {
+                    if parts.len() < 4 {
+                        log::info!("Insufficient Parameter: motor_pid set kp <value>");
+                        return;
+                    }
+    
+                    match parts[3].parse::<f32>() {
+                        Ok(value) => {
+                            set_kp(value).await;
+                        },
+                        Err(e) => {
+                            log::info!("Invalid kp value {:?}", e);
+                        }
+                    } 
+                },
+
+                "ki" => {
+                    if parts.len() < 4 {
+                        log::info!("Insufficient Parameter: motor_pid set ki <value>");
+                        return;
+                    }
+    
+                    match parts[3].parse::<f32>() {
+                        Ok(value) => {
+                            set_ki(value).await;
+                        },
+                        Err(e) => {
+                            log::info!("Invalid ki value {:?}", e);
+                        }
+                    } 
+                },
+
+                "kd" => {
+                    if parts.len() < 4 {
+                        log::info!("Insufficient Parameter: motor_pid set kd <value>");
+                        return;
+                    }
+    
+                    match parts[3].parse::<f32>() {
+                        Ok(value) => {
+                            set_kd(value).await;
+                        },
+                        Err(e) => {
+                            log::info!("Invalid kp value {:?}", e);
+                        }
+                    } 
+                },
+                _ => { log::info!("Invalid Parameter: motor_pid set <kp/ki/kd>"); },
+            }
+        },
+        "get" => {
+            log::info!("Kp:{}, Ki:{}, Kd:{}", get_kp().await, get_ki().await, get_kd().await);
+        },
+         _ => { log::info!("Invalid Parameter: motor_pid <get/set>"); },
     }
 }
 
@@ -288,50 +393,61 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
     
-    const KP: i32 = 1;
-    const KI: i32 = 1;
-    const KD: i32 = 2;
-    
+
+    let mut kp: FixedI32::<U16> = FixedI32::<U16>::from_num(get_kp().await);
+    let mut ki: FixedI32::<U16> = FixedI32::<U16>::from_num(get_ki().await);
+    let mut kd: FixedI32::<U16> = FixedI32::<U16>::from_num(get_kd().await);
+
     let mut i_term = 0;
     let mut pre_error = 0;
     let mut ticker = Ticker::every(Duration::from_millis(5));
 
     loop {
         let commanded_speed = get_commanded_speed().await;
-        let current_speed = get_current_speed().await;
-        
-        let error = commanded_speed - current_speed;
-        let p_term = error;
-        let d_term = error - pre_error;
-        pre_error = error;
-        i_term = i_term + error;
-
-        let mut sig = (KP*p_term)/5 + (KI*i_term)/8 + (KD*d_term);
-
-        if sig > 1000 {
-            sig = 1000;
-            i_term -= error;
-        }
-        else if sig < -1000 {
-            sig = -1000;
-            i_term -= error;
-        }
 
         if commanded_speed == 0 {
             pwm_cw.write(CoreDuration::from_micros(0));
             pwm_ccw.write(CoreDuration::from_micros(0)); 
             i_term = 0;
-            pre_error = 0;         
-        }
-        else if commanded_speed > 0 {
-            pwm_cw.write(CoreDuration::from_micros(sig.abs() as u64));
-            pwm_ccw.write(CoreDuration::from_micros(0));
-        }
-        else {
-            pwm_cw.write(CoreDuration::from_micros(0));
-            pwm_ccw.write(CoreDuration::from_micros(sig.abs() as u64));
+            pre_error = 0;
+            kp = FixedI32::<U16>::from_num(get_kp().await);
+            ki = FixedI32::<U16>::from_num(get_ki().await);
+            kd = FixedI32::<U16>::from_num(get_kd().await);
+            Timer::after(Duration::from_millis(50)).await;
+            ticker.reset();         
         }
 
-        ticker.next().await;
+        else {
+            let current_speed = get_current_speed().await;
+            let error = commanded_speed - current_speed;
+            let p_term = error;
+            let d_term = error - pre_error;
+            pre_error = error;
+            i_term = i_term + error;
+
+            let sig_fixed = (kp*p_term) + (ki*i_term) + (kd*d_term);
+            
+            let mut sig = sig_fixed.to_num::<i32>();
+
+            if sig > 1000 {
+                sig = 1000;
+                i_term -= error;
+            }
+            else if sig < -1000 {
+                sig = -1000;
+                i_term -= error;
+            }
+
+            if commanded_speed > 0 {
+                pwm_cw.write(CoreDuration::from_micros(sig.abs() as u64));
+                pwm_ccw.write(CoreDuration::from_micros(0));
+            }
+            else {
+                pwm_cw.write(CoreDuration::from_micros(0));
+                pwm_ccw.write(CoreDuration::from_micros(sig.abs() as u64));
+            }
+
+            ticker.next().await;
+        }
     }
 }
