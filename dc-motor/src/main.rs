@@ -35,6 +35,11 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
+bind_interrupts!(struct Irqs {
+    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    USBCTRL_IRQ => UsbInterruptHandler<USB>;
+});
+
 static CURRENT_POS: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
 static CURRENT_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0); // count/s
 static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
@@ -52,10 +57,57 @@ struct LogMask {
     motor_speed:i32,
 }
 
-bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
-    USBCTRL_IRQ => UsbInterruptHandler<USB>;
-});
+struct PID {
+    // PID gains (Kp, Ki, Kd) in fixed-point
+    kp: FixedI32::<U16>,
+    ki: FixedI32::<U16>,
+    kd: FixedI32::<U16>,
+    integral: FixedI32::<U16>,
+    prev_error: FixedI32::<U16>,
+}
+
+impl PID {
+    fn new() -> Self {
+        Self {
+            kp: FixedI32::<U16>::from_num(0.2),
+            ki: FixedI32::<U16>::from_num(0.05),
+            kd: FixedI32::<U16>::from_num(2.0),
+            integral: FixedI32::<U16>::from_num(0),
+            prev_error: FixedI32::<U16>::from_num(0),
+        }
+    }
+
+    async fn update_pid_param(&mut self){
+        self.kp = FixedI32::<U16>::from_num(get_kp().await);
+        self.ki = FixedI32::<U16>::from_num(get_ki().await);
+        self.kd = FixedI32::<U16>::from_num(get_kd().await);
+    }
+
+    fn reset(&mut self){
+        self.integral = FixedI32::<U16>::from_num(0);
+        self.prev_error = FixedI32::<U16>::from_num(0);
+    }
+
+    fn compute(&mut self, error: FixedI32::<U16>) -> i32 {
+        self.integral = self.integral + error;
+        let derivative = error - self.prev_error;
+        self.prev_error = error;
+
+        let sig_fixed = self.kp*error + self.ki*self.integral + self.kd*derivative;
+        let mut sig = sig_fixed.to_num::<i32>();
+
+        if sig > 1000 {
+            sig = 1000;
+            self.integral -= error;
+        }
+        else if sig < -1000 {
+            sig = -1000;
+            self.integral -= error;
+        }
+
+        return sig;
+    }
+}
 
 struct UsbHandler;
 
@@ -393,13 +445,7 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
     
-
-    let mut kp: FixedI32::<U16> = FixedI32::<U16>::from_num(get_kp().await);
-    let mut ki: FixedI32::<U16> = FixedI32::<U16>::from_num(get_ki().await);
-    let mut kd: FixedI32::<U16> = FixedI32::<U16>::from_num(get_kd().await);
-
-    let mut i_term = 0;
-    let mut pre_error = 0;
+    let mut pid = PID::new();
     let mut ticker = Ticker::every(Duration::from_millis(5));
 
     loop {
@@ -408,35 +454,16 @@ async fn main(spawner: Spawner) {
         if commanded_speed == 0 {
             pwm_cw.write(CoreDuration::from_micros(0));
             pwm_ccw.write(CoreDuration::from_micros(0)); 
-            i_term = 0;
-            pre_error = 0;
-            kp = FixedI32::<U16>::from_num(get_kp().await);
-            ki = FixedI32::<U16>::from_num(get_ki().await);
-            kd = FixedI32::<U16>::from_num(get_kd().await);
+            pid.reset();
+            pid.update_pid_param().await;
             Timer::after(Duration::from_millis(50)).await;
             ticker.reset();         
         }
 
         else {
             let current_speed = get_current_speed().await;
-            let error = commanded_speed - current_speed;
-            let p_term = error;
-            let d_term = error - pre_error;
-            pre_error = error;
-            i_term = i_term + error;
-
-            let sig_fixed = (kp*p_term) + (ki*i_term) + (kd*d_term);
-            
-            let mut sig = sig_fixed.to_num::<i32>();
-
-            if sig > 1000 {
-                sig = 1000;
-                i_term -= error;
-            }
-            else if sig < -1000 {
-                sig = -1000;
-                i_term -= error;
-            }
+            let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+            let sig = pid.compute(error);
 
             if commanded_speed > 0 {
                 pwm_cw.write(CoreDuration::from_micros(sig.abs() as u64));
