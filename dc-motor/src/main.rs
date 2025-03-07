@@ -402,7 +402,7 @@ async fn handle_motor_pid(parts: &Vec<&str, 8>) {
 #[embassy_executor::task]
 async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
     const COUNT_THRESHOLD: i32 = 3;
-    const TIMEOUT: u64 = 200;
+    const TIMEOUT: u64 = 50;
 
     let mut count = 0;
     let mut delta_count: i32 = 0;
