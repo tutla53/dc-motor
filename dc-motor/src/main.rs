@@ -112,13 +112,13 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 }
 
 struct PIDcontrol {
-    // PID gains (Kp, Ki, Kd) in fixed-point
     kp: FixedI32::<U16>,
     ki: FixedI32::<U16>,
     kd: FixedI32::<U16>,
     integral: FixedI32::<U16>,
     prev_error: FixedI32::<U16>,
-    threshold: i32,
+    min_threshold: i32,
+    max_threshold: i32,
 }
 
 impl PIDcontrol {
@@ -129,7 +129,8 @@ impl PIDcontrol {
             kd: FixedI32::<U16>::from_num(2.0),
             integral: FixedI32::<U16>::from_num(0),
             prev_error: FixedI32::<U16>::from_num(0),
-            threshold: REFRESH_INTERVAL as i32,
+            min_threshold: 200,
+            max_threshold: REFRESH_INTERVAL as i32,
         }
     }
 
@@ -144,22 +145,35 @@ impl PIDcontrol {
         self.prev_error = FixedI32::<U16>::from_num(0);
     }
 
+    fn limit_output(&mut self, mut sig: i32) -> i32 {
+        if sig > self.max_threshold {
+            sig = self.max_threshold;
+            self.integral -= self.prev_error;
+        }
+        else if sig < -1*self.max_threshold {
+            sig = -1*self.max_threshold;
+            self.integral -= self.prev_error;
+        }
+
+        if sig < self.min_threshold {
+            sig = self.min_threshold;
+            self.integral -= self.prev_error;
+        }
+        else if sig > -1*self.min_threshold {
+            sig = -1*self.min_threshold;
+            self.integral -= self.prev_error;
+        }
+
+        return sig;
+    }
+
     fn compute(&mut self, error: FixedI32::<U16>) -> i32 {
         self.integral = self.integral + error;
         let derivative = error - self.prev_error;
         self.prev_error = error;
 
         let sig_fixed = self.kp*error + self.ki*self.integral + self.kd*derivative;
-        let mut sig = sig_fixed.to_num::<i32>();
-
-        if sig > self.threshold {
-            sig = self.threshold;
-            self.integral -= error;
-        }
-        else if sig < -1*self.threshold {
-            sig = -1*self.threshold;
-            self.integral -= error;
-        }
+        let sig = self.limit_output(sig_fixed.to_num::<i32>());
 
         return sig;
     }
