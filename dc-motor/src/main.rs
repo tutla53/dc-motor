@@ -165,6 +165,55 @@ impl PIDcontrol {
     }
 }
 
+struct RotaryEncoder <'d, T: Instance, const SM: usize> {
+    encoder: PioEncoder<'d, T, SM>,
+    count_threshold: i32,
+    timeout: u64,
+}
+
+impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
+    fn new(encoder: PioEncoder<'d, T, SM>) -> Self {
+        Self {
+            encoder,
+            count_threshold: 3,
+            timeout: 50,
+        }
+    }
+
+    async fn run_encoder_task(&mut self) {
+        let mut count = 0;
+        let mut delta_count: i32 = 0;
+        let mut start = Instant::now();
+    
+        loop {
+            match with_timeout(Duration::from_millis(self.timeout), self.encoder.read()).await {
+                Ok(value) => {
+                    match value {
+                        Direction::Clockwise => {
+                            count += 1;
+                            delta_count += 1;
+                        },
+                        Direction::CounterClockwise =>{
+                            count -= 1;
+                            delta_count -= 1;
+                        },
+                    }
+                },
+                Err (_) => {},
+            };
+    
+            let dt = start.elapsed().as_micros();
+            if (delta_count.abs() >= self.count_threshold) || (dt > self.timeout * 1_000) {
+                let speed = delta_count  * (1_000_000 / dt as i32);
+                delta_count = 0;
+                start = Instant::now();
+                set_current_speed(speed).await;
+            }
+            set_current_pos(count).await;
+        }
+    }
+}
+
 struct UsbHandler;
 
 impl ReceiverHandler for UsbHandler {
@@ -266,7 +315,6 @@ async fn get_kd() -> f32 {
     return *KD.lock().await;
 }
 
-
 async fn handle_move_motor(parts: &Vec<&str, 8>) {
     if parts.len() < 2 {
         log::info!("Insufficient Parameter: move <start/stop>");
@@ -324,7 +372,7 @@ async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
         "stop" => {
             set_logging_state(false).await;
         },
-         _ => { log::info!("Invalid Parameter: log <start/stop>"); },
+        _ => { log::info!("Invalid Parameter: log <start/stop>"); },
     }
 }
 
@@ -395,44 +443,7 @@ async fn handle_motor_pid(parts: &Vec<&str, 8>) {
         "get" => {
             log::info!("Kp:{}, Ki:{}, Kd:{}", get_kp().await, get_ki().await, get_kd().await);
         },
-         _ => { log::info!("Invalid Parameter: motor_pid <get/set>"); },
-    }
-}
-
-#[embassy_executor::task]
-async fn encoder_0(mut encoder: PioEncoder<'static, PIO0, 0>) {
-    const COUNT_THRESHOLD: i32 = 3;
-    const TIMEOUT: u64 = 50;
-
-    let mut count = 0;
-    let mut delta_count: i32 = 0;
-    let mut start = Instant::now();
-
-    loop {
-        match with_timeout(Duration::from_millis(TIMEOUT), encoder.read()).await {
-            Ok(value) => {
-                match value {
-                    Direction::Clockwise => {
-                        count += 1;
-                        delta_count += 1;
-                    },
-                    Direction::CounterClockwise =>{
-                        count -= 1;
-                        delta_count -= 1;
-                    },
-                }
-            },
-            Err (_) => {},
-        };
-
-        let dt = start.elapsed().as_micros();
-        if (delta_count.abs() >= COUNT_THRESHOLD) || (dt > TIMEOUT * 1_000) {
-            let speed = delta_count  * (1_000_000 / dt as i32);
-            delta_count = 0;
-            start = Instant::now();
-            set_current_speed(speed).await;
-        }
-        set_current_pos(count).await;
+        _ => { log::info!("Invalid Parameter: motor_pid <get/set>"); },
     }
 }
 
@@ -479,6 +490,11 @@ async fn send_logger_task() {
     }
 }
 
+#[embassy_executor::task]
+async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
+    encoder.run_encoder_task().await;
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -491,17 +507,17 @@ async fn main(spawner: Spawner) {
     let enc_prg = PioEncoderProgram::new(&mut common);
     let pwm_prg = PioPwmProgram::new(&mut common);
     
-    let encoder0 = PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg);
+    let encoder = RotaryEncoder::new(PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg));
     let pwm_ccw = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
     let pwm_cw = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
     
-    spawner.must_spawn(usb_logger_task(usb_driver));
-    spawner.must_spawn(encoder_0(encoder0));
-    spawner.must_spawn(firmware_logger_task());
-    spawner.must_spawn(send_logger_task());
-    
     let mut dc_motor = DCMotor::new(pwm_cw, pwm_ccw);
     dc_motor.enable();
+
+    spawner.must_spawn(usb_logger_task(usb_driver));
+    spawner.must_spawn(encoder_task(encoder));
+    spawner.must_spawn(firmware_logger_task());
+    spawner.must_spawn(send_logger_task());
 
     let mut ticker = Ticker::every(Duration::from_millis(5));
 
