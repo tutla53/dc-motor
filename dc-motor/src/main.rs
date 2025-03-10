@@ -45,7 +45,7 @@ static CURRENT_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0); // co
 static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
 static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogMask, 1024> = Channel::new();
-static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, CommandedSpeed> = Mutex::new(CommandedSpeed::Speed(0));
+static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, CommandedSpeed> = Mutex::new(CommandedSpeed::Stop);
 static KP: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.2);
 static KI: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.05);
 static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
@@ -61,54 +61,6 @@ struct LogMask {
 enum CommandedSpeed {
     Speed(i32),
     Stop,
-}
-
-struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
-    pwm_cw: PioPwm<'d, T, SM1>,
-    pwm_ccw: PioPwm<'d, T, SM2>,
-    period: u64,
-    pid_control: PIDcontrol,
-}
-
-impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
-    fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>) -> Self {
-        Self {
-            pwm_cw,
-            pwm_ccw,
-            period: REFRESH_INTERVAL,
-            pid_control: PIDcontrol::new(),
-        }
-    }
-    
-    fn set_period(&mut self, period: u64) {
-        self.period = period;
-        self.pwm_cw.set_period(CoreDuration::from_micros(period));
-        self.pwm_ccw.set_period(CoreDuration::from_micros(period));
-    }
-
-    fn enable(&mut self) {
-        self.set_period(self.period);
-        self.pwm_cw.start();
-        self.pwm_ccw.start();
-        self.pwm_cw.write(CoreDuration::from_micros(0));
-        self.pwm_ccw.write(CoreDuration::from_micros(0));
-    }
-
-    fn move_motor(&mut self, mut speed: i32) {
-        let threshold = self.period as i32;
-
-        if speed > 0 {
-            if speed > threshold { speed = threshold; }
-            self.pwm_cw.write(CoreDuration::from_micros(speed.abs() as u64));
-            self.pwm_ccw.write(CoreDuration::from_micros(0));
-        }
-        else {
-
-            if speed < -threshold { speed = -threshold; }
-            self.pwm_cw.write(CoreDuration::from_micros(0));
-            self.pwm_ccw.write(CoreDuration::from_micros(speed.abs() as u64));
-        }
-    }
 }
 
 struct PIDcontrol {
@@ -176,6 +128,79 @@ impl PIDcontrol {
         let sig = self.limit_output(sig_fixed.to_num::<i32>());
 
         return sig;
+    }
+}
+
+struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
+    pwm_cw: PioPwm<'d, T, SM1>,
+    pwm_ccw: PioPwm<'d, T, SM2>,
+    period: u64,
+    pid_control: PIDcontrol,
+}
+
+impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
+    fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>) -> Self {
+        Self {
+            pwm_cw,
+            pwm_ccw,
+            period: REFRESH_INTERVAL,
+            pid_control: PIDcontrol::new(),
+        }
+    }
+    
+    fn set_period(&mut self, period: u64) {
+        self.period = period;
+        self.pwm_cw.set_period(CoreDuration::from_micros(period));
+        self.pwm_ccw.set_period(CoreDuration::from_micros(period));
+    }
+
+    fn enable(&mut self) {
+        self.set_period(self.period);
+        self.pwm_cw.start();
+        self.pwm_ccw.start();
+        self.pwm_cw.write(CoreDuration::from_micros(0));
+        self.pwm_ccw.write(CoreDuration::from_micros(0));
+    }
+
+    fn move_motor(&mut self, mut pwm: i32) {
+        let threshold = self.period as i32;
+
+        if pwm > 0 {
+            if pwm > threshold { pwm = threshold; }
+            self.pwm_cw.write(CoreDuration::from_micros(pwm.abs() as u64));
+            self.pwm_ccw.write(CoreDuration::from_micros(0));
+        }
+        else {
+            if pwm < -threshold { pwm = -threshold; }
+            self.pwm_cw.write(CoreDuration::from_micros(0));
+            self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
+        }
+    }
+
+    async fn run_motor_task(&mut self) {
+        let mut ticker = Ticker::every(Duration::from_millis(5));
+
+        loop {
+            let command = get_commanded_speed().await;
+            
+            match command {
+                CommandedSpeed::Speed(commanded_speed) => {
+                    let current_speed = get_current_speed().await;
+                    let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+                    let sig = self.pid_control.compute(error);
+                    
+                    self.move_motor(sig);
+                    ticker.next().await;    
+                },
+                CommandedSpeed::Stop => {
+                    self.move_motor(0);
+                    self.pid_control.reset();
+                    self.pid_control.update_pid_param().await;
+                    Timer::after(Duration::from_millis(50)).await;
+                    ticker.reset();
+                },
+            }
+        }
     }
 }
 
@@ -509,6 +534,12 @@ async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
     encoder.run_encoder_task().await;
 }
 
+#[embassy_executor::task]
+async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
+    dc_motor.enable();
+    dc_motor.run_motor_task().await;
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -521,39 +552,15 @@ async fn main(spawner: Spawner) {
     let enc_prg = PioEncoderProgram::new(&mut common);
     let pwm_prg = PioPwmProgram::new(&mut common);
     
+    let pwm_cw = PioPwm::new(&mut common, sm1, p.PIN_15, &pwm_prg);
+    let pwm_ccw = PioPwm::new(&mut common, sm2, p.PIN_14, &pwm_prg);
+    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw);
     let encoder = RotaryEncoder::new(PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg));
-    let pwm_ccw = PioPwm::new(&mut common, sm1, p.PIN_14, &pwm_prg);
-    let pwm_cw = PioPwm::new(&mut common, sm2, p.PIN_15, &pwm_prg);
-    
-    let mut dc_motor = DCMotor::new(pwm_cw, pwm_ccw);
-    dc_motor.enable();
 
     spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_task(encoder));
+    spawner.must_spawn(motor_task(dc_motor));
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
 
-    let mut ticker = Ticker::every(Duration::from_millis(5));
-
-    loop {
-        let command = get_commanded_speed().await;
-        
-        match command {
-            CommandedSpeed::Speed(commanded_speed) => {
-                let current_speed = get_current_speed().await;
-                let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-                let sig = dc_motor.pid_control.compute(error);
-                
-                dc_motor.move_motor(sig);
-                ticker.next().await;    
-            },
-            CommandedSpeed::Stop => {
-                dc_motor.move_motor(0);
-                dc_motor.pid_control.reset();
-                dc_motor.pid_control.update_pid_param().await;
-                Timer::after(Duration::from_millis(50)).await;
-                ticker.reset();
-            },
-        }
-    }
 }
