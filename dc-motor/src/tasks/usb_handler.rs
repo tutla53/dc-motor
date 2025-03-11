@@ -17,7 +17,6 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::CommandedSpeed,
     },
     core::str, 
     heapless::Vec,
@@ -33,7 +32,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
     match parts[1] {
         "stop" =>{
             log::info!("{}", global::get_current_pos(0).await);
-            global::set_commanded_speed(0, CommandedSpeed::Stop).await;
+            global::set_motor_status(0, false).await;
         },
         "start" => {
             if parts.len() < 3 {
@@ -42,7 +41,8 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
             }
             match parts[2].parse::<i32>() {
                 Ok(speed) => {
-                    global::set_commanded_speed(0, CommandedSpeed::Speed(speed)).await;
+                    global::set_motor_status(0, true).await;
+                    global::set_commanded_speed(0, speed).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);

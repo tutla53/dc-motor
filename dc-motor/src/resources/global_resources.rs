@@ -13,7 +13,8 @@ static LOGGER_RUN: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static LOGGER_TIME_SAMPLING: Mutex<CriticalSectionRawMutex, u64> = Mutex::new(10);
 static CURRENT_POS: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
 static CURRENT_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0); // count/s
-static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, CommandedSpeed> = Mutex::new(CommandedSpeed::Stop);
+static COMMANDED_MOTOR_SPEED: Mutex<CriticalSectionRawMutex, i32> = Mutex::new(0);
+static MOTOR_STATUS: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
 static KP: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.2);
 static KI: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(0.05);
 static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
@@ -21,12 +22,6 @@ static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
 pub struct LogMask {
     pub dt: u64,
     pub motor_speed:i32,
-}
-
-#[derive(Clone, Copy)]
-pub enum CommandedSpeed {
-    Speed(i32),
-    Stop,
 }
 
 pub async fn set_logging_state(state: bool) {
@@ -97,7 +92,7 @@ pub async fn get_current_speed(motor_id: u8) -> i32 {
     }
 }
 
-pub async fn set_commanded_speed(motor_id: u8, speed: CommandedSpeed) {
+pub async fn set_commanded_speed(motor_id: u8, speed: i32) {
     match motor_id {
         0 => {
             let mut current_speed = COMMANDED_MOTOR_SPEED.lock().await;
@@ -107,13 +102,34 @@ pub async fn set_commanded_speed(motor_id: u8, speed: CommandedSpeed) {
     }
 }
 
-pub async fn get_commanded_speed(motor_id: u8) -> CommandedSpeed {
+pub async fn get_commanded_speed(motor_id: u8) -> i32 {
     match motor_id {
         0 => {
             return *COMMANDED_MOTOR_SPEED.lock().await;   
         },
         _ => {
-            CommandedSpeed::Stop
+            return 0;
+        },
+    }
+}
+
+pub async fn set_motor_status(motor_id: u8, status: bool) {
+    match motor_id {
+        0 => {
+            let mut current_status = MOTOR_STATUS.lock().await;
+            *current_status = status;            
+        },
+        _ => {},
+    }
+}
+
+pub async fn get_motor_status(motor_id: u8) -> bool {
+    match motor_id {
+        0 => {
+            return *MOTOR_STATUS.lock().await;   
+        },
+        _ => {
+            return false;
         },
     }
 }

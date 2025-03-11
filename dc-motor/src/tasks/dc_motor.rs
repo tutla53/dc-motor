@@ -8,7 +8,6 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::CommandedSpeed,
     },
     embassy_rp::{
         peripherals::PIO0,
@@ -204,28 +203,27 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
     dc_motor.enable();
 
     loop {
-        let command = global::get_commanded_speed(dc_motor.motor_id).await;
+        let is_motor_run = global::get_motor_status(dc_motor.motor_id).await;
             
-        match command {
-            CommandedSpeed::Speed(commanded_speed) => {
-                let current_speed = global::get_current_speed(dc_motor.motor_id).await;
-                let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-                let sig = dc_motor.pid_control.compute(error);
+        if is_motor_run {
+            let commanded_speed = global::get_commanded_speed(dc_motor.motor_id).await;
+            let current_speed = global::get_current_speed(dc_motor.motor_id).await;
+            let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+            let sig = dc_motor.pid_control.compute(error);
                     
-                dc_motor.move_motor(sig);
-                ticker.next().await;    
-            },
-            CommandedSpeed::Stop => {
-                let new_kp = FixedI32::<U16>::from_num(global::get_kp(dc_motor.motor_id).await);
-                let new_ki = FixedI32::<U16>::from_num(global::get_ki(dc_motor.motor_id).await);
-                let new_kd = FixedI32::<U16>::from_num(global::get_kd(dc_motor.motor_id).await);
+            dc_motor.move_motor(sig);
+            ticker.next().await;    
+        }
+        else {
+            let new_kp = FixedI32::<U16>::from_num(global::get_kp(dc_motor.motor_id).await);
+            let new_ki = FixedI32::<U16>::from_num(global::get_ki(dc_motor.motor_id).await);
+            let new_kd = FixedI32::<U16>::from_num(global::get_kd(dc_motor.motor_id).await);
 
-                dc_motor.move_motor(0);
-                dc_motor.pid_control.reset();
-                dc_motor.pid_control.update_pid_param(new_kp, new_ki, new_kd).await;
-                Timer::after(Duration::from_millis(50)).await;
-                ticker.reset();
-            },
+            dc_motor.move_motor(0);
+            dc_motor.pid_control.reset();
+            dc_motor.pid_control.update_pid_param(new_kp, new_ki, new_kd).await;
+            Timer::after(Duration::from_millis(50)).await;
+            ticker.reset();
         }
     }
 }

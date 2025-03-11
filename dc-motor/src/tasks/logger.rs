@@ -5,10 +5,7 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::{
-            LogMask,
-            CommandedSpeed,
-        },
+        global_resources::LogMask,
     },
     embassy_time::{Ticker, Duration, Instant, Timer},
     {defmt_rtt as _, panic_probe as _},
@@ -43,15 +40,8 @@ pub async fn firmware_logger_task() {
 #[embassy_executor::task]
 pub async fn send_logger_task() {
     loop {
-        let command = global::get_logged_data().await;
+        let actual = global::get_logged_data().await;
         let commanded_speed = global::get_commanded_speed(0).await;
-        match commanded_speed {
-            CommandedSpeed::Speed(value) => {
-                log::info!("{} {} {}", command.dt, command.motor_speed, value);
-            }
-            CommandedSpeed::Stop => {
-                log::info!("{} {} {}", command.dt, command.motor_speed, 0);
-            },
-        }
+        log::info!("{} {} {}", actual.dt, actual.motor_speed, commanded_speed);
     }
 }
