@@ -1,7 +1,8 @@
 import serial
 import serial.tools.list_ports
-import matplotlib.pyplot as plt # type: ignore
+import matplotlib.pyplot as plt
 import threading
+import math
 import time
 import queue  # Import the queue module
 
@@ -91,7 +92,7 @@ def serial_writer(ser, logger, plot_queue):  # Accept plot_queue as an argument
                 try:
                     time_sampling = int(user_input.split(" ")[1])
                     speed = int(user_input.split(" ")[2])
-                    plot_data_to_show = motor_test(ser, logger, time_sampling, speed)
+                    plot_data_to_show = sinusoidal_test(ser, logger, time_sampling, speed)
                     if plot_data_to_show:
                         plot_queue.put(plot_data_to_show)  # Put data into the queue
                 except (ValueError, IndexError):
@@ -128,6 +129,63 @@ def motor_test(ser, logger, time_sampling, speed_rpm):
     ser.write(("motor start " + str(speed)).encode("utf-8"))
     time.sleep(2)
     
+    logger.stop_logging()
+    ser.write("log stop".encode("utf-8"))
+    time.sleep(0.1)
+    
+    ser.write("motor stop".encode("utf-8"))
+
+    result = logger.get_log_data()
+    time_ms = []
+    motor_speed = []
+    commanded = []
+    
+    for line in result:
+        try:
+            value = line.decode('utf-8', errors='replace').strip()
+            integer_list = [int(x.strip()) for x in value.split(' ')]
+            time_ms.append(integer_list[0])
+            motor_speed.append((integer_list[1]*60/48.4))
+            commanded.append((integer_list[2]*60/48.4))
+        except ValueError:
+            print(f"Warning: Could not parse line for plotting: {line}")
+        except UnicodeDecodeError:
+            print(f"Warning: Could not decode line for plotting: {line.hex()}")
+
+    if time_ms and motor_speed and commanded:
+        return (time_ms, motor_speed, commanded)
+    else:
+        print("No valid data to plot from motor test.")
+        return None
+
+def sinusoidal_test(ser, logger, time_sampling, speed_rpm, period = 2.5):
+    log_start_cmd = "log start " + str(time_sampling)
+    speed = int ((speed_rpm * 48.4)/60)
+    
+    ser.write(log_start_cmd.encode("utf-8"))
+    logger.start_logging()
+    print(f"Logging started with time sampling of: {time_sampling} ms")
+    time.sleep(0.2)
+    
+    delta = 1
+    dt = (period*delta)/360
+    
+    for j in range (0, 2):
+        next_time = time.perf_counter()
+        for i in range(0, 360+delta, delta):
+            com_speed = int(speed * math.sin(math.radians(i)))
+            ser.write(("motor start " + str(com_speed)).encode("utf-8"))
+            
+            current_time = time.perf_counter()
+            sleep_duration = next_time - current_time
+        
+            if sleep_duration > 0:
+                time.sleep(sleep_duration)
+        
+            next_time += dt
+    
+    time.sleep(1)
+
     logger.stop_logging()
     ser.write("log stop".encode("utf-8"))
     time.sleep(0.1)
