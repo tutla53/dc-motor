@@ -17,10 +17,7 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::{
-            CommandedSpeed, 
-            MotorId::Motor0,
-        },
+        global_resources::CommandedSpeed,
     },
     core::str, 
     heapless::Vec,
@@ -35,8 +32,8 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
 
     match parts[1] {
         "stop" =>{
-            log::info!("{}", global::get_current_pos(Motor0).await);
-            global::set_commanded_speed(Motor0, CommandedSpeed::Stop).await;
+            log::info!("{}", global::get_current_pos(0).await);
+            global::set_commanded_speed(0, CommandedSpeed::Stop).await;
         },
         "start" => {
             if parts.len() < 3 {
@@ -45,7 +42,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
             }
             match parts[2].parse::<i32>() {
                 Ok(speed) => {
-                    global::set_commanded_speed(Motor0, CommandedSpeed::Speed(speed)).await;
+                    global::set_commanded_speed(0, CommandedSpeed::Speed(speed)).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);
@@ -110,7 +107,7 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
     
                     match parts[3].parse::<f32>() {
                         Ok(value) => {
-                            global::set_kp(Motor0, value).await;
+                            global::set_kp(0, value).await;
                         },
                         Err(e) => {
                             log::info!("Invalid kp value {:?}", e);
@@ -126,7 +123,7 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
     
                     match parts[3].parse::<f32>() {
                         Ok(value) => {
-                            global::set_ki(Motor0, value).await;
+                            global::set_ki(0, value).await;
                         },
                         Err(e) => {
                             log::info!("Invalid ki value {:?}", e);
@@ -142,7 +139,7 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
     
                     match parts[3].parse::<f32>() {
                         Ok(value) => {
-                            global::set_kd(Motor0, value).await;
+                            global::set_kd(0, value).await;
                         },
                         Err(e) => {
                             log::info!("Invalid kp value {:?}", e);
@@ -153,7 +150,7 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
             }
         },
         "get" => {
-            log::info!("Kp:{}, Ki:{}, Kd:{}", global::get_kp(Motor0).await, global::get_ki(Motor0).await, global::get_kd(Motor0).await);
+            log::info!("Kp:{}, Ki:{}, Kd:{}", global::get_kp(0).await, global::get_ki(0).await, global::get_kd(0).await);
         },
         _ => { log::info!("Invalid Parameter: motor_pid <get/set>"); },
     }

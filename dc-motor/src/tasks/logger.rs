@@ -8,7 +8,6 @@ use {
         global_resources::{
             LogMask,
             CommandedSpeed,
-            MotorId::Motor0,
         },
     },
     embassy_time::{Ticker, Duration, Instant, Timer},
@@ -26,7 +25,7 @@ pub async fn firmware_logger_task() {
         if logging {
             let data = LogMask{
                 dt: start.elapsed().as_millis(),
-                motor_speed: global::get_current_speed(Motor0).await
+                motor_speed: global::get_current_speed(0).await
             };
             global::send_logged_data(data).await;
             ticker.next().await;
@@ -45,7 +44,7 @@ pub async fn firmware_logger_task() {
 pub async fn send_logger_task() {
     loop {
         let command = global::get_logged_data().await;
-        let commanded_speed = global::get_commanded_speed(Motor0).await;
+        let commanded_speed = global::get_commanded_speed(0).await;
         match commanded_speed {
             CommandedSpeed::Speed(value) => {
                 log::info!("{} {} {}", command.dt, command.motor_speed, value);

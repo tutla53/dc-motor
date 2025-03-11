@@ -8,10 +8,7 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::{
-            CommandedSpeed, 
-            MotorId,
-        },
+        global_resources::CommandedSpeed,
     },
     embassy_rp::{
         peripherals::PIO0,
@@ -30,6 +27,7 @@ use {
 };
 
 const REFRESH_INTERVAL: u64 = 1000; // us
+const DEFAULT_MIN_PWM_THRESHOLD: i32 = 100;
 
 struct PIDcontrol {
     kp: FixedI32::<U16>,
@@ -49,7 +47,7 @@ impl PIDcontrol {
             kd: FixedI32::<U16>::from_num(2.0),
             integral: FixedI32::<U16>::from_num(0),
             prev_error: FixedI32::<U16>::from_num(0),
-            min_threshold: 200,
+            min_threshold: DEFAULT_MIN_PWM_THRESHOLD,
             max_threshold: REFRESH_INTERVAL as i32,
         }
     }
@@ -102,13 +100,13 @@ impl PIDcontrol {
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_cw: PioPwm<'d, T, SM1>,
     pwm_ccw: PioPwm<'d, T, SM2>,
-    motor_id: MotorId,
+    motor_id: u8,
     period: u64,
     pid_control: PIDcontrol,
 }
 
 impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
-    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor_id: MotorId) -> Self {
+    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor_id: u8) -> Self {
         Self {
             pwm_cw,
             pwm_ccw,
@@ -150,13 +148,13 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 
 pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
     encoder: PioEncoder<'d, T, SM>,
-    motor_id: MotorId,
+    motor_id: u8,
     count_threshold: i32,
     timeout: u64,
 }
 
 impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor_id: MotorId) -> Self {
+    pub fn new(encoder: PioEncoder<'d, T, SM>, motor_id: u8) -> Self {
         Self {
             encoder,
             motor_id,

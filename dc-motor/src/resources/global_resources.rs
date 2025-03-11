@@ -29,11 +29,6 @@ pub enum CommandedSpeed {
     Stop,
 }
 
-#[derive(Clone, Copy)]
-pub enum MotorId {
-    Motor0,
-}
-
 pub async fn set_logging_state(state: bool) {
     let mut logging = LOGGER_RUN.lock().await;
     *logging = state;
@@ -60,104 +55,128 @@ pub async fn get_logged_data() -> LogMask {
     return LOGGER_CONTROL.receive().await;
 }
 
-pub async fn set_current_pos(motor_id: MotorId, pos: i32) {
+pub async fn set_current_pos(motor_id: u8, pos: i32) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_pos = CURRENT_POS.lock().await;
             *current_pos = pos;
         },
+        _ => {},
     }
 }
 
-pub async fn get_current_pos(motor_id: MotorId) -> i32 {
+pub async fn get_current_pos(motor_id: u8) -> i32 {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *CURRENT_POS.lock().await;
+        },
+        _ => {
+            return 0;
         },
     }
 }
 
-pub async fn set_current_speed(motor_id: MotorId, speed: i32) {
+pub async fn set_current_speed(motor_id: u8, speed: i32) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_speed = CURRENT_SPEED.lock().await;
             *current_speed = speed;    
         },
+        _ => {},
     }
 }
 
-pub async fn get_current_speed(motor_id: MotorId) -> i32 {
+pub async fn get_current_speed(motor_id: u8) -> i32 {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *CURRENT_SPEED.lock().await;
+        },
+        _ => {
+            return 0;
         },
     }
 }
 
-pub async fn set_commanded_speed(motor_id: MotorId, speed: CommandedSpeed) {
+pub async fn set_commanded_speed(motor_id: u8, speed: CommandedSpeed) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_speed = COMMANDED_MOTOR_SPEED.lock().await;
             *current_speed = speed;            
         },
+        _ => {},
     }
 }
 
-pub async fn get_commanded_speed(motor_id: MotorId) -> CommandedSpeed {
+pub async fn get_commanded_speed(motor_id: u8) -> CommandedSpeed {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *COMMANDED_MOTOR_SPEED.lock().await;   
+        },
+        _ => {
+            CommandedSpeed::Stop
         },
     }
 }
 
-pub async fn set_kp(motor_id: MotorId, kp: f32) {
+pub async fn set_kp(motor_id: u8, kp: f32) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_kp = KP.lock().await;
             *current_kp = kp;
         },
+        _ => {},
     }
 }
 
-pub async fn get_kp(motor_id: MotorId) -> f32 {
+pub async fn get_kp(motor_id: u8) -> f32 {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *KP.lock().await;   
+        },
+        _ => {
+            return 0.0;
         },
     }
 }
 
-pub async fn set_ki(motor_id: MotorId, ki: f32) {
+pub async fn set_ki(motor_id: u8, ki: f32) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_ki = KI.lock().await;
             *current_ki = ki;
         },
+        _ => {},
     }
 }
 
-pub async fn get_ki(motor_id: MotorId) -> f32 {
+pub async fn get_ki(motor_id: u8) -> f32 {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *KI.lock().await;   
+        },
+        _ => {
+            return 0.0;
         },
     }
 }
 
-pub async fn set_kd(motor_id: MotorId, kd: f32) {
+pub async fn set_kd(motor_id: u8, kd: f32) {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             let mut current_kd = KD.lock().await;
             *current_kd = kd;
         },
+        _ => {},
     }
 }
 
-pub async fn get_kd(motor_id: MotorId) -> f32 {
+pub async fn get_kd(motor_id: u8) -> f32 {
     match motor_id {
-        MotorId::Motor0 => {
+        0 => {
             return *KD.lock().await;   
+        },
+        _ => {
+            return 0.0;
         },
     }
 }

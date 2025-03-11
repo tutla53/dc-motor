@@ -7,7 +7,6 @@ mod resources;
 use {
     crate::resources::{
         gpio_list::Irqs,
-        global_resources::MotorId,
     },
     crate::tasks::{
         usb_handler::{
@@ -85,8 +84,8 @@ async fn main(spawner: Spawner) {
     
     let pwm_cw = PioPwm::new(&mut common, sm1, p.PIN_15, &pwm_prg);
     let pwm_ccw = PioPwm::new(&mut common, sm2, p.PIN_14, &pwm_prg);
-    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, MotorId::Motor0);
-    let encoder = RotaryEncoder::new(PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg), MotorId::Motor0);
+    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, 0);
+    let encoder = RotaryEncoder::new(PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg), 0);
 
     spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_task(encoder));
