@@ -30,7 +30,6 @@ use {
 };
 
 const REFRESH_INTERVAL: u64 = 1000; // us
-const DEFAULT_MIN_PWM_THRESHOLD: i32 = 0;
 
 struct PIDcontrol {
     kp: FixedI32::<U16>,
@@ -38,7 +37,6 @@ struct PIDcontrol {
     kd: FixedI32::<U16>,
     integral: FixedI32::<U16>,
     prev_error: FixedI32::<U16>,
-    min_threshold: i32,
     max_threshold: i32,
 }
 
@@ -50,7 +48,6 @@ impl PIDcontrol {
             kd: FixedI32::<U16>::from_num(2.0),
             integral: FixedI32::<U16>::from_num(0),
             prev_error: FixedI32::<U16>::from_num(0),
-            min_threshold: DEFAULT_MIN_PWM_THRESHOLD,
             max_threshold: REFRESH_INTERVAL as i32,
         }
     }
@@ -66,27 +63,15 @@ impl PIDcontrol {
         self.prev_error = FixedI32::<U16>::from_num(0);
     }
 
-    fn limit_output(&mut self, mut sig: i32) -> i32 {
-
-        if sig > 0 {
-            if sig > self.max_threshold {
-                sig = self.max_threshold;
-                self.integral -= self.prev_error;
-            }
-            else if sig < self.min_threshold {
-                sig = self.min_threshold;
-                self.integral -= self.prev_error;
-            }
+    fn limit_output(&mut self, sig: i32) -> i32 {
+        if sig > self.max_threshold {
+            self.integral -= self.prev_error;
+            return self.max_threshold;
         }
-        else {
-            if sig < -1*self.max_threshold {
-                sig = -1*self.max_threshold;
-                self.integral -= self.prev_error;
-            }
-            else if sig > -1*self.min_threshold {
-                sig = -1*self.min_threshold;
-                self.integral -= self.prev_error;
-            }
+        
+        if sig < -1*self.max_threshold {
+            self.integral -= self.prev_error;
+            return -1*self.max_threshold;
         }
 
         return sig;

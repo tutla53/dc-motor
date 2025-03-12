@@ -37,7 +37,6 @@ use {
         },
     },
     embassy_usb_logger::ReceiverHandler,
-    embassy_time::Timer,
     core::str,
     heapless::Vec,
     {defmt_rtt as _, panic_probe as _},
