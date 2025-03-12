@@ -8,6 +8,10 @@
 use {
     crate::resources::{
         global_resources as global,
+        global_resources::{
+            MotorCommand, 
+            MotorId,
+        },
     },
     embassy_rp::{
         peripherals::PIO0,
@@ -99,13 +103,13 @@ impl PIDcontrol {
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_cw: PioPwm<'d, T, SM1>,
     pwm_ccw: PioPwm<'d, T, SM2>,
-    motor_id: u8,
+    motor_id: MotorId,
     period: u64,
     pid_control: PIDcontrol,
 }
 
 impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
-    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor_id: u8) -> Self {
+    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor_id: MotorId) -> Self {
         Self {
             pwm_cw,
             pwm_ccw,
@@ -147,13 +151,13 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 
 pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
     encoder: PioEncoder<'d, T, SM>,
-    motor_id: u8,
+    motor_id: MotorId,
     count_threshold: i32,
     timeout: u64,
 }
 
 impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor_id: u8) -> Self {
+    pub fn new(encoder: PioEncoder<'d, T, SM>, motor_id: MotorId) -> Self {
         Self {
             encoder,
             motor_id,
@@ -165,7 +169,7 @@ impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
 
 #[embassy_executor::task]
 pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
-    let mut count = 0;
+    let mut count: i32 = 0;
     let mut delta_count: i32 = 0;
     let mut start = Instant::now();
     
@@ -174,11 +178,27 @@ pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
             Ok(value) => {
                 match value {
                     Direction::Clockwise => {
-                        count += 1;
+                        count = match count.checked_add(1) {
+                            Some(value) => { value },
+                            None => {
+                                global::set_current_speed(encoder.motor_id, 0).await;
+                                global::set_current_pos(encoder.motor_id, 0).await;
+                                delta_count = 0;
+                                0 
+                            },
+                        };
                         delta_count += 1;
                     },
                     Direction::CounterClockwise =>{
-                        count -= 1;
+                        count = match count.checked_add(1) {
+                            Some(value) => { value },
+                            None => {
+                                global::set_current_speed(encoder.motor_id, 0).await;
+                                global::set_current_pos(encoder.motor_id, 0).await;
+                                delta_count = 0;
+                                0 
+                            },
+                        };
                         delta_count -= 1;
                     },
                 }
@@ -203,27 +223,28 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
     dc_motor.enable();
 
     loop {
-        let is_motor_run = global::get_motor_status(dc_motor.motor_id).await;
+        let command = global::get_motor_command(dc_motor.motor_id).await;
             
-        if is_motor_run {
-            let commanded_speed = global::get_commanded_speed(dc_motor.motor_id).await;
-            let current_speed = global::get_current_speed(dc_motor.motor_id).await;
-            let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-            let sig = dc_motor.pid_control.compute(error);
+        match command {
+            MotorCommand::SpeedControl(commanded_speed) => {
+                let current_speed = global::get_current_speed(dc_motor.motor_id).await;
+                let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+                let sig = dc_motor.pid_control.compute(error);
                     
-            dc_motor.move_motor(sig);
-            ticker.next().await;    
-        }
-        else {
-            let new_kp = FixedI32::<U16>::from_num(global::get_kp(dc_motor.motor_id).await);
-            let new_ki = FixedI32::<U16>::from_num(global::get_ki(dc_motor.motor_id).await);
-            let new_kd = FixedI32::<U16>::from_num(global::get_kd(dc_motor.motor_id).await);
+                dc_motor.move_motor(sig);
+                ticker.next().await;    
+            },
+            MotorCommand::Stop => {
+                let new_kp = FixedI32::<U16>::from_num(global::get_kp(dc_motor.motor_id).await);
+                let new_ki = FixedI32::<U16>::from_num(global::get_ki(dc_motor.motor_id).await);
+                let new_kd = FixedI32::<U16>::from_num(global::get_kd(dc_motor.motor_id).await);
 
-            dc_motor.move_motor(0);
-            dc_motor.pid_control.reset();
-            dc_motor.pid_control.update_pid_param(new_kp, new_ki, new_kd).await;
-            Timer::after(Duration::from_millis(50)).await;
-            ticker.reset();
+                dc_motor.move_motor(0);
+                dc_motor.pid_control.reset();
+                dc_motor.pid_control.update_pid_param(new_kp, new_ki, new_kd).await;
+                Timer::after(Duration::from_millis(50)).await;
+                ticker.reset();
+            },
         }
     }
 }

@@ -5,7 +5,11 @@
 use {
     crate::resources::{
         global_resources as global,
-        global_resources::LogMask,
+        global_resources::{
+            LogMask,
+            MotorCommand,
+            MotorId::Motor0,
+        },
     },
     embassy_time::{Ticker, Duration, Instant, Timer},
     {defmt_rtt as _, panic_probe as _},
@@ -22,7 +26,7 @@ pub async fn firmware_logger_task() {
         if logging {
             let data = LogMask{
                 dt: start.elapsed().as_millis(),
-                motor_speed: global::get_current_speed(0).await
+                motor_speed: global::get_current_speed(Motor0).await
             };
             global::send_logged_data(data).await;
             ticker.next().await;
@@ -40,8 +44,15 @@ pub async fn firmware_logger_task() {
 #[embassy_executor::task]
 pub async fn send_logger_task() {
     loop {
-        let actual = global::get_logged_data().await;
-        let commanded_speed = global::get_commanded_speed(0).await;
-        log::info!("{} {} {}", actual.dt, actual.motor_speed, commanded_speed);
+        let command = global::get_logged_data().await;
+        let commanded_speed = global::get_motor_command(Motor0).await;
+        match commanded_speed {
+            MotorCommand::SpeedControl(value) => {
+                log::info!("{} {} {}", command.dt, command.motor_speed, value);
+            }
+            MotorCommand::Stop => {
+                log::info!("{} {} {}", command.dt, command.motor_speed, 0);
+            },
+        }
     }
 }
