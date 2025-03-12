@@ -37,6 +37,7 @@ use {
         },
     },
     embassy_usb_logger::ReceiverHandler,
+    embassy_time::Timer,
     core::str,
     heapless::Vec,
     {defmt_rtt as _, panic_probe as _},
@@ -93,5 +94,9 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(motor_task(dc_motor));
     spawner.must_spawn(firmware_logger_task());
     spawner.must_spawn(send_logger_task());
+
+    // loop {
+    //     Timer::after_millis(100).await;
+    // }
 
 }

@@ -30,7 +30,7 @@ use {
 };
 
 const REFRESH_INTERVAL: u64 = 1000; // us
-const DEFAULT_MIN_PWM_THRESHOLD: i32 = 100;
+const DEFAULT_MIN_PWM_THRESHOLD: i32 = 0;
 
 struct PIDcontrol {
     kp: FixedI32::<U16>,
@@ -67,22 +67,26 @@ impl PIDcontrol {
     }
 
     fn limit_output(&mut self, mut sig: i32) -> i32 {
-        if sig > self.max_threshold {
-            sig = self.max_threshold;
-            self.integral -= self.prev_error;
-        }
-        else if sig < -1*self.max_threshold {
-            sig = -1*self.max_threshold;
-            self.integral -= self.prev_error;
-        }
 
-        if sig < self.min_threshold {
-            sig = self.min_threshold;
-            self.integral -= self.prev_error;
+        if sig > 0 {
+            if sig > self.max_threshold {
+                sig = self.max_threshold;
+                self.integral -= self.prev_error;
+            }
+            else if sig < self.min_threshold {
+                sig = self.min_threshold;
+                self.integral -= self.prev_error;
+            }
         }
-        else if sig > -1*self.min_threshold {
-            sig = -1*self.min_threshold;
-            self.integral -= self.prev_error;
+        else {
+            if sig < -1*self.max_threshold {
+                sig = -1*self.max_threshold;
+                self.integral -= self.prev_error;
+            }
+            else if sig > -1*self.min_threshold {
+                sig = -1*self.min_threshold;
+                self.integral -= self.prev_error;
+            }
         }
 
         return sig;
