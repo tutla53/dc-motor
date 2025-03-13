@@ -30,7 +30,6 @@ use {
 };
 
 const REFRESH_INTERVAL: u64 = 1000; // us
-const DEFAULT_MIN_PWM_THRESHOLD: i32 = 100;
 
 struct PIDcontrol {
     kp: FixedI32::<U16>,
@@ -38,7 +37,6 @@ struct PIDcontrol {
     kd: FixedI32::<U16>,
     integral: FixedI32::<U16>,
     prev_error: FixedI32::<U16>,
-    min_threshold: i32,
     max_threshold: i32,
 }
 
@@ -50,7 +48,6 @@ impl PIDcontrol {
             kd: FixedI32::<U16>::from_num(2.0),
             integral: FixedI32::<U16>::from_num(0),
             prev_error: FixedI32::<U16>::from_num(0),
-            min_threshold: DEFAULT_MIN_PWM_THRESHOLD,
             max_threshold: REFRESH_INTERVAL as i32,
         }
     }
@@ -66,23 +63,15 @@ impl PIDcontrol {
         self.prev_error = FixedI32::<U16>::from_num(0);
     }
 
-    fn limit_output(&mut self, mut sig: i32) -> i32 {
+    fn limit_output(&mut self, sig: i32) -> i32 {
         if sig > self.max_threshold {
-            sig = self.max_threshold;
             self.integral -= self.prev_error;
+            return self.max_threshold;
         }
-        else if sig < -1*self.max_threshold {
-            sig = -1*self.max_threshold;
+        
+        if sig < -1*self.max_threshold {
             self.integral -= self.prev_error;
-        }
-
-        if sig < self.min_threshold {
-            sig = self.min_threshold;
-            self.integral -= self.prev_error;
-        }
-        else if sig > -1*self.min_threshold {
-            sig = -1*self.min_threshold;
-            self.integral -= self.prev_error;
+            return -1*self.max_threshold;
         }
 
         return sig;
@@ -153,7 +142,7 @@ pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
     encoder: PioEncoder<'d, T, SM>,
     motor_id: MotorId,
     count_threshold: i32,
-    timeout: u64,
+    timeout: u32,
 }
 
 impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
@@ -170,50 +159,39 @@ impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
 #[embassy_executor::task]
 pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
     let mut count: i32 = 0;
+    let mut last_reported_count: i32 = 0;
     let mut delta_count: i32 = 0;
     let mut start = Instant::now();
     
     loop {
-        match with_timeout(Duration::from_millis(encoder.timeout), encoder.encoder.read()).await {
+        match with_timeout(Duration::from_millis(encoder.timeout as u64), encoder.encoder.read()).await {
             Ok(value) => {
                 match value {
                     Direction::Clockwise => {
-                        count = match count.checked_add(1) {
-                            Some(value) => { value },
-                            None => {
-                                global::set_current_speed(encoder.motor_id, 0).await;
-                                global::set_current_pos(encoder.motor_id, 0).await;
-                                delta_count = 0;
-                                0 
-                            },
-                        };
-                        delta_count += 1;
+                        count = count.saturating_add(1);
+                        delta_count = delta_count.saturating_add(1);
                     },
                     Direction::CounterClockwise =>{
-                        count = match count.checked_add(1) {
-                            Some(value) => { value },
-                            None => {
-                                global::set_current_speed(encoder.motor_id, 0).await;
-                                global::set_current_pos(encoder.motor_id, 0).await;
-                                delta_count = 0;
-                                0 
-                            },
-                        };
-                        delta_count -= 1;
+                        count = count.saturating_sub(1);
+                        delta_count = delta_count.saturating_sub(1);
                     },
                 }
             },
             Err (_) => {},
         };
+
+        if count != last_reported_count {
+            global::set_current_pos(encoder.motor_id, count).await;
+            last_reported_count = count;
+        }
     
-        let dt = start.elapsed().as_micros();
-        if (delta_count.abs() >= encoder.count_threshold) || (dt > encoder.timeout * 1_000) {
-            let speed = delta_count  * (1_000_000 / dt as i32);
+        let dt = start.elapsed().as_micros().max(1);
+        if delta_count.abs() >= encoder.count_threshold || dt > (encoder.timeout * 1_000) as u64 {
+            let speed = (delta_count * 1_000_000)/(dt as i32);
             delta_count = 0;
             start = Instant::now();
             global::set_current_speed(encoder.motor_id, speed).await;
         }
-        global::set_current_pos(encoder.motor_id, count).await;
     }
 }
 
