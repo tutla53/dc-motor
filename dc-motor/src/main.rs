@@ -6,7 +6,12 @@ mod resources;
 
 use {
     crate::resources::{
-        gpio_list::Irqs,
+        gpio_list::{
+            Irqs,
+            AssignedResources,
+            MotorResources,
+            EncoderResources,
+        },
         global_resources::MotorId,
     },
     crate::tasks::{
@@ -73,20 +78,39 @@ async fn usb_logger_task(driver: Driver<'static, USB>) {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
-    let usb_driver = Driver::new(p.USB, Irqs);
+    let ph = embassy_rp::init(Default::default());
+    let p =  split_resources!(ph);
+    let usb_driver = Driver::new(ph.USB, Irqs);
 
     let Pio {
         mut common, sm0, sm1, sm2, ..
-    } = Pio::new(p.PIO0, Irqs);
+    } = Pio::new(ph.PIO0, Irqs);
 
     let enc_prg = PioEncoderProgram::new(&mut common);
     let pwm_prg = PioPwmProgram::new(&mut common);
     
-    let pwm_cw = PioPwm::new(&mut common, sm1, p.PIN_15, &pwm_prg);
-    let pwm_ccw = PioPwm::new(&mut common, sm2, p.PIN_14, &pwm_prg);
+    let pwm_cw = PioPwm::new(
+                    &mut common, 
+                    sm1, 
+                    p.motor_resources.Motor0_PWM_CW_PIN, 
+                    &pwm_prg
+                );
+    let pwm_ccw = PioPwm::new(
+                    &mut common, 
+                    sm2, 
+                    p.motor_resources.Motor0_PWM_CCW_PIN, 
+                    &pwm_prg
+                );
+    let encoder = RotaryEncoder::new(PioEncoder::new(
+                        &mut common, 
+                        sm0, 
+                        p.encoder_resources.Encoder0_PIN_A, 
+                        p.encoder_resources.Encoder0_PIN_B, 
+                        &enc_prg
+                    ), 
+                    MotorId::Motor0
+                );
     let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, MotorId::Motor0);
-    let encoder = RotaryEncoder::new(PioEncoder::new(&mut common, sm0, p.PIN_6, p.PIN_7, &enc_prg), MotorId::Motor0);
 
     spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_task(encoder));

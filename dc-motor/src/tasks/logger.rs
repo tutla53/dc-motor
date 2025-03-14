@@ -26,7 +26,8 @@ pub async fn firmware_logger_task() {
         if logging {
             let data = LogMask{
                 dt: start.elapsed().as_millis(),
-                motor_speed: global::get_current_speed(Motor0).await
+                motor_speed: global::get_current_speed(Motor0).await,
+                motor_position: global::get_current_pos(Motor0).await,
             };
             global::send_logged_data(data).await;
             ticker.next().await;
@@ -49,6 +50,9 @@ pub async fn send_logger_task() {
         match commanded_speed {
             MotorCommand::SpeedControl(value) => {
                 log::info!("{} {} {}", command.dt, command.motor_speed, value);
+            },
+            MotorCommand::PositionControl(value) => {
+                log::info!("{} {} {}", command.dt, command.motor_position, value);
             }
             MotorCommand::Stop => {
                 log::info!("{} {} {}", command.dt, command.motor_speed, 0);

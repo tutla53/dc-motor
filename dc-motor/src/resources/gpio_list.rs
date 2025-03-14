@@ -11,18 +11,14 @@ use {
 };
 
 assign_resources! {
-    network_resources: NetworkResources {
-        CYW43_PWR_PIN: PIN_23,
-        CYW43_CS_PIN: PIN_25,
-        CYW43_PIO_CH: PIO0,
-        CYW43_SPI_DIO: PIN_24,
-        CYW43_SPI_CLK: PIN_29,
-        CYW43_DMA_CH: DMA_CH0,
+    motor_resources: MotorResources {
+        Motor0_PWM_CW_PIN: PIN_15,
+        Motor0_PWM_CCW_PIN: PIN_14,
     },
 
-    adc_resources: AdcResources {
-        ADC_PERIPHERAL: ADC,
-        ADC_TEMP_PIN: ADC_TEMP_SENSOR,
+    encoder_resources: EncoderResources {
+        Encoder0_PIN_A: PIN_6,
+        Encoder0_PIN_B: PIN_7,
     },
 }
 

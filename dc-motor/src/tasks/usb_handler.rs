@@ -34,8 +34,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
     }
 
     match parts[1] {
-        "stop" =>{
-            log::info!("{}", global::get_current_pos(Motor0).await);
+        "stop" => {
             global::set_motor_command(Motor0, MotorCommand::Stop).await;
         },
         "start" => {
@@ -49,6 +48,20 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);
+                }
+            }
+        },
+        "pos" => {
+            if parts.len() < 3 {
+                log::info!("Insufficient Parameter: move pos <position>");
+                return;
+            }
+            match parts[2].parse::<i32>() {
+                Ok(position) => {
+                    global::set_motor_command(Motor0, MotorCommand::PositionControl(position)).await;
+                },
+                Err(e) => {
+                    log::info!("Invalid Position {:?}", e);
                 }
             }
         },

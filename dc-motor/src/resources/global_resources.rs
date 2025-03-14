@@ -21,11 +21,13 @@ static KD: Mutex<CriticalSectionRawMutex, f32> = Mutex::new(2.0);
 pub struct LogMask {
     pub dt: u64,
     pub motor_speed:i32,
+    pub motor_position: i32,
 }
 
 #[derive(Clone, Copy)]
 pub enum MotorCommand {
     SpeedControl(i32),
+    PositionControl(i32),
     Stop,
 }
 
