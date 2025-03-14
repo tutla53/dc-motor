@@ -3,9 +3,10 @@
 * Available Command:
 *  - move:
 *    - move start <speed: i32>
+*    - move pos <position: i32>
 *    - move stop
 *  - log:
-*    - log start <time_sampling: u64>
+*    - log start <time_sampling: u64> <logmask: u32>
 *    - log stop
 *  - motor_pid:
 *    - motor_pid get
@@ -16,10 +17,11 @@
 
 use {
     crate::resources::{
-        global_resources as global,
         global_resources::{
-            MotorCommand, 
-            MotorId::Motor0,
+            MotorCommand,
+            PIDConfig,
+            MOTOR_0,
+            LOGGER,
         },
     },
     core::str, 
@@ -28,6 +30,10 @@ use {
 };
 
 pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
+    //  - move start <speed: i32>
+    //  - move pos <position: i32>
+    //  - move stop
+    
     if parts.len() < 2 {
         log::info!("Insufficient Parameter: move <start/stop>");
         return;
@@ -35,7 +41,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
 
     match parts[1] {
         "stop" => {
-            global::set_motor_command(Motor0, MotorCommand::Stop).await;
+            MOTOR_0.set_motor_command(MotorCommand::Stop).await;
         },
         "start" => {
             if parts.len() < 3 {
@@ -44,7 +50,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
             }
             match parts[2].parse::<i32>() {
                 Ok(speed) => {
-                    global::set_motor_command(Motor0, MotorCommand::SpeedControl(speed)).await;
+                    MOTOR_0.set_motor_command(MotorCommand::SpeedControl(speed)).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Speed {:?}", e);
@@ -58,7 +64,7 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
             }
             match parts[2].parse::<i32>() {
                 Ok(position) => {
-                    global::set_motor_command(Motor0, MotorCommand::PositionControl(position)).await;
+                    MOTOR_0.set_motor_command(MotorCommand::PositionControl(position)).await;
                 },
                 Err(e) => {
                     log::info!("Invalid Position {:?}", e);
@@ -72,6 +78,9 @@ pub async fn handle_move_motor(parts: &Vec<&str, 8>) {
 }
 
 pub async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
+    //  - log start <time_sampling: u64> <logmask: u32>
+    //  - log stop
+
     if parts.len() < 2 {
         log::info!("Insufficient Parameter: log <start/stop>");
         return;
@@ -79,23 +88,31 @@ pub async fn handle_firmware_logger(parts: &Vec<&str, 8>) {
     
     match parts[1] {
         "start" => {
-            if parts.len() < 3 {
-                log::info!("Insufficient Parameter: log start <time_sampling_ms>");
+            if parts.len() < 4 {
+                log::info!("Insufficient Parameter: log start <time_sampling_ms> <logmask>");
                 return;
             }
             
             match parts[2].parse::<u64>() {
                 Ok(time_sampling_ms) => {
-                    global::set_logging_time_sampling(time_sampling_ms).await;
-                    global::set_logging_state(true).await;
+                    match parts[3].parse::<u32>() {
+                        Ok(log_mask) => {
+                            LOGGER.set_logging_time_sampling(time_sampling_ms).await;
+                            LOGGER.set_log_mask(log_mask).await;
+                            LOGGER.set_logging_state(true).await;
+                        },
+                        Err(e) => {
+                            log::info!("Invalid Log Mask {:?}", e);
+                        }
+                    }
                 },
                 Err(e) => {
                     log::info!("Invalid Time Sampling {:?}", e);
                 }
-            } 
+            }  
         },
         "stop" => {
-            global::set_logging_state(false).await;
+            LOGGER.set_logging_state(false).await;
         },
         _ => { log::info!("Invalid Parameter: log <start/stop>"); },
     }
@@ -109,21 +126,30 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
     
     match parts[1] {
         "set" => {
-            if parts.len() < 3 {
-                log::info!("Insufficient Parameter: motor_pid set <kp/ki/kd>");
+            if parts.len() < 6 {
+                log::info!("Insufficient Parameter: motor_pid set <pos/speed> <kp> <ki> <kd>");
                 return;
             }
-            
+
             match parts[2] {
-                "kp" => {
-                    if parts.len() < 4 {
-                        log::info!("Insufficient Parameter: motor_pid set kp <value>");
-                        return;
-                    }
-    
+                "speed" => {    
                     match parts[3].parse::<f32>() {
-                        Ok(value) => {
-                            global::set_kp(Motor0, value).await;
+                        Ok(kp) => {
+                            match parts[4].parse::<f32>() {
+                                Ok(ki) => {
+                                    match parts[5].parse::<f32>() {
+                                        Ok(kd) => {
+                                            MOTOR_0.set_speed_pid(PIDConfig{kp: kp, ki: ki, kd: kd}).await;
+                                        },
+                                        Err(e) => {
+                                            log::info!("Invalid kp value {:?}", e);
+                                        }
+                                    } 
+                                },
+                                Err(e) => {
+                                    log::info!("Invalid ki value {:?}", e);
+                                }
+                            } 
                         },
                         Err(e) => {
                             log::info!("Invalid kp value {:?}", e);
@@ -131,42 +157,39 @@ pub async fn handle_motor_pid(parts: &Vec<&str, 8>) {
                     } 
                 },
 
-                "ki" => {
-                    if parts.len() < 4 {
-                        log::info!("Insufficient Parameter: motor_pid set ki <value>");
-                        return;
-                    }
-    
+                "pos" => {    
                     match parts[3].parse::<f32>() {
-                        Ok(value) => {
-                            global::set_ki(Motor0, value).await;
-                        },
-                        Err(e) => {
-                            log::info!("Invalid ki value {:?}", e);
-                        }
-                    } 
-                },
-
-                "kd" => {
-                    if parts.len() < 4 {
-                        log::info!("Insufficient Parameter: motor_pid set kd <value>");
-                        return;
-                    }
-    
-                    match parts[3].parse::<f32>() {
-                        Ok(value) => {
-                            global::set_kd(Motor0, value).await;
+                        Ok(kp) => {
+                            match parts[4].parse::<f32>() {
+                                Ok(ki) => {
+                                    match parts[5].parse::<f32>() {
+                                        Ok(kd) => {
+                                            MOTOR_0.set_pos_pid(PIDConfig{kp: kp, ki: ki, kd: kd}).await;
+                                        },
+                                        Err(e) => {
+                                            log::info!("Invalid kp value {:?}", e);
+                                        }
+                                    } 
+                                },
+                                Err(e) => {
+                                    log::info!("Invalid ki value {:?}", e);
+                                }
+                            } 
                         },
                         Err(e) => {
                             log::info!("Invalid kp value {:?}", e);
                         }
                     } 
                 },
-                _ => { log::info!("Invalid Parameter: motor_pid set <kp/ki/kd>"); },
+
+                _ => { log::info!("Invalid Parameter: motor_pid set <pos/speed> <kp> <ki> <kd>"); },
             }
         },
         "get" => {
-            log::info!("Kp:{}, Ki:{}, Kd:{}", global::get_kp(Motor0).await, global::get_ki(Motor0).await, global::get_kd(Motor0).await);
+            let pos_pid = MOTOR_0.get_pos_pid().await;
+            let speed_pid = MOTOR_0.get_speed_pid().await;
+            log::info!("Pos => kp:{}, ki:{}, kd:{}", pos_pid.kp, pos_pid.ki, pos_pid.kd);
+            log::info!("Speed => kp:{}, ki:{}, kd:{}", speed_pid.kp, speed_pid.ki, speed_pid.kd);
         },
         _ => { log::info!("Invalid Parameter: motor_pid <get/set>"); },
     }

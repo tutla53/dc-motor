@@ -7,10 +7,9 @@
 
 use {
     crate::resources::{
-        global_resources as global,
         global_resources::{
             MotorCommand, 
-            MotorId,
+            MotorState,
         },
     },
     embassy_rp::{
@@ -29,8 +28,8 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
-const REFRESH_INTERVAL: u64 = 100; // in us or 10 kHz
-const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL * 1000; // in nanos
+const REFRESH_INTERVAL: u64 = 1000; // in us or 10 kHz
+const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL;
 const MAX_SPEED: i32 = 1200;
 
 #[derive(PartialEq)]
@@ -72,10 +71,10 @@ impl PIDcontrol {
         }
     }
 
-    async fn update_pid_param(&mut self, kp: FixedI32<U16>, ki: FixedI32<U16>, kd: FixedI32<U16>){
-        self.kp = kp;
-        self.ki = ki;
-        self.kd = kd;
+    fn update_pid_param(&mut self, kp: f32, ki: f32, kd: f32) {
+        self.kp = FixedI32::<U16>::from_num(kp);
+        self.ki = FixedI32::<U16>::from_num(ki);
+        self.kd = FixedI32::<U16>::from_num(kd);
     }
 
     fn reset(&mut self){
@@ -112,23 +111,23 @@ impl PIDcontrol {
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_cw: PioPwm<'d, T, SM1>,
     pwm_ccw: PioPwm<'d, T, SM2>,
-    motor_id: MotorId,
     period: u64,
     speed_control: PIDcontrol,
     position_control: PIDcontrol,
     control_mode: ControlMode,
+    motor: &'static MotorState,
 }
 
 impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
-    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor_id: MotorId) -> Self {
+    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor: &'static MotorState) -> Self {
         Self {
             pwm_cw,
             pwm_ccw,
-            motor_id,
             period: REFRESH_INTERVAL,
             speed_control: PIDcontrol::new_speed_pid(),
             position_control: PIDcontrol::new_position_pid(),
             control_mode: ControlMode::Stop,
+            motor,
         }
     }
     
@@ -142,8 +141,8 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.set_period(self.period);
         self.pwm_cw.start();
         self.pwm_ccw.start();
-        self.pwm_cw.write(CoreDuration::from_nanos(0));
-        self.pwm_ccw.write(CoreDuration::from_nanos(0));
+        self.pwm_cw.write(CoreDuration::from_micros(0));
+        self.pwm_ccw.write(CoreDuration::from_micros(0));
     }
 
     pub fn move_motor(&mut self, mut pwm: i32) {
@@ -151,31 +150,31 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 
         if pwm > 0 {
             if pwm > threshold { pwm = threshold; }
-            self.pwm_cw.write(CoreDuration::from_nanos(pwm.abs() as u64));
-            self.pwm_ccw.write(CoreDuration::from_nanos(0));
+            self.pwm_cw.write(CoreDuration::from_micros(pwm.abs() as u64));
+            self.pwm_ccw.write(CoreDuration::from_micros(0));
         }
         else {
             if pwm < -threshold { pwm = -threshold; }
-            self.pwm_cw.write(CoreDuration::from_nanos(0));
-            self.pwm_ccw.write(CoreDuration::from_nanos(pwm.abs() as u64));
+            self.pwm_cw.write(CoreDuration::from_micros(0));
+            self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
         }
     }
 }
 
 pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
     encoder: PioEncoder<'d, T, SM>,
-    motor_id: MotorId,
     count_threshold: i32,
     timeout: u32,
+    motor: &'static MotorState,
 }
 
 impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor_id: MotorId) -> Self {
+    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorState) -> Self {
         Self {
             encoder,
-            motor_id,
             count_threshold: 3,
             timeout: 50,
+            motor,
         }
     }
 }
@@ -205,7 +204,7 @@ pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
         };
 
         if count != last_reported_count {
-            global::set_current_pos(encoder.motor_id, count).await;
+            encoder.motor.set_current_pos(count).await;
             last_reported_count = count;
         }
     
@@ -214,7 +213,7 @@ pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
             let speed = (delta_count * 1_000_000)/(dt as i32);
             delta_count = 0;
             start = Instant::now();
-            global::set_current_speed(encoder.motor_id, speed).await;
+            encoder.motor.set_current_speed(speed).await;
         }
     }
 }
@@ -225,7 +224,7 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
     dc_motor.enable();
 
     loop {
-        let command = global::get_motor_command(dc_motor.motor_id).await;
+        let command = dc_motor.motor.get_motor_command().await;
             
         match command {
             MotorCommand::SpeedControl(commanded_speed) => {
@@ -234,10 +233,12 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
                     dc_motor.control_mode = ControlMode::Speed;
                 }
 
-                let current_speed = global::get_current_speed(dc_motor.motor_id).await;
+                dc_motor.motor.set_commanded_speed(commanded_speed).await;
+            
+                let current_speed = dc_motor.motor.get_current_speed().await;
                 let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
                 let sig = dc_motor.speed_control.compute(error);
-                    
+
                 dc_motor.move_motor(sig);
                 ticker.next().await;    
             },
@@ -247,11 +248,13 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
                     dc_motor.control_mode = ControlMode::Position;
                 }
 
-                let current_position = global::get_current_pos(dc_motor.motor_id).await;
+                dc_motor.motor.set_commanded_pos(commanded_position).await;
+
+                let current_position = dc_motor.motor.get_current_pos().await;
                 let pos_error = FixedI32::<U16>::from_num(commanded_position - current_position);
                 let target_speed = dc_motor.position_control.compute(pos_error);
 
-                let current_speed = global::get_current_speed(dc_motor.motor_id).await;
+                let current_speed = dc_motor.motor.get_current_speed().await;
                 let speed_error = FixedI32::<U16>::from_num(target_speed - current_speed);
                 let sig = dc_motor.speed_control.compute(speed_error);
 
@@ -260,15 +263,17 @@ pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
                 
             },
             MotorCommand::Stop => {
-                let new_kp = FixedI32::<U16>::from_num(global::get_kp(dc_motor.motor_id).await);
-                let new_ki = FixedI32::<U16>::from_num(global::get_ki(dc_motor.motor_id).await);
-                let new_kd = FixedI32::<U16>::from_num(global::get_kd(dc_motor.motor_id).await);
-
+                let new_speed_pid = dc_motor.motor.get_speed_pid().await;
+                let new_pos_pid = dc_motor.motor.get_pos_pid().await;
+                
                 dc_motor.move_motor(0);
                 dc_motor.speed_control.reset();
                 dc_motor.position_control.reset();
-                dc_motor.position_control.update_pid_param(new_kp, new_ki, new_kd).await;
+                dc_motor.position_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
+                dc_motor.speed_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
                 dc_motor.control_mode = ControlMode::Stop;
+                dc_motor.motor.set_commanded_speed(0).await;
+                dc_motor.motor.set_commanded_pos(0).await;
                 Timer::after(Duration::from_millis(50)).await;
                 ticker.reset();
             },
