@@ -15,11 +15,7 @@ use {
         },
     },
     crate::tasks::{
-        usb_handler::{
-            handle_move_motor,
-            handle_firmware_logger,
-            handle_motor_pid,
-        },
+        usb_handler::CommandHandler,
         logger::{
             firmware_logger_task,
             send_logger_task,
@@ -56,12 +52,8 @@ impl ReceiverHandler for UsbHandler {
             let parts: Vec<&str, 8> = raw_data.split_whitespace().collect();
 
             if !parts.is_empty() { 
-                match parts[0] {
-                    "motor" => { handle_move_motor(&parts).await; },
-                    "log"  => { handle_firmware_logger(&parts).await; },
-                    "motor_pid" => { handle_motor_pid(&parts).await; },
-                    _ => { log::info!("Command not found"); },
-                }
+                let handler = CommandHandler::new(&parts);
+                handler.process_command().await;
             }
         }
     }
