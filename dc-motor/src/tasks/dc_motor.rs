@@ -159,6 +159,68 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
         }
     }
+
+    pub async fn run_motor_task(&mut self) {
+        let mut ticker = Ticker::every(Duration::from_millis(5));
+        self.enable();
+
+        loop {
+            let command = self.motor.get_motor_command().await;
+                
+            match command {
+                MotorCommand::SpeedControl(commanded_speed) => {
+                    if self.control_mode != ControlMode::Speed {
+                        self.speed_control.reset();
+                        self.control_mode = ControlMode::Speed;
+                    }
+
+                    self.motor.set_commanded_speed(commanded_speed).await;
+                
+                    let current_speed = self.motor.get_current_speed().await;
+                    let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
+                    let sig = self.speed_control.compute(error);
+
+                    self.move_motor(sig);
+                    ticker.next().await;    
+                },
+                MotorCommand::PositionControl(commanded_position) => {
+                    if self.control_mode != ControlMode::Position {
+                        self.position_control.reset();
+                        self.control_mode = ControlMode::Position;
+                    }
+
+                    self.motor.set_commanded_pos(commanded_position).await;
+
+                    let current_position = self.motor.get_current_pos().await;
+                    let pos_error = FixedI32::<U16>::from_num(commanded_position - current_position);
+                    let target_speed = self.position_control.compute(pos_error);
+
+                    let current_speed = self.motor.get_current_speed().await;
+                    let speed_error = FixedI32::<U16>::from_num(target_speed - current_speed);
+                    let sig = self.speed_control.compute(speed_error);
+
+                    self.move_motor(sig);
+                    ticker.next().await;
+                    
+                },
+                MotorCommand::Stop => {
+                    let new_speed_pid = self.motor.get_speed_pid().await;
+                    let new_pos_pid = self.motor.get_pos_pid().await;
+                    
+                    self.move_motor(0);
+                    self.speed_control.reset();
+                    self.position_control.reset();
+                    self.position_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
+                    self.speed_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
+                    self.control_mode = ControlMode::Stop;
+                    self.motor.set_commanded_speed(0).await;
+                    self.motor.set_commanded_pos(0).await;
+                    Timer::after(Duration::from_millis(50)).await;
+                    ticker.reset();
+                },
+            }
+        }
+    }
 }
 
 pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
@@ -177,106 +239,53 @@ impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
             motor,
         }
     }
+
+    pub async fn run_encoder_task(&mut self) {
+        let mut count: i32 = 0;
+        let mut last_reported_count: i32 = 0;
+        let mut delta_count: i32 = 0;
+        let mut start = Instant::now();
+        
+        loop {
+            match with_timeout(Duration::from_millis(self.timeout as u64), self.encoder.read()).await {
+                Ok(value) => {
+                    match value {
+                        Direction::Clockwise => {
+                            count = count.saturating_add(1);
+                            delta_count = delta_count.saturating_add(1);
+                        },
+                        Direction::CounterClockwise =>{
+                            count = count.saturating_sub(1);
+                            delta_count = delta_count.saturating_sub(1);
+                        },
+                    }
+                },
+                Err (_) => {},
+            };
+    
+            if count != last_reported_count {
+                self.motor.set_current_pos(count).await;
+                last_reported_count = count;
+            }
+        
+            let dt = start.elapsed().as_micros().max(1);
+            if delta_count.abs() >= self.count_threshold || dt > (self.timeout * 1_000) as u64 {
+                let speed = (delta_count * 1_000_000)/(dt as i32);
+                delta_count = 0;
+                start = Instant::now();
+                self.motor.set_current_speed(speed).await;
+            }
+        }
+    }    
+
 }
 
 #[embassy_executor::task]
 pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
-    let mut count: i32 = 0;
-    let mut last_reported_count: i32 = 0;
-    let mut delta_count: i32 = 0;
-    let mut start = Instant::now();
-    
-    loop {
-        match with_timeout(Duration::from_millis(encoder.timeout as u64), encoder.encoder.read()).await {
-            Ok(value) => {
-                match value {
-                    Direction::Clockwise => {
-                        count = count.saturating_add(1);
-                        delta_count = delta_count.saturating_add(1);
-                    },
-                    Direction::CounterClockwise =>{
-                        count = count.saturating_sub(1);
-                        delta_count = delta_count.saturating_sub(1);
-                    },
-                }
-            },
-            Err (_) => {},
-        };
-
-        if count != last_reported_count {
-            encoder.motor.set_current_pos(count).await;
-            last_reported_count = count;
-        }
-    
-        let dt = start.elapsed().as_micros().max(1);
-        if delta_count.abs() >= encoder.count_threshold || dt > (encoder.timeout * 1_000) as u64 {
-            let speed = (delta_count * 1_000_000)/(dt as i32);
-            delta_count = 0;
-            start = Instant::now();
-            encoder.motor.set_current_speed(speed).await;
-        }
-    }
+    encoder.run_encoder_task().await;
 }
 
 #[embassy_executor::task]
 pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
-    let mut ticker = Ticker::every(Duration::from_millis(5));
-    dc_motor.enable();
-
-    loop {
-        let command = dc_motor.motor.get_motor_command().await;
-            
-        match command {
-            MotorCommand::SpeedControl(commanded_speed) => {
-                if dc_motor.control_mode != ControlMode::Speed {
-                    dc_motor.speed_control.reset();
-                    dc_motor.control_mode = ControlMode::Speed;
-                }
-
-                dc_motor.motor.set_commanded_speed(commanded_speed).await;
-            
-                let current_speed = dc_motor.motor.get_current_speed().await;
-                let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-                let sig = dc_motor.speed_control.compute(error);
-
-                dc_motor.move_motor(sig);
-                ticker.next().await;    
-            },
-            MotorCommand::PositionControl(commanded_position) => {
-                if dc_motor.control_mode != ControlMode::Position {
-                    dc_motor.position_control.reset();
-                    dc_motor.control_mode = ControlMode::Position;
-                }
-
-                dc_motor.motor.set_commanded_pos(commanded_position).await;
-
-                let current_position = dc_motor.motor.get_current_pos().await;
-                let pos_error = FixedI32::<U16>::from_num(commanded_position - current_position);
-                let target_speed = dc_motor.position_control.compute(pos_error);
-
-                let current_speed = dc_motor.motor.get_current_speed().await;
-                let speed_error = FixedI32::<U16>::from_num(target_speed - current_speed);
-                let sig = dc_motor.speed_control.compute(speed_error);
-
-                dc_motor.move_motor(sig);
-                ticker.next().await;
-                
-            },
-            MotorCommand::Stop => {
-                let new_speed_pid = dc_motor.motor.get_speed_pid().await;
-                let new_pos_pid = dc_motor.motor.get_pos_pid().await;
-                
-                dc_motor.move_motor(0);
-                dc_motor.speed_control.reset();
-                dc_motor.position_control.reset();
-                dc_motor.position_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
-                dc_motor.speed_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
-                dc_motor.control_mode = ControlMode::Stop;
-                dc_motor.motor.set_commanded_speed(0).await;
-                dc_motor.motor.set_commanded_pos(0).await;
-                Timer::after(Duration::from_millis(50)).await;
-                ticker.reset();
-            },
-        }
-    }
+    dc_motor.run_motor_task().await;
 }
