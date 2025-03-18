@@ -85,8 +85,8 @@ impl MotorState {
             current_commanded_pos: Mutex::new(0),
             current_commanded_speed: Mutex::new(0),
             commanded_motor_speed: Mutex::new(MotorCommand::Stop),
-            pos_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 2.0, kd: 10.0}),
-            speed_pid: Mutex::new(PIDConfig{ kp: 0.2, ki: 0.05, kd: 2.0}),
+            pos_pid: Mutex::new(PIDConfig{ kp: 5.0, ki: 0.001, kd: 7.5}),
+            speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.25, kd: 2.0}),
         }
     }
 
