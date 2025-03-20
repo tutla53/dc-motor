@@ -6,280 +6,259 @@ import math
 import time
 import queue  # Import the queue module
 
-class SerialLogger:
-    def __init__(self):
-        self.logging = False
-        self.log_data = []
+"""
+USB Handler
+Available Command:
+    - start_logger
+        - op: 1
+        - args: [time_samplng: u64, logmask: u32]
+    - stop_logger
+        - op: 2
+        - args: None
+    - move_motor_speed
+        - op: 3
+        - args: [motor_id: u8, speed: i32]
+    - move_motor_abs_pos
+        - op: 4
+        - args: [motor_id: u8, pos: i32]
+    - stop_motor
+        - op: 5
+        - args: [motor_id: u8]
+    - set_motor_pos_pid_param
+        - op: 6
+        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
+    - get_motor_pos_pid_param
+        - op: 7
+        - args: [motor_id: u8]
+        - return: [kp: f32, ki: f32, kd:f32]
+    - set_motor_speed_pid_param
+        - op: 8
+        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
+    - get_motor_speed_pid_param
+        - op: 9
+        - args: [motor_id: u8]
+        - return: [kp: f32, ki: f32, kd:f32]
+"""
+
+class SThread:
+    def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
+        self.func = func
+        self.arg = args
+        self.daemon = daemon
+        self.thread = None
         self.lock = threading.Lock()
+        self.withlock = withlock
+        if runimmidietly:self.run(*self.arg ,withlock=withlock)
+        
+    def run(self,*args,withlock=False):
+        if withlock:
+            with self.lock:
 
-    def start_logging(self):
-        with self.lock:
-            self.log_data.clear()
+                self.thread = threading.Thread(target=self.func, args=(*args,))
+                self.thread.daemon = self.daemon
+                self.thread.start()
+        else:
+           #Q args = (*args,)
+            #print (*args,"args")
+            self.thread = threading.Thread(target=self.func, args=(*args,))
+            self.thread.daemon = self.daemon
+            self.thread.start()
+
+
+    def stop(self):
+        self.thread.join()
+
+class Device:
+    def __init__(self):
+        self.ser = None
+        self.newinput = None
+        self.defaultCOM = "5"
+        self.baud_rate = 115200
+        self.lock = threading.RLock()  # Use RLock for reentrant locking
+
+    def connect(self, port):
+        if port is None:
+            port = self.defaultCOM
+            self.newinput = self.defaultCOM
+        port = 'COM' + port
+        stat = True
+
+        try:
+            with self.lock:
+                self.ser = serial.Serial(port, self.baud_rate, timeout=1)
+                time.sleep(1)
+                print(f"Connected to {port}")
+                return True
+        except:
+            self.newinput = input(f"Failed to connect to {port}. Input new COM Port /enter to end: ")
+            stat = False
+        finally:
+            if self.newinput == "":
+                return False
+            if not stat:
+                self.defaultCOM = self.newinput
+                self.connect(self.newinput)
+
+    def send_cmd(self, cmd, print_echo=True):
+        with self.lock:  # Use the RLock to synchronize
+            try:
+                self.ser.write(cmd)
+                time.sleep(0.1)
+
+                if print_echo:
+                    while self.ser.in_waiting:
+                        data = self.ser.readline()
+                        print(data.decode("UTF-8").strip())
+
+            except serial.SerialException as e:
+                print(f"Serial error: {e}")
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+    
+    def start_logger(self, time_sampling, logmask):
+        opcode = "1"
+        cmd = (opcode +" "+ str(time_sampling)+" "+str(logmask)).encode("UTF-8")
+        self.send_cmd(cmd, False)
+
+    def stop_logger(self):
+        opcode = "2"
+        cmd = (opcode).encode("UTF-8")
+        self.send_cmd(cmd, False)
+
+    def move_motor_speed(self, motor_id, speed):
+        opcode = "3"
+        cmd = (opcode +" "+ str(motor_id)+" "+str(speed)).encode("UTF-8")
+        self.send_cmd(cmd)
+
+    def move_motor_abs_pos(self, motor_id, pos):
+        opcode = "4"
+        cmd = (opcode +" "+ str(motor_id)+" "+str(pos)).encode("UTF-8")
+        self.send_cmd(cmd)
+
+    def stop_motor(self, motor_id):
+        opcode = "5"
+        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
+        self.send_cmd(cmd)
+
+    def set_motor_pos_pid_param(self, motor_id, kp, ki, kd):
+        opcode = "6"
+        cmd = (opcode +" "+ str(motor_id)+" "+str(kp)+" "+str(ki)+" "+str(kd)).encode("UTF-8")
+        self.send_cmd(cmd)  
+
+    def get_motor_pos_pid_param(self, motor_id):
+        opcode = "7"
+        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
+        self.send_cmd(cmd)
+
+    def set_motor_speed_pid_param(self, motor_id, kp, ki, kd):
+        opcode = "8"
+        cmd = (opcode +" "+ str(motor_id)+" "+str(kp)+" "+str(ki)+" "+str(kd)).encode("UTF-8")
+        self.send_cmd(cmd)  
+
+    def get_motor_speed_pid_param(self, motor_id):
+        opcode = "9"
+        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
+        self.send_cmd(cmd)
+    
+    def get_logged_item(self):
+        opcode = "10"
+        cmd = (opcode).encode("UTF-8")
+        self.send_cmd(cmd, False)
+    
+    def clear_logged_item(self):
+        opcode = "11"
+        cmd = (opcode).encode("UTF-8")
+        self.send_cmd(cmd, False)
+
+class FWLogger:
+    def __init__(self, p: Device):
+        self.p = p
+        self.ser = self.p.ser
+        self.logging = False
+        self.logged_data = []
+        self.mask = 0
+
+    def __MainLogger(self, limit=1_000_000):
+        try:
+            count = 0
+            while self.logging and count < limit:
+                with self.p.lock:  # Ensure atomic command and read
+                    self.p.get_logged_item()
+                    data = self.ser.readline()
+                self.logged_data.append(data)
+                count += 1
+                time.sleep(0.001)
+        except Exception as e:
+            print(f"Logger error: {e}")
+
+    def run(self, time_sampling=10, mask=15, limit=1_000_000):
+        try:
+            self.logged_data.clear()
+            self.mask = mask
+            time.sleep(0.1)
+            with self.p.lock:
+                self.p.start_logger(time_sampling, mask)
             self.logging = True
-            print("Type 'print_logged_data' to see latest logged data")
+            self.logger_thread = SThread(self.__MainLogger, True, limit)
+        except Exception as e:
+            print(f"Failed to start logger: {e}")
 
-    def stop_logging(self):
-        with self.lock:
-            self.logging = False
+    def stop(self):
+        self.logging = False
+        with self.p.lock:
+            self.p.stop_logger()
+        while True:
+            with self.p.lock:
+                self.p.get_logged_item()
+                data = self.ser.readline()
+            if len(data) == 3:
+                break
+            self.logged_data.append(data)
     
-    def get_log_data(self):
-        return self.log_data
-    
+    def get_n_col(self, mask: int):
+        count = 0
+        while mask > 0:
+            count = count + mask%2
+            mask = mask >> 1
+        
+        return count+1
+
     def print_logged_data(self):
         print("\nLogged data:")
-        for line in self.log_data:
+        for line in self.logged_data:
             value = line.decode('utf-8', errors='replace').strip()
-            integer_list = [int(x.strip()) for x in value.split(' ')]
-            print("{},{},{}".format(integer_list[0], integer_list[1], integer_list[2]))
-            
-    def log_line(self, line):
-        with self.lock:
-            if self.logging:
-                self.log_data.append(line)
-                return True
-            return False
-
-def serial_reader(ser, logger):
-    buffer = bytearray()
-    try:
-        while True:
-            data = ser.read(ser.in_waiting or 1)
-            if data:
-                buffer += data
-                while b'\n' in buffer:
-                    line, buffer = buffer.split(b'\n', 1)
-                    if logger.log_line(line):
-                        continue
-                    try:
-                        print(line.decode('utf-8', errors='replace').strip())
-                    except UnicodeDecodeError:
-                        print(f"Binary data: {line.hex()}")
-            time.sleep(0.001)
-
-    except serial.SerialException as e:
-        print(f"Serial reader error: {e}")
-    except Exception as e:
-        print(f"Serial reader unexpected error: {e}")
-
-def print_menu():
-    print("Available command:")
-    print("- log start <time_sampling_ms>")
-    print("- log stop")
-    print("- motor_test <time_sampling_ms> <speed>")
-    print("- print_logged_data")
-    print("- exit")
-
-def serial_writer(ser, logger, plot_queue):  # Accept plot_queue as an argument
-    try:
-        while True:
-            user_input = input(">> ")
-
-            if user_input.startswith("log start"):
-                try:
-                    time_sampling = int(user_input.split(" ")[2])
-                    ser.write(user_input.encode("utf-8"))
-                    logger.start_logging()
-                    print(f"Logging started with time sampling: {time_sampling} ms")
-                    print("Type 'log stop' to stop the logger")
-                except (ValueError, IndexError):
-                    print("Invalid log start command. Use: log start <time_sampling_ms>")
-
-            elif user_input == "log stop":
-                ser.write(user_input.encode("utf-8"))
-                logger.stop_logging()
-
-            elif user_input.startswith("motor_test"):
-                try:
-                    time_sampling = int(user_input.split(" ")[1])
-                    speed = int(user_input.split(" ")[2])
-                    plot_data_to_show = sinusoidal_test(ser, logger, time_sampling, speed)
-                    if plot_data_to_show:
-                        plot_queue.put(plot_data_to_show)  # Put data into the queue
-                except (ValueError, IndexError):
-                    print("Invalid motor_test command. Use: motor_test <time_sampling_ms>")
-
-            elif user_input == "help":
-                print_menu()
-            
-            elif user_input == "print_logged_data":
-                logger.print_logged_data()
-            
-            elif user_input == "exit":
-                break
-
-            else:
-                print("Unknown command.")
-                
-    except serial.SerialException as e:
-        print(f"Serial writer error: {e}")
-    except Exception as e:
-        print(f"Serial writer unexpected error: {e}")
-    finally:
-        print("Writer thread exiting.")
-
-def motor_test(ser, logger, time_sampling, speed_rpm):
-    log_start_cmd = "log start " + str(time_sampling)
-    speed = int ((speed_rpm * 48.4)/60)
-    
-    ser.write(log_start_cmd.encode("utf-8"))
-    logger.start_logging()
-    print(f"Logging started with time sampling of: {time_sampling} ms")
-    time.sleep(0.5)
-    
-    ser.write(("motor start " + str(speed)).encode("utf-8"))
-    time.sleep(2)
-    
-    logger.stop_logging()
-    ser.write("log stop".encode("utf-8"))
-    time.sleep(0.1)
-    
-    ser.write("motor stop".encode("utf-8"))
-
-    result = logger.get_log_data()
-    time_ms = []
-    motor_speed = []
-    commanded = []
-    
-    for line in result:
-        try:
-            value = line.decode('utf-8', errors='replace').strip()
-            integer_list = [int(x.strip()) for x in value.split(' ')]
-            time_ms.append(integer_list[0])
-            motor_speed.append((integer_list[1]*60/48.4))
-            commanded.append((integer_list[2]*60/48.4))
-        except ValueError:
-            print(f"Warning: Could not parse line for plotting: {line}")
-        except UnicodeDecodeError:
-            print(f"Warning: Could not decode line for plotting: {line.hex()}")
-
-    if time_ms and motor_speed and commanded:
-        return (time_ms, motor_speed, commanded)
-    else:
-        print("No valid data to plot from motor test.")
-        return None
-
-def sinusoidal_test(ser, logger, time_sampling, speed_rpm, period = 2.5):
-    log_start_cmd = "log start " + str(time_sampling)
-    speed = int ((speed_rpm * 48.4)/60)
-    
-    ser.write(log_start_cmd.encode("utf-8"))
-    logger.start_logging()
-    print(f"Logging started with time sampling of: {time_sampling} ms")
-    time.sleep(0.2)
-    
-    delta = 1
-    dt = (period*delta)/360
-    
-    for j in range (0, 2):
-        next_time = time.perf_counter()
-        for i in range(0, 360+delta, delta):
-            com_speed = int(speed * math.sin(math.radians(i)))
-            ser.write(("motor start " + str(com_speed)).encode("utf-8"))
-            
-            current_time = time.perf_counter()
-            sleep_duration = next_time - current_time
-        
-            if sleep_duration > 0:
-                time.sleep(sleep_duration)
-        
-            next_time += dt
-    
-    time.sleep(1)
-
-    logger.stop_logging()
-    ser.write("log stop".encode("utf-8"))
-    time.sleep(0.1)
-    
-    ser.write("motor stop".encode("utf-8"))
-
-    result = logger.get_log_data()
-    time_ms = []
-    motor_speed = []
-    commanded = []
-    
-    for line in result:
-        try:
-            value = line.decode('utf-8', errors='replace').strip()
-            integer_list = [int(x.strip()) for x in value.split(' ')]
-            time_ms.append(integer_list[0])
-            motor_speed.append((integer_list[1]*60/48.4))
-            commanded.append((integer_list[2]*60/48.4))
-        except ValueError:
-            print(f"Warning: Could not parse line for plotting: {line}")
-        except UnicodeDecodeError:
-            print(f"Warning: Could not decode line for plotting: {line.hex()}")
-
-    if time_ms and motor_speed and commanded:
-        return (time_ms, motor_speed, commanded)
-    else:
-        print("No valid data to plot from motor test.")
-        return None
-
-def plot_graph(time_ms, motor_speed, commanded):
-    plt.plot(time_ms, motor_speed, marker=".", label = "Encoder")
-    plt.plot(time_ms, commanded, label = "Commanded")
-    plt.xlabel("Time (ms)")
-    plt.ylabel("Motor Speed (RPM)")
-    plt.title("Motor Test Plot")
-    plt.legend()
-    plt.grid()
-    plt.show()
-    
-def serial_monitor(port, baud_rate):
-    try:
-        ser = serial.Serial(port, baud_rate, timeout=1)
-        logger = SerialLogger()
-
-        print(f"Connected to {port} at {baud_rate} baud.")
-        print("Type 'exit' to quit.\nType 'help' to show available command")
-        print_menu()
-
-        plot_queue = queue.Queue()  # Create a plot queue
-
-        reader_thread = threading.Thread(target=serial_reader, args=(ser, logger))
-        writer_thread = threading.Thread(target=serial_writer, args=(ser, logger, plot_queue))  # Pass the queue
-
-        reader_thread.daemon = True
-        writer_thread.daemon = True
-
-        reader_thread.start()
-        writer_thread.start()
-
-        # Main thread loop to handle plotting
-        while True:
-            if not writer_thread.is_alive():
-                break
             try:
-                data = plot_queue.get_nowait()
-                plot_graph(*data)  # Plot on the main thread
-            except queue.Empty:
-                pass
-            time.sleep(0.1)
+                integer_list = [int(x.strip()) for x in value.split(' ')]
+                n_col = self.get_n_col(self.mask)
+            
+                idx = 1
+                for i in range(0, integer_list[0]):
+                    output = ""
+                    for j in range(0, n_col):
+                        output = output + str(integer_list[idx]) + " "
+                        idx += 1
+                    print(output)
+            except:
+                continue
 
-    except serial.SerialException as e:
-        print(f"Error: {e}")
-    except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        if 'ser' in locals() and ser.is_open:
-            ser.write("log stop".encode())
-            ser.close()
-            print("Serial port closed.")
+p = Device()
+p.connect("5")
 
-def list_serial_ports():
-    ports = serial.tools.list_ports.comports()
-    if not ports:
-        print("No serial ports found.")
-        return None
-    else:
-        print("Available serial ports:")
-        for i, (port, desc, hwid) in enumerate(sorted(ports)):
-            print(f"{i+1}: {port}")
-        return ports
+logger = FWLogger(p)
 
-if __name__ == "__main__":
-    available_ports = list_serial_ports()
-    if available_ports:
-        selected_port = available_ports[0].device
-        baud_rate = 115200
-        serial_monitor(selected_port, baud_rate)
+def test_log():
+    logger.run()
+    print(p.get_motor_pos_pid_param(0))
+    time.sleep(5)
+    logger.stop()
+    time.sleep(0.1)
+    logger.print_logged_data()
+
+def motor_test(speed_rpm):
+    speed = int ((speed_rpm * 48.4)/60)
+
+    logger.run(5, 10)
+    p.move_motor_speed(0, speed)
+    time.sleep(3)
+    logger.stop()
+    p.stop_motor(0)
