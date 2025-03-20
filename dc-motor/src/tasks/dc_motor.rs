@@ -77,7 +77,7 @@ impl PIDcontrol {
         self.kd = FixedI32::<U16>::from_num(kd);
     }
 
-    fn reset(&mut self){
+    fn reset(&mut self) {
         self.integral = FixedI32::<U16>::from_num(0);
         self.prev_error = FixedI32::<U16>::from_num(0);
     }
@@ -145,6 +145,24 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.pwm_ccw.write(CoreDuration::from_micros(0));
     }
 
+    async fn update_pos_config(&mut self) {
+        let current_pos = self.motor.get_current_pos().await;
+        let new_pos_pid = self.motor.get_pos_pid().await;
+        
+        self.position_control.reset();
+        self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
+        self.motor.set_commanded_pos(current_pos).await;
+    }
+
+    async fn update_speed_config(&mut self) {
+        let current_speed = self.motor.get_current_speed().await;
+        let new_speed_pid = self.motor.get_speed_pid().await;
+        
+        self.speed_control.reset();
+        self.speed_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
+        self.motor.set_commanded_speed(current_speed).await;
+    }
+
     pub fn move_motor(&mut self, mut pwm: i32) {
         let threshold = self.period as i32;
 
@@ -204,19 +222,12 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     
                 },
                 MotorCommand::Stop => {
-                    let current_speed = self.motor.get_current_speed().await;
-                    let current_pos = self.motor.get_current_pos().await;
-                    let new_speed_pid = self.motor.get_speed_pid().await;
-                    let new_pos_pid = self.motor.get_pos_pid().await;
-                    
-                    self.move_motor(0);
-                    self.speed_control.reset();
-                    self.position_control.reset();
-                    self.speed_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
-                    self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
                     self.control_mode = ControlMode::Stop;
-                    self.motor.set_commanded_speed(current_speed).await;
-                    self.motor.set_commanded_pos(current_pos).await;
+                    self.move_motor(0);
+                    
+                    self.update_pos_config().await;
+                    self.update_speed_config().await;
+                    
                     Timer::after(Duration::from_millis(50)).await;
                     ticker.reset();
                 },
