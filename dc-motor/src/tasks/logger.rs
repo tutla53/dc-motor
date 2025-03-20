@@ -18,14 +18,22 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
-static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogData, 1024> = Channel::new();
+static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogData, 2048> = Channel::new();
 
-async fn send_logged_data(data: LogData) {
+fn send_logged_data(data: LogData) {
     let _ = LOGGER_CONTROL.try_send(data);
 }
 
 async fn get_logged_data() -> LogData {
     return LOGGER_CONTROL.receive().await;
+}
+
+fn get_logged_data_len() -> usize {
+    return LOGGER_CONTROL.len();
+}
+
+fn clear_logged_data() {
+    LOGGER_CONTROL.clear();
 }
 
 enum LogMask {
@@ -107,7 +115,7 @@ pub async fn firmware_logger_task() {
             let dt = start.elapsed().as_millis();
             let data = LogData::select(mask, dt).await;
 
-            send_logged_data(data).await;
+            send_logged_data(data);
             ticker.next().await;
         }
         else {
@@ -122,10 +130,32 @@ pub async fn firmware_logger_task() {
 
 #[embassy_executor::task]
 pub async fn send_logger_task() {
-    loop {
-        let data = get_logged_data().await;
-        let output = data.process();
+    let mut output = heapless::String::<1024>::new();
 
-        log::info!("{}", output);
+    loop {
+        let command = LOGGER.get_logged_item().await;
+
+        if command {
+            let len = get_logged_data_len();
+            let count = len.min(50);
+
+            if count > 0 {
+                for _ in 0..count {
+                    let data = get_logged_data().await;   
+                    write!(&mut output, " {}", data.process()).unwrap(); 
+                }
+
+                log::info!("{}{}", count, output);
+            }
+            else {
+                log::info!("0");
+            }
+            output.clear();
+        }
+
+        else {
+            clear_logged_data();
+            output.clear();
+        }
     }
 }

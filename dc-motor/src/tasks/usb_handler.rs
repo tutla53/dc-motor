@@ -64,8 +64,10 @@ impl<'a> CommandHandler<'a> {
             "5" => { self.stop_motor().await; },
             "6" => { self.set_motor_pos_pid_param().await; },
             "7" => { self.get_motor_pos_pid_param().await; },
-            "8" => { self.set_motor_speed_pid_param().await; }
-            "9" => { self.get_motor_speed_pid_param(). await;}
+            "8" => { self.set_motor_speed_pid_param().await; },
+            "9" => { self.get_motor_speed_pid_param(). await; },
+            "10" => { self.get_logged_item(); },
+            "11" => { self.clear_logged_item(); },
             _ => { log::info!("Command not found"); },
         }
     }
@@ -104,6 +106,7 @@ impl<'a> CommandHandler<'a> {
                         LOGGER.set_logging_time_sampling(time_sampling_ms).await;
                         LOGGER.set_log_mask(log_mask).await;
                         LOGGER.set_logging_state(true).await;
+                        LOGGER.set_logged_item(false);
                     },
                     Err(e) => {
                         log::info!("Invalid Log Mask {:?}", e);
@@ -247,6 +250,14 @@ impl<'a> CommandHandler<'a> {
             let pid = motor_id.get_speed_pid().await;
             log::info!("Speed => kp:{}, ki:{}, kd:{}", pid.kp, pid.ki, pid.kd);
         }
+    }
+
+    fn get_logged_item(&self) {
+        let _ = LOGGER.set_logged_item(true);
+    }
+
+    fn clear_logged_item(&self) {
+        let _ = LOGGER.set_logged_item(false);
     }
 
 }

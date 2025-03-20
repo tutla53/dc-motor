@@ -2,6 +2,7 @@
 use {
     embassy_sync::{
         mutex::Mutex,
+        channel::Channel,
         blocking_mutex::raw::CriticalSectionRawMutex,
     },
     {defmt_rtt as _, panic_probe as _},
@@ -28,6 +29,7 @@ pub struct LoggerState {
     logger_run: Mutex<CriticalSectionRawMutex, bool>,
     logger_time_sampling: Mutex<CriticalSectionRawMutex, u64>,
     log_mask: Mutex<CriticalSectionRawMutex, u32>,
+    log_item: Channel<CriticalSectionRawMutex, bool, 1024>,
 }
 
 impl LoggerState {
@@ -36,6 +38,7 @@ impl LoggerState {
             logger_run: Mutex::new(false),
             logger_time_sampling: Mutex::new(10),
             log_mask: Mutex::new(0),
+            log_item: Channel::new(),
         }
     }
 
@@ -64,6 +67,14 @@ impl LoggerState {
     pub async fn set_log_mask(&self, log_mask: u32) {
         let mut current = self.log_mask.lock().await;
         *current = log_mask;
+    }
+
+    pub fn set_logged_item(&self, cmd: bool) {
+        let _ = self.log_item.try_send(cmd);
+    }
+
+    pub async fn get_logged_item(&self) -> bool {
+        return self.log_item.receive().await;
     }
 }
 
