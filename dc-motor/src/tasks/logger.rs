@@ -24,10 +24,6 @@ fn send_logged_data(data: LogData) {
     let _ = LOGGER_CONTROL.try_send(data);
 }
 
-async fn get_logged_data() -> LogData {
-    return LOGGER_CONTROL.receive().await;
-}
-
 fn get_logged_data_len() -> usize {
     return LOGGER_CONTROL.len();
 }
@@ -141,8 +137,9 @@ pub async fn send_logger_task() {
 
             if count > 0 {
                 for _ in 0..count {
-                    let data = get_logged_data().await;   
-                    write!(&mut output, " {}", data.process()).unwrap(); 
+                    if let Ok(data) = LOGGER_CONTROL.try_receive() {   
+                        write!(&mut output, " {}", data.process()).unwrap(); 
+                    }
                 }
 
                 log::info!("{}{}", count, output);
