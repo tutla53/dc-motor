@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import threading
 import math
 import time
-import queue  # Import the queue module
+import csv
 
 """
 USB Handler
@@ -72,7 +72,7 @@ class Device:
     def __init__(self):
         self.ser = None
         self.newinput = None
-        self.defaultCOM = "5"
+        self.defaultCOM = "0"
         self.baud_rate = 115200
         self.lock = threading.RLock()  # Use RLock for reentrant locking
 
@@ -80,7 +80,7 @@ class Device:
         if port is None:
             port = self.defaultCOM
             self.newinput = self.defaultCOM
-        port = 'COM' + port
+        port = "/dev/ttyACM" + port
         stat = True
 
         try:
@@ -177,6 +177,12 @@ class FWLogger:
         self.logging = False
         self.logged_data = []
         self.mask = 0
+        self.mask_names = {  # Map mask flags to column names
+            1 << 0: 'MotorPosition',
+            1 << 1: 'MotorSpeed',
+            1 << 2: 'CommandedPosition',
+            1 << 3: 'CommandedSpeed',
+        }
 
     def __MainLogger(self, limit=1_000_000):
         try:
@@ -214,6 +220,9 @@ class FWLogger:
             if len(data) == 3:
                 break
             self.logged_data.append(data)
+        
+        tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+        self.save_to_csv("LOG/"+tag+".csv")
     
     def get_n_col(self, mask: int):
         count = 0
@@ -240,9 +249,48 @@ class FWLogger:
                     print(output)
             except:
                 continue
+    
+    def save_to_csv(self, filename):
+        try:
+            # Generate column headers based on mask
+            columns = ['Timestamp']
+            for bit in range(4):  # Check bits 0-3 from the enum
+                flag = 1 << bit
+                if self.mask & flag:
+                    columns.append(self.mask_names.get(flag, f'Unknown Bit {bit}'))
+            
+            with open(filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(columns)
+                
+                n_col = self.get_n_col(self.mask)  # Total columns per entry
+                
+                for data_line in self.logged_data:
+                    try:
+                        decoded = data_line.decode('utf-8', errors='replace').strip()
+                        integer_list = list(map(int, decoded.split()))
+                        count = integer_list[0] if integer_list else 0
+                        idx = 1
+                        
+                        for _ in range(count):
+                            if idx + n_col > len(integer_list):
+                                break  # Prevent index errors
+                            
+                            entry_data = integer_list[idx:idx + n_col]
+                            timestamp = entry_data[0]
+                            data_values = entry_data[1:]
+                            
+                            # Create row with timestamp followed by data values
+                            writer.writerow([timestamp] + data_values)
+                            idx += n_col
+                    except Exception as e:
+                        print(f"Skipping malformed line: {e}")
+                        continue
+        except Exception as e:
+            print(f"Error saving to CSV: {e}")
 
 p = Device()
-p.connect("5")
+p.connect("0")
 
 logger = FWLogger(p)
 
