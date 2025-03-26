@@ -169,6 +169,11 @@ class Device:
         opcode = "11"
         cmd = (opcode).encode("UTF-8")
         self.send_cmd(cmd, False)
+    
+    def move_motor_abs_pos_trapezoid(self, motor_id, target, vel, acc):
+        opcode = "12"
+        cmd = (opcode +" "+ str(motor_id)+" "+str(target)+" "+str(vel)+" "+str(acc)).encode("UTF-8")
+        self.send_cmd(cmd)  
 
 class FWLogger:
     def __init__(self, p: Device):
@@ -304,9 +309,16 @@ def test_log():
 
 def motor_test(speed_rpm):
     speed = int ((speed_rpm * 48.4)/60)
-
     logger.run(5, 10)
     p.move_motor_speed(0, speed)
+    time.sleep(3)
+    logger.stop()
+    p.stop_motor(0)
+
+
+def trapezoid_test(position, speed, acc):
+    logger.run(5, 5)
+    p.move_motor_abs_pos_trapezoid(0, position, speed, acc)
     time.sleep(3)
     logger.stop()
     p.stop_motor(0)

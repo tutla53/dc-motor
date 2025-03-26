@@ -12,9 +12,15 @@ pub static MOTOR_0: MotorState = MotorState::new();
 pub static LOGGER: LoggerState = LoggerState::new();
 
 #[derive(Clone, Copy)]
+pub enum Shape {
+    Step(i32),
+    Trapezoidal(f32, f32, f32),
+}
+
+#[derive(Clone, Copy)]
 pub enum MotorCommand {
-    SpeedControl(i32),
-    PositionControl(i32),
+    SpeedControl(Shape),
+    PositionControl(Shape),
     Stop,
 }
 
@@ -150,9 +156,9 @@ impl MotorState {
         return *self.current_commanded_pos.lock().await;
     }
     
-    pub async fn set_commanded_pos(&self, speed: i32) {
-        let mut current_speed = self.current_commanded_pos.lock().await;
-        *current_speed = speed;    
+    pub async fn set_commanded_pos(&self, pos: i32) {
+        let mut current_pos = self.current_commanded_pos.lock().await;
+        *current_pos = pos;    
     }
 
     pub async fn set_speed_pid(&self, config: PIDConfig) {

@@ -30,12 +30,16 @@
         - op: 9
         - args: [motor_id: u8]
         - return: [kp: f32, ki: f32, kd:f32]
+    - move_motor_abs_pos_trapezoid
+        - op: 12
+        - args: [motor_id: u8, target: f32, velocity: f32, acceleration:f32]       
 */
 
 use {
     crate::resources::{
         global_resources::{
             MotorCommand,
+            Shape,
             PIDConfig,
             MotorState,
             MOTOR_0,
@@ -68,6 +72,7 @@ impl<'a> CommandHandler<'a> {
             "9" => { self.get_motor_speed_pid_param(). await; },
             "10" => { self.get_logged_item(); },
             "11" => { self.clear_logged_item(); },
+            "12" => { self.move_motor_abs_pos_trapezoid().await; }
             _ => { log::info!("Command not found"); },
         }
     }
@@ -131,7 +136,7 @@ impl<'a> CommandHandler<'a> {
         
         if let Some(motor_id) = self.get_motor_id(1) {
             match self.parts[2].parse::<i32>() {
-                Ok(speed) => { motor_id.set_motor_command(MotorCommand::SpeedControl(speed)).await; },
+                Ok(speed) => { motor_id.set_motor_command(MotorCommand::SpeedControl(Shape::Step(speed))).await; },
                 Err(e) => { log::info!("Invalid Motor Speed: {:?}", e); }
             } 
         }
@@ -145,7 +150,7 @@ impl<'a> CommandHandler<'a> {
         
         if let Some(motor_id) = self.get_motor_id(1) {
             match self.parts[2].parse::<i32>() {
-                Ok(pos) => { motor_id.set_motor_command(MotorCommand::PositionControl(pos)).await; },
+                Ok(pos) => { motor_id.set_motor_command(MotorCommand::PositionControl(Shape::Step(pos))).await; },
                 Err(e) => { log::info!("Invalid Motor Speed: {:?}", e); }
             } 
         }
@@ -258,6 +263,39 @@ impl<'a> CommandHandler<'a> {
 
     fn clear_logged_item(&self) {
         let _ = LOGGER.set_logged_item(false);
+    }
+
+    async fn move_motor_abs_pos_trapezoid(&self) {
+        if self.parts.len() < 5 {
+            log::info!("Insufficient Argument(s): [motor_id: u8, target: f32, velocity: f32, acceleration: f32]");
+            return;
+        }
+
+        if let Some(motor_id) = self.get_motor_id(1) {
+            match self.parts[2].parse::<f32>() {
+                Ok(target) => {
+                    match self.parts[3].parse::<f32>() {
+                        Ok(velocity) => {
+                            match self.parts[4].parse::<f32>() {
+                                Ok(acceleration) => {
+                                    motor_id.set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(target, velocity, acceleration))).await;
+                                },
+                                Err(e) => {
+                                    log::info!("Invalid acceleration value {:?}", e);
+                                }
+                            } 
+                        },
+
+                        Err(e) => {
+                            log::info!("Invalid velocity value {:?}", e);
+                        }
+                    } 
+                },
+                Err(e) => {
+                    log::info!("Invalid target value {:?}", e);
+                }
+            }
+        }
     }
 
 }

@@ -49,6 +49,8 @@ pio = "0.2.1"
 rand = { version = "0.8.5", default-features = false }
 embedded-sdmmc = "0.7.0"
 
+libm = "0.2.11"
+
 [profile.release]
 debug = 2
 lto = true
