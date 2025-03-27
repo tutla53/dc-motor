@@ -1,0 +1,49 @@
+# Version: 0.0.1
+
+- name: start_logger
+  op: "1"
+  args: [time_sampling, logmask]
+  
+- name: stop_logger
+  op: "2"
+  args: []
+
+- name: move_motor_speed
+  op: "3"
+  args: [motor_id, speed]
+
+- name: move_motor_abs_pos
+  op: "4"
+  args: [motor_id, pos]
+
+- name: stop_motor
+  op: "5"
+  args: [motor_id]
+
+- name: set_motor_pos_pid_param
+  op: "6"
+  args: [motor_id, kp, ki, kd]
+
+- name: get_motor_pos_pid_param
+  op: "7"
+  args: [motor_id]
+
+- name: set_motor_speed_pid_param
+  op: "8"
+  args: [motor_id, kp, ki, kd]
+
+- name: get_motor_speed_pid_param
+  op: "9"
+  args: [motor_id]
+
+- name: get_logged_item
+  op: "10"
+  args: []
+
+- name: clear_logged_item
+  op: "11"
+  args: []
+
+- name: move_motor_abs_pos_trapezoid
+  op: "12"
+  args: [motor_id, target, vel, acc]

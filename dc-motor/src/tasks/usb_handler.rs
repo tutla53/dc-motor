@@ -1,38 +1,5 @@
 /*
 * USB Handler
-* Available Command:
-    - start_logger
-        - op: 1
-        - args: [time_samplng: u64, logmask: u32]
-    - stop_logger
-        - op: 2
-        - args: None
-    - move_motor_speed
-        - op: 3
-        - args: [motor_id: u8, speed: i32]
-    - move_motor_abs_pos
-        - op: 4
-        - args: [motor_id: u8, pos: i32]
-    - stop_motor
-        - op: 5
-        - args: [motor_id: u8]
-    - set_motor_pos_pid_param
-        - op: 6
-        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
-    - get_motor_pos_pid_param
-        - op: 7
-        - args: [motor_id: u8]
-        - return: [kp: f32, ki: f32, kd:f32]
-    - set_motor_speed_pid_param
-        - op: 8
-        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
-    - get_motor_speed_pid_param
-        - op: 9
-        - args: [motor_id: u8]
-        - return: [kp: f32, ki: f32, kd:f32]
-    - move_motor_abs_pos_trapezoid
-        - op: 12
-        - args: [motor_id: u8, target: f32, velocity: f32, acceleration:f32]       
 */
 
 use {

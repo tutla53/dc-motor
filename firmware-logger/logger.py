@@ -1,44 +1,12 @@
 import serial
+import yaml
+from functools import partial
 import serial.tools.list_ports
 import matplotlib.pyplot as plt
 import threading
 import math
 import time
 import csv
-
-"""
-USB Handler
-Available Command:
-    - start_logger
-        - op: 1
-        - args: [time_samplng: u64, logmask: u32]
-    - stop_logger
-        - op: 2
-        - args: None
-    - move_motor_speed
-        - op: 3
-        - args: [motor_id: u8, speed: i32]
-    - move_motor_abs_pos
-        - op: 4
-        - args: [motor_id: u8, pos: i32]
-    - stop_motor
-        - op: 5
-        - args: [motor_id: u8]
-    - set_motor_pos_pid_param
-        - op: 6
-        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
-    - get_motor_pos_pid_param
-        - op: 7
-        - args: [motor_id: u8]
-        - return: [kp: f32, ki: f32, kd:f32]
-    - set_motor_speed_pid_param
-        - op: 8
-        - args: [motor_id: u8, kp: f32, ki: f32, kd:f32]  
-    - get_motor_speed_pid_param
-        - op: 9
-        - args: [motor_id: u8]
-        - return: [kp: f32, ki: f32, kd:f32]
-"""
 
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
@@ -75,7 +43,44 @@ class Device:
         self.defaultCOM = "0"
         self.baud_rate = 115200
         self.lock = threading.RLock()  # Use RLock for reentrant locking
+        self._load_commands_from_yaml("commands.yaml")  # Load command definitions
 
+    def _load_commands_from_yaml(self, yaml_path):
+        with open(yaml_path, 'r') as f:
+            commands = yaml.safe_load(f)
+        
+        for cmd in commands:
+            name = cmd['name']
+            op = cmd['op']
+            args = cmd.get('args', [])
+            
+            # Create method with appropriate signature
+            def command_method(self, *values, op_code=op, params=args):
+                if len(values) != len(params):
+                    raise ValueError(f"Expected {len(params)} arguments, got {len(values)}")
+                
+                # Build command string
+                cmd_str = op_code
+                for val in values:
+                    cmd_str += f" {val}"
+                
+                # Determine if we should print echo (default True except for logger commands)
+                print_echo = not op_code in ["1", "2", "10", "11"]
+                self.send_cmd(cmd_str.encode('UTF-8'), print_echo)
+            
+            # Set method name and parameters
+            command_method.__name__ = name
+            command_method.__qualname__ = f"Device.{name}"
+            command_method.__doc__ = f"Generated method for {name} command"
+            
+            # Create partial method with locked execution
+            locked_method = partial(self._execute_with_lock, command_method)
+            setattr(self, name, locked_method)
+
+    def _execute_with_lock(self, func, *args, **kwargs):
+        with self.lock:
+            return func(self, *args, **kwargs)
+    
     def connect(self, port):
         if port is None:
             port = self.defaultCOM
@@ -114,66 +119,6 @@ class Device:
                 print(f"Serial error: {e}")
             except Exception as e:
                 print(f"Unexpected error: {e}")
-    
-    def start_logger(self, time_sampling, logmask):
-        opcode = "1"
-        cmd = (opcode +" "+ str(time_sampling)+" "+str(logmask)).encode("UTF-8")
-        self.send_cmd(cmd, False)
-
-    def stop_logger(self):
-        opcode = "2"
-        cmd = (opcode).encode("UTF-8")
-        self.send_cmd(cmd, False)
-
-    def move_motor_speed(self, motor_id, speed):
-        opcode = "3"
-        cmd = (opcode +" "+ str(motor_id)+" "+str(speed)).encode("UTF-8")
-        self.send_cmd(cmd)
-
-    def move_motor_abs_pos(self, motor_id, pos):
-        opcode = "4"
-        cmd = (opcode +" "+ str(motor_id)+" "+str(pos)).encode("UTF-8")
-        self.send_cmd(cmd)
-
-    def stop_motor(self, motor_id):
-        opcode = "5"
-        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
-        self.send_cmd(cmd)
-
-    def set_motor_pos_pid_param(self, motor_id, kp, ki, kd):
-        opcode = "6"
-        cmd = (opcode +" "+ str(motor_id)+" "+str(kp)+" "+str(ki)+" "+str(kd)).encode("UTF-8")
-        self.send_cmd(cmd)  
-
-    def get_motor_pos_pid_param(self, motor_id):
-        opcode = "7"
-        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
-        self.send_cmd(cmd)
-
-    def set_motor_speed_pid_param(self, motor_id, kp, ki, kd):
-        opcode = "8"
-        cmd = (opcode +" "+ str(motor_id)+" "+str(kp)+" "+str(ki)+" "+str(kd)).encode("UTF-8")
-        self.send_cmd(cmd)  
-
-    def get_motor_speed_pid_param(self, motor_id):
-        opcode = "9"
-        cmd = (opcode +" "+ str(motor_id)).encode("UTF-8")
-        self.send_cmd(cmd)
-    
-    def get_logged_item(self):
-        opcode = "10"
-        cmd = (opcode).encode("UTF-8")
-        self.send_cmd(cmd, False)
-    
-    def clear_logged_item(self):
-        opcode = "11"
-        cmd = (opcode).encode("UTF-8")
-        self.send_cmd(cmd, False)
-    
-    def move_motor_abs_pos_trapezoid(self, motor_id, target, vel, acc):
-        opcode = "12"
-        cmd = (opcode +" "+ str(motor_id)+" "+str(target)+" "+str(vel)+" "+str(acc)).encode("UTF-8")
-        self.send_cmd(cmd)  
 
 class FWLogger:
     def __init__(self, p: Device):
@@ -316,9 +261,9 @@ def motor_test(speed_rpm):
     p.stop_motor(0)
 
 
-def trapezoid_test(position, speed, acc):
+def trapezoid_test(position, speed, acc, duration=3):
     logger.run(5, 5)
     p.move_motor_abs_pos_trapezoid(0, position, speed, acc)
-    time.sleep(3)
+    time.sleep(duration)
     logger.stop()
     p.stop_motor(0)

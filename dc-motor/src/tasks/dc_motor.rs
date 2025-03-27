@@ -237,7 +237,6 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                         }
                     };
                     
-                    // log::info!("{}", commanded_position);
                     self.motor.set_commanded_pos(commanded_position).await;
 
                     let current_position = self.motor.get_current_pos().await;
