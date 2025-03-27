@@ -30,7 +30,7 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
-const REFRESH_INTERVAL: u64 = 1000; // in us or 10 kHz
+const REFRESH_INTERVAL: u64 = 1000; // in us or 1 kHz
 const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL;
 const MAX_SPEED: i32 = 1200;
 
