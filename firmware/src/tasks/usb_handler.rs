@@ -40,6 +40,8 @@ impl<'a> CommandHandler<'a> {
             "10" => { self.get_logged_item(); },
             "11" => { self.clear_logged_item(); },
             "12" => { self.move_motor_abs_pos_trapezoid().await; }
+            "13" => { self.get_motor_pos().await; }
+            "14" => { self.get_motor_speed().await; }
             _ => { log::info!("Command not found"); },
         }
     }
@@ -262,6 +264,30 @@ impl<'a> CommandHandler<'a> {
                     log::info!("Invalid target value {:?}", e);
                 }
             }
+        }
+    }
+
+    async fn get_motor_pos(&self) {
+        if self.parts.len() < 2 {
+            log::info!("Insufficient Argument(s): [motor_id: u8]");
+            return;
+        }
+
+        if let Some(motor_id) = self.get_motor_id(1) {
+            let motor_pos = motor_id.get_current_pos().await;
+            log::info!("{}", motor_pos);
+        }
+    }
+
+    async fn get_motor_speed(&self) {
+        if self.parts.len() < 2 {
+            log::info!("Insufficient Argument(s): [motor_id: u8]");
+            return;
+        }
+
+        if let Some(motor_id) = self.get_motor_id(1) {
+            let motor_speed = motor_id.get_current_speed().await;
+            log::info!("{}", motor_speed);
         }
     }
 

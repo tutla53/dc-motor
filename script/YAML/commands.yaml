@@ -1,4 +1,4 @@
-# Version: 0.0.1
+# Version: 0.0.2
 
 - name: start_logger
   op: "1"
@@ -47,3 +47,11 @@
 - name: move_motor_abs_pos_trapezoid
   op: "12"
   args: [motor_id, target, vel, acc]
+
+- name: get_motor_pos
+  op: "13"
+  args: [motor_id]
+
+- name: get_motor_speed
+  op: "14"
+  args: [motor_id]
