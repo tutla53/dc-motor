@@ -22,7 +22,8 @@ def motor_test(speed_rpm):
     logger.stop()
     p.stop_motor(0)
 
-def trapezoid_test(position, speed, acc, duration=3):
+def trapezoid_test(position_rotation, speed, acc, duration=3):
+    position = int(position_rotation * 48.4)
     logger.run(5, 5)
     p.move_motor_abs_pos_trapezoid(0, position, speed, acc)
     time.sleep(duration)

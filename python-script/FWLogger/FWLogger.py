@@ -2,6 +2,28 @@ import threading
 import time
 import csv
 
+# Motor Config
+GEAR_RATIO = 4.4
+ENCODER_PPR = 11
+ROTATION_PER_PULSE = 1/(GEAR_RATIO*ENCODER_PPR)
+
+# Logger Mask
+N_ENUM = 4
+
+LOG_MASK = [
+    'MotorPosition(Rotation)', #1
+    'MotorSpeed(RPM)', #2
+    'CommandedPosition(Rotation)', #4
+    'CommandedSpeed(RPM)', #8
+]
+
+SCALE_OFFSET_MOTOR = [
+    [(ROTATION_PER_PULSE), 0],
+    [(60.0*ROTATION_PER_PULSE), 0],
+    [(ROTATION_PER_PULSE), 0],
+    [(60.0*ROTATION_PER_PULSE), 0],
+]
+
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
         self.func = func
@@ -20,16 +42,12 @@ class SThread:
                 self.thread.daemon = self.daemon
                 self.thread.start()
         else:
-           #Q args = (*args,)
-            #print (*args,"args")
             self.thread = threading.Thread(target=self.func, args=(*args,))
             self.thread.daemon = self.daemon
             self.thread.start()
 
-
     def stop(self):
         self.thread.join()
-
 
 class FWLogger:
     def __init__(self, p):
@@ -38,12 +56,7 @@ class FWLogger:
         self.logging = False
         self.logged_data = []
         self.mask = 0
-        self.mask_names = {  # Map mask flags to column names
-            1 << 0: 'MotorPosition',
-            1 << 1: 'MotorSpeed',
-            1 << 2: 'CommandedPosition',
-            1 << 3: 'CommandedSpeed',
-        }
+        self.mask_names = LOG_MASK
 
     def __MainLogger(self, limit=1_000_000):
         try:
@@ -114,11 +127,13 @@ class FWLogger:
     def save_to_csv(self, filename):
         try:
             # Generate column headers based on mask
+            log_mask = [0]
             columns = ['Timestamp']
-            for bit in range(4):  # Check bits 0-3 from the enum
+            for bit in range(N_ENUM):
                 flag = 1 << bit
                 if self.mask & flag:
-                    columns.append(self.mask_names.get(flag, f'Unknown Bit {bit}'))
+                    log_mask.append(bit)
+                    columns.append(self.mask_names[bit])
             
             with open(filename, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
@@ -137,13 +152,18 @@ class FWLogger:
                             if idx + n_col > len(integer_list):
                                 break  # Prevent index errors
                             
-                            entry_data = integer_list[idx:idx + n_col]
+                            entry_data = integer_list[idx : idx+n_col]
                             timestamp = entry_data[0]
+
+                            for i in range(1, len(entry_data)):
+                                entry_data[i] = entry_data[i]*SCALE_OFFSET_MOTOR[log_mask[i]][0] + SCALE_OFFSET_MOTOR[log_mask[i]][1]
+
                             data_values = entry_data[1:]
                             
                             # Create row with timestamp followed by data values
                             writer.writerow([timestamp] + data_values)
                             idx += n_col
+
                     except Exception as e:
                         print(f"Skipping malformed line: {e}")
                         continue
