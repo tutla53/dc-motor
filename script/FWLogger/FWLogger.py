@@ -1,11 +1,7 @@
 import threading
 import time
 import csv
-
-# Motor Config
-GEAR_RATIO = 4.4
-ENCODER_PPR = 11
-ROTATION_PER_PULSE = 1/(GEAR_RATIO*ENCODER_PPR)
+import Config.Motor0 as config
 
 # Logger Mask
 N_ENUM = 4
@@ -18,10 +14,10 @@ LOG_MASK = [
 ]
 
 SCALE_OFFSET_MOTOR = [
-    [(ROTATION_PER_PULSE), 0],
-    [(60.0*ROTATION_PER_PULSE), 0],
-    [(ROTATION_PER_PULSE), 0],
-    [(60.0*ROTATION_PER_PULSE), 0],
+    [(config.ROTATION_PER_PULSE), 0],
+    [(60.0*config.ROTATION_PER_PULSE), 0],
+    [(config.ROTATION_PER_PULSE), 0],
+    [(60.0*config.ROTATION_PER_PULSE), 0],
 ]
 
 class SThread:

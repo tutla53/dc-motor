@@ -1,31 +1,23 @@
-import Device.Pico as Pico
-import FWLogger.FWLogger as Logger
+from Device.Device import *
 import time
 
-yaml_path = "YAML/commands.yaml"
-p = Pico.Device(yaml_path, "0")
-logger = Logger.FWLogger(p)
-
-def test_log():
-    logger.run()
-    print(p.get_motor_pos_pid_param(0))
-    time.sleep(5)
-    logger.stop()
-    time.sleep(0.1)
-    logger.print_logged_data()
-
-def motor_test(speed_rpm):
-    speed = int ((speed_rpm * 48.4)/60)
-    logger.run(5, 10)
-    p.move_motor_speed(0, speed)
+def speed_test(speed_rpm, time_sampling = 5):
+    logger.run(time_sampling=time_sampling, mask=10)
+    motor0.move_motor_speed(speed_rpm)
     time.sleep(3)
     logger.stop()
     p.stop_motor(0)
 
-def trapezoid_test(position_rotation, speed, acc, duration=3):
-    position = int(position_rotation * 48.4)
-    logger.run(5, 5)
-    p.move_motor_abs_pos_trapezoid(0, position, speed, acc)
+def pos_trapezoid_test(position_rotation, speed, acc, duration=3, time_sampling=5):
+    logger.run(time_sampling=time_sampling, mask=5)
+    motor0.move_motor_pos_trapezoid(position_rotation, speed, acc)
+    time.sleep(duration)
+    logger.stop()
+    p.stop_motor(0)
+
+def pos_step_test(position_rotation, duration=3, time_sampling=5):
+    logger.run(time_sampling=time_sampling, mask=5)
+    motor0.move_motor_pos_step(position_rotation)
     time.sleep(duration)
     logger.stop()
     p.stop_motor(0)

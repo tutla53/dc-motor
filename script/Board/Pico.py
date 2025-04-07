@@ -5,11 +5,11 @@ import serial.tools.list_ports
 import threading
 import time
 
-class Device:
-    def __init__(self, yaml_path="", com="0"):
+class Pico:
+    def __init__(self, yaml_path="", com=None):
         self.ser = None
         self.newinput = None
-        self.defaultCOM = "0"
+        self.defaultCOM = None
         self.baud_rate = 115200
         self.lock = threading.RLock()  # Use RLock for reentrant locking
         self.connect(com)
@@ -53,9 +53,20 @@ class Device:
     
     def connect(self, port):
         if port is None:
-            port = self.defaultCOM
-            self.newinput = self.defaultCOM
-        port = "/dev/ttyACM" + port
+            acm_ports = [
+                 port.device for port in serial.tools.list_ports.comports() 
+                 if port.description.startswith("USB-serial logger")]
+            
+            if not acm_ports:
+                raise OSError("No /dev/ttyACM* ports found. Connect a device.")
+
+            # Auto-select the first port (modify logic if multiple devices)
+            port = acm_ports[0]
+            print(f"Selected port: {port}")
+        
+        else:
+            port = "/dev/ttyACM" + port
+        
         stat = True
 
         try:
@@ -65,7 +76,7 @@ class Device:
                 print(f"Connected to {port}")
                 return True
         except:
-            self.newinput = input(f"Failed to connect to {port}. Input new COM Port /enter to end: ")
+            self.newinput = None
             stat = False
         finally:
             if self.newinput == "":

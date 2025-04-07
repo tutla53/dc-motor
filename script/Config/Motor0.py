@@ -1,0 +1,7 @@
+# Motor Config
+
+motor_id = 0
+
+GEAR_RATIO = 4.4
+ENCODER_PPR = 11
+ROTATION_PER_PULSE = 1/(GEAR_RATIO*ENCODER_PPR)
