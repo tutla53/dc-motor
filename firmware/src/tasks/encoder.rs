@@ -17,20 +17,61 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
-pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
+pub struct MovingAverage<const N: usize> {
+    buffer: [i32; N],
+    index: usize,
+    is_filled: bool,
+    sum: i32,
+}
+
+impl<const N: usize> MovingAverage<N> {
+    pub fn new() -> Self {
+        Self {
+            buffer: [0; N],
+            index: 0,
+            is_filled: false,
+            sum: 0,
+        }
+    }
+
+    pub fn update(&mut self, value: i32) -> i32 {
+        if self.is_filled {
+            self.sum -= self.buffer[self.index];
+        }
+        
+        self.buffer[self.index] = value;
+        self.sum += value;
+        
+        self.index = (self.index + 1) % N;
+        
+        if !self.is_filled && self.index == 0 {
+            self.is_filled = true;
+        }
+
+        if self.is_filled {
+            self.sum / N as i32
+        } else {
+            self.sum / self.index as i32
+        }
+    }
+}
+
+pub struct RotaryEncoder <'d, T: Instance, const SM: usize, const N: usize> {
     encoder: PioEncoder<'d, T, SM>,
     count_threshold: i32,
     timeout: u32,
     motor: &'static MotorState,
+    filter: MovingAverage<N>,
 }
 
-impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorState) -> Self {
+impl <'d, T: Instance, const SM: usize, const N: usize> RotaryEncoder <'d, T, SM, N> {
+    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorState, filter: MovingAverage::<N>) -> Self {
         Self {
             encoder,
             count_threshold: 3,
             timeout: 50,
             motor,
+            filter,
         }
     }
 
@@ -67,13 +108,14 @@ impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
                 let speed = (delta_count * 1_000_000)/(dt as i32);
                 delta_count = 0;
                 start = Instant::now();
-                self.motor.set_current_speed(speed).await;
+                let filtered_speed = self.filter.update(speed);
+                self.motor.set_current_speed(filtered_speed).await;
             }
         }
     }    
 }
 
 #[embassy_executor::task]
-pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
+pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0, 10>) {
     encoder.run_encoder_task().await;
 }
