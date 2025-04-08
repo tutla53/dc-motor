@@ -26,6 +26,7 @@ use {
         },
         encoder::{
             RotaryEncoder,
+            MovingAverage,
             encoder_task,
         },
     },    
@@ -95,17 +96,19 @@ async fn main(spawner: Spawner) {
                     p.motor_resources.Motor0_PWM_CCW_PIN, 
                     &pwm_prg
                 );
+    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &MOTOR_0);
+    let filter = MovingAverage::<10>::new();
     let encoder = RotaryEncoder::new(PioEncoder::new(
                         &mut common, 
                         sm0, 
                         p.encoder_resources.Encoder0_PIN_A, 
                         p.encoder_resources.Encoder0_PIN_B, 
-                        &enc_prg
+                        &enc_prg,
                     ),
-                    &MOTOR_0
+                    &MOTOR_0,
+                    filter,
                 );
-    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &MOTOR_0);
-
+    
     spawner.must_spawn(usb_logger_task(usb_driver));
     spawner.must_spawn(encoder_task(encoder));
     spawner.must_spawn(motor_task(dc_motor));
