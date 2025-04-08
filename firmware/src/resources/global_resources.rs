@@ -92,6 +92,9 @@ pub struct MotorState {
     commanded_motor_speed: Mutex<CriticalSectionRawMutex, MotorCommand>,
     pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
+    refresh_interval_us: u64,
+    max_pwm_output_us: u64,
+    max_speed_cps: i32,
 }
 
 impl MotorState {
@@ -102,8 +105,11 @@ impl MotorState {
             current_commanded_pos: Mutex::new(0),
             current_commanded_speed: Mutex::new(0),
             commanded_motor_speed: Mutex::new(MotorCommand::Stop),
-            pos_pid: Mutex::new(PIDConfig{ kp: 5.0, ki: 0.001, kd: 7.5}),
-            speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.25, kd: 2.0}),
+            pos_pid: Mutex::new(PIDConfig{ kp: 10.0, ki: 0.0, kd: 2.0}),
+            speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.025, kd: 0.0}),
+            refresh_interval_us: 1000,
+            max_pwm_output_us: 1000,
+            max_speed_cps: 1130,
         }
     }
 
@@ -168,5 +174,17 @@ impl MotorState {
 
     pub async fn get_speed_pid(&self) -> PIDConfig {
         return *self.speed_pid.lock().await;
+    }
+
+    pub fn get_refresh_interval_us(&self) -> u64 {
+        return self.refresh_interval_us;
+    }
+
+    pub fn get_max_pwm_output_us(&self) -> u64 {
+        return self.max_pwm_output_us;
+    }
+
+    pub fn get_max_speed_cps(&self) -> i32 {
+        return self.max_speed_cps;
     }
 }

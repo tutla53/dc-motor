@@ -31,10 +31,6 @@ use {
     {defmt_rtt as _, panic_probe as _},
 };
 
-pub const REFRESH_INTERVAL: u64 = 1000; // in us or 1 kHz
-pub const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL;
-pub const MAX_SPEED: i32 = 1400;
-
 #[derive(PartialEq)]
 enum ControlMode {
     Speed,
@@ -45,7 +41,6 @@ enum ControlMode {
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_cw: PioPwm<'d, T, SM1>,
     pwm_ccw: PioPwm<'d, T, SM2>,
-    period: u64,
     speed_control: PIDcontrol,
     position_control: PIDcontrol,
     control_mode: ControlMode,
@@ -57,22 +52,20 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         Self {
             pwm_cw,
             pwm_ccw,
-            period: REFRESH_INTERVAL,
-            speed_control: PIDcontrol::new_speed_pid(),
-            position_control: PIDcontrol::new_position_pid(),
+            speed_control: PIDcontrol::new_speed_pid(motor.get_max_pwm_output_us() as i32),
+            position_control: PIDcontrol::new_position_pid(motor.get_max_speed_cps() as i32),
             control_mode: ControlMode::Stop,
             motor,
         }
     }
     
     pub fn set_period(&mut self, period: u64) {
-        self.period = period;
         self.pwm_cw.set_period(CoreDuration::from_micros(period));
         self.pwm_ccw.set_period(CoreDuration::from_micros(period));
     }
 
     pub fn enable(&mut self) {
-        self.set_period(self.period);
+        self.set_period(self.motor.get_refresh_interval_us());
         self.pwm_cw.start();
         self.pwm_ccw.start();
         self.pwm_cw.write(CoreDuration::from_micros(0));
@@ -98,7 +91,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
     }
 
     pub fn move_motor(&mut self, mut pwm: i32) {
-        let threshold = self.period as i32;
+        let threshold = self.motor.get_max_pwm_output_us() as i32;
 
         if pwm > 0 {
             if pwm > threshold { pwm = threshold; }

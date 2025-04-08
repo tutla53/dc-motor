@@ -3,10 +3,6 @@
 */
 
 use {
-    crate::tasks::dc_motor::{
-        MAX_PWM_OUTPUT,
-        MAX_SPEED,
-    },
     {defmt_rtt as _, panic_probe as _},
 };
 
@@ -20,25 +16,25 @@ pub struct PIDcontrol {
 }
 
 impl PIDcontrol {
-    pub fn new_speed_pid() -> Self {
+    pub fn new_speed_pid(threshold: i32) -> Self {
         Self {
-            kp: 1.0,
-            ki: 0.25,
-            kd: 2.0,
+            kp: 0,
+            ki: 0,
+            kd: 0,
             integral: 0.0,
             prev_error: 0.0,
-            max_threshold: MAX_PWM_OUTPUT as i32,
+            max_threshold: threshold,
         }
     }
 
-    pub fn new_position_pid() -> Self {
+    pub fn new_position_pid(threshold: i32) -> Self {
         Self {
-            kp: 5.0,
-            ki: 0.001,
-            kd: 7.5,
+            kp: 0,
+            ki: 0,
+            kd: 0,
             integral: 0.0,
             prev_error: 0.0,
-            max_threshold: MAX_SPEED,
+            max_threshold: threshold,
         }
     }
 
