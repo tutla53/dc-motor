@@ -21,10 +21,12 @@ use {
             send_logger_task,
         },
         dc_motor::{
-            RotaryEncoder,
             DCMotor,
-            encoder_task,
             motor_task,
+        },
+        encoder::{
+            RotaryEncoder,
+            encoder_task,
         },
     },    
     embassy_executor::Spawner,

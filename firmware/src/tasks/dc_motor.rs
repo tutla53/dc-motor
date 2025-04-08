@@ -6,108 +6,40 @@
 */
 
 use {
-    crate::resources::{
-        global_resources::{
-            MotorCommand,
-            Shape, 
-            MotorState,
+    crate::{
+        tasks::{
+            pid_control::PIDcontrol,
+            motion_profile::TrapezoidProfile,
+        },
+        resources::{
+            global_resources::{
+                MotorCommand,
+                Shape, 
+                MotorState,
+            },
         },
     },
     embassy_rp::{
         peripherals::PIO0,
         pio::Instance,
-        pio_programs::{
-            rotary_encoder::{Direction, PioEncoder},
-            pwm::PioPwm,
-        },
+        pio_programs::pwm::PioPwm,
     },
-    embassy_time::{Ticker, Duration, Instant, with_timeout, Timer},
+    embassy_time::{Ticker, Duration, Instant, Timer},
     core::{
         time::Duration as CoreDuration
     },
-    fixed::{types::extra::U16, FixedI32},
-    libm::sqrtf,
     {defmt_rtt as _, panic_probe as _},
 };
 
-const REFRESH_INTERVAL: u64 = 1000; // in us or 1 kHz
-const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL;
-const MAX_SPEED: i32 = 1200;
+pub const REFRESH_INTERVAL: u64 = 1000; // in us or 1 kHz
+pub const MAX_PWM_OUTPUT: u64 = REFRESH_INTERVAL;
+pub const MAX_SPEED: i32 = 1400;
 
 #[derive(PartialEq)]
 enum ControlMode {
     Speed,
     Position,
     Stop,
-}
-
-struct PIDcontrol {
-    kp: FixedI32::<U16>,
-    ki: FixedI32::<U16>,
-    kd: FixedI32::<U16>,
-    integral: FixedI32::<U16>,
-    prev_error: FixedI32::<U16>,
-    max_threshold: i32,
-}
-
-impl PIDcontrol {
-    fn new_speed_pid() -> Self {
-        Self {
-            kp: FixedI32::<U16>::from_num(1.0),
-            ki: FixedI32::<U16>::from_num(0.25),
-            kd: FixedI32::<U16>::from_num(2.0),
-            integral: FixedI32::<U16>::from_num(0),
-            prev_error: FixedI32::<U16>::from_num(0),
-            max_threshold: MAX_PWM_OUTPUT as i32,
-        }
-    }
-
-    fn new_position_pid() -> Self {
-        Self {
-            kp: FixedI32::<U16>::from_num(5),
-            ki: FixedI32::<U16>::from_num(0.001),
-            kd: FixedI32::<U16>::from_num(7.5),
-            integral: FixedI32::<U16>::from_num(0),
-            prev_error: FixedI32::<U16>::from_num(0),
-            max_threshold: MAX_SPEED,
-        }
-    }
-
-    fn update_pid_param(&mut self, kp: f32, ki: f32, kd: f32) {
-        self.kp = FixedI32::<U16>::from_num(kp);
-        self.ki = FixedI32::<U16>::from_num(ki);
-        self.kd = FixedI32::<U16>::from_num(kd);
-    }
-
-    fn reset(&mut self) {
-        self.integral = FixedI32::<U16>::from_num(0);
-        self.prev_error = FixedI32::<U16>::from_num(0);
-    }
-
-    fn limit_output(&mut self, sig: i32) -> i32 {
-        if sig > self.max_threshold {
-            self.integral -= self.prev_error;
-            return self.max_threshold;
-        }
-        
-        if sig < -1*self.max_threshold {
-            self.integral -= self.prev_error;
-            return -1*self.max_threshold;
-        }
-
-        return sig;
-    }
-
-    fn compute(&mut self, error: FixedI32::<U16>) -> i32 {
-        self.integral = self.integral + error;
-        let derivative = error - self.prev_error;
-        self.prev_error = error;
-
-        let sig_fixed = self.kp*error + self.ki*self.integral + self.kd*derivative;
-        let sig = self.limit_output(sig_fixed.to_num::<i32>());
-
-        return sig;
-    }
 }
 
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
@@ -213,8 +145,8 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 
                     self.motor.set_commanded_speed(commanded_speed).await;
                     let current_speed = self.motor.get_current_speed().await;
-                    let error = FixedI32::<U16>::from_num(commanded_speed - current_speed);
-                    let sig = self.speed_control.compute(error);
+                    let error = commanded_speed - current_speed;
+                    let sig = self.speed_control.compute(error as f32);
                     self.move_motor(sig);
                     ticker.next().await;    
                 },
@@ -240,12 +172,12 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     self.motor.set_commanded_pos(commanded_position).await;
 
                     let current_position = self.motor.get_current_pos().await;
-                    let pos_error = FixedI32::<U16>::from_num(commanded_position - current_position);
-                    let target_speed = self.position_control.compute(pos_error);
+                    let pos_error = commanded_position - current_position;
+                    let target_speed = self.position_control.compute(pos_error as f32);
 
                     let current_speed = self.motor.get_current_speed().await;
-                    let speed_error = FixedI32::<U16>::from_num(target_speed - current_speed);
-                    let sig = self.speed_control.compute(speed_error);
+                    let speed_error = target_speed - current_speed;
+                    let sig = self.speed_control.compute(speed_error as f32);
                     self.move_motor(sig);
                     ticker.next().await;
                 },
@@ -263,159 +195,6 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             }
         }
     }
-}
-
-pub struct RotaryEncoder <'d, T: Instance, const SM: usize> {
-    encoder: PioEncoder<'d, T, SM>,
-    count_threshold: i32,
-    timeout: u32,
-    motor: &'static MotorState,
-}
-
-impl <'d, T: Instance, const SM: usize> RotaryEncoder <'d, T, SM> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorState) -> Self {
-        Self {
-            encoder,
-            count_threshold: 3,
-            timeout: 50,
-            motor,
-        }
-    }
-
-    pub async fn run_encoder_task(&mut self) {
-        let mut count: i32 = 0;
-        let mut last_reported_count: i32 = 0;
-        let mut delta_count: i32 = 0;
-        let mut start = Instant::now();
-        
-        loop {
-            match with_timeout(Duration::from_millis(self.timeout as u64), self.encoder.read()).await {
-                Ok(value) => {
-                    match value {
-                        Direction::Clockwise => {
-                            count = count.saturating_add(1);
-                            delta_count = delta_count.saturating_add(1);
-                        },
-                        Direction::CounterClockwise =>{
-                            count = count.saturating_sub(1);
-                            delta_count = delta_count.saturating_sub(1);
-                        },
-                    }
-                },
-                Err (_) => {},
-            };
-    
-            if count != last_reported_count {
-                self.motor.set_current_pos(count).await;
-                last_reported_count = count;
-            }
-        
-            let dt = start.elapsed().as_micros().max(1);
-            if delta_count.abs() >= self.count_threshold || dt > (self.timeout * 1_000) as u64 {
-                let speed = (delta_count * 1_000_000)/(dt as i32);
-                delta_count = 0;
-                start = Instant::now();
-                self.motor.set_current_speed(speed).await;
-            }
-        }
-    }    
-}
-
-pub struct TrapezoidProfile {
-    initial_position: f32,
-    target_position: f32,
-    v_max: f32,
-    a_max: f32,
-    t_acc: f32,
-    t_coast: f32,
-    t_total: f32,
-    profile_type: ProfileType,
-    direction: f32,
-}
-
-enum ProfileType {
-    Trapezoidal,
-    Triangular,
-}
-
-impl TrapezoidProfile {
-    pub fn new(initial_position: f32, target_position: f32, v_max: f32, a_max: f32) -> Self {
-        let displacement = target_position - initial_position;
-        let mut direction = 1.0;
-        if displacement < 0.0 { direction = -1.0; }
-        let displacement_abs = displacement.abs();
-        let v_max_abs = v_max.abs();
-        let a_max_abs = a_max.abs();
-
-        let d_min = (v_max_abs * v_max_abs) / a_max_abs;
-        
-        let (profile_type, t_acc, t_coast, t_total) = if displacement_abs >= d_min {
-            // Trapezoidal profile
-            let t_acc = v_max_abs / a_max_abs;
-            let t_coast = (displacement_abs - d_min) / v_max_abs;
-            let t_total = 2.0 * t_acc + t_coast;
-            (ProfileType::Trapezoidal, t_acc, t_coast, t_total)
-        } else {
-            // Triangular profile
-            let t_acc = sqrtf(displacement_abs / a_max_abs);
-            let t_coast = 0.0;
-            let t_total = 2.0 * t_acc;
-            (ProfileType::Triangular, t_acc, t_coast, t_total)
-        };
-
-        Self {
-            initial_position,
-            target_position,
-            v_max: v_max_abs,
-            a_max: a_max_abs,
-            t_acc,
-            t_coast,
-            t_total,
-            profile_type,
-            direction,
-        }
-    }
-
-    pub fn position(&self, t: f32) -> f32 {
-        if t >= self.t_total {
-            return self.target_position;
-        }
-
-        let raw_position = match self.profile_type {
-            ProfileType::Trapezoidal => self.trapezoidal_position(t),
-            ProfileType::Triangular => self.triangular_position(t),
-        };
-
-        self.initial_position + self.direction * raw_position
-    }
-
-    fn trapezoidal_position(&self, t: f32) -> f32 {
-        if t < self.t_acc {
-            0.5 * self.a_max * t * t
-        } else if t < self.t_acc + self.t_coast {
-            let d_acc = 0.5 * self.a_max * self.t_acc * self.t_acc;
-            d_acc + self.v_max * (t - self.t_acc)
-        } else {
-            let t_dec = t - self.t_acc - self.t_coast;
-            let d_acc_coast = 0.5 * self.a_max * self.t_acc * self.t_acc + self.v_max * self.t_coast;
-            d_acc_coast + self.v_max * t_dec - 0.5 * self.a_max * t_dec *t_dec
-        }
-    }
-
-    fn triangular_position(&self, t: f32) -> f32 {
-        if t < self.t_acc {
-            0.5 * self.a_max * t * t
-        } else {
-            let t_dec = t - self.t_acc;
-            let d_acc = 0.5 * self.a_max * self.t_acc * self.t_acc;
-            d_acc + self.a_max * self.t_acc * t_dec - 0.5 * self.a_max * t_dec * t_dec
-        }
-    }
-}
-
-#[embassy_executor::task]
-pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
-    encoder.run_encoder_task().await;
 }
 
 #[embassy_executor::task]
