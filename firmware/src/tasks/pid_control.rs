@@ -18,9 +18,9 @@ pub struct PIDcontrol {
 impl PIDcontrol {
     pub fn new_speed_pid(threshold: i32) -> Self {
         Self {
-            kp: 0,
-            ki: 0,
-            kd: 0,
+            kp: 0.0,
+            ki: 0.0,
+            kd: 0.0,
             integral: 0.0,
             prev_error: 0.0,
             max_threshold: threshold,
@@ -29,9 +29,9 @@ impl PIDcontrol {
 
     pub fn new_position_pid(threshold: i32) -> Self {
         Self {
-            kp: 0,
-            ki: 0,
-            kd: 0,
+            kp: 0.0,
+            ki: 0.0,
+            kd: 0.0,
             integral: 0.0,
             prev_error: 0.0,
             max_threshold: threshold,

@@ -25,6 +25,17 @@ pub enum MotorCommand {
 }
 
 #[derive(Clone, Copy)]
+pub struct PosPIDConfig {
+    pub kp: f32,
+    pub ki: f32,
+    pub kd: f32,
+    pub kp_speed: f32,
+    pub ki_speed: f32,
+    pub kd_speed: f32,
+
+}
+
+#[derive(Clone, Copy)]
 pub struct PIDConfig {
     pub kp: f32,
     pub ki: f32,
@@ -90,7 +101,7 @@ pub struct MotorState {
     current_commanded_pos: Mutex<CriticalSectionRawMutex, i32>,
     current_commanded_speed: Mutex<CriticalSectionRawMutex, i32>,
     commanded_motor_speed: Mutex<CriticalSectionRawMutex, MotorCommand>,
-    pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
+    pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     refresh_interval_us: u64,
     max_pwm_output_us: u64,
@@ -105,8 +116,8 @@ impl MotorState {
             current_commanded_pos: Mutex::new(0),
             current_commanded_speed: Mutex::new(0),
             commanded_motor_speed: Mutex::new(MotorCommand::Stop),
-            pos_pid: Mutex::new(PIDConfig{ kp: 10.0, ki: 0.0, kd: 2.0}),
-            speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.025, kd: 0.0}),
+            pos_pid: Mutex::new(PosPIDConfig{ kp: 10.0, ki: 0.0, kd: 2.0, kp_speed: 1.0, ki_speed: 0.025, kd_speed: 0.0}),
+            speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.1, kd: 2.0}),
             refresh_interval_us: 1000,
             max_pwm_output_us: 1000,
             max_speed_cps: 1130,
@@ -140,12 +151,12 @@ impl MotorState {
         return *self.commanded_motor_speed.lock().await;
     }
 
-    pub async fn set_pos_pid(&self, config: PIDConfig) {
+    pub async fn set_pos_pid(&self, config: PosPIDConfig) {
         let mut current = self.pos_pid.lock().await;
         *current = config;
     }
 
-    pub async fn get_pos_pid(&self) -> PIDConfig {
+    pub async fn get_pos_pid(&self) -> PosPIDConfig {
         return *self.pos_pid.lock().await;
     }
 

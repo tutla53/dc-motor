@@ -1,4 +1,4 @@
-# Version: 0.0.2
+# Version: 0.0.3
 
 - name: start_logger
   op: "1"
@@ -22,7 +22,7 @@
 
 - name: set_motor_pos_pid_param
   op: "6"
-  args: [motor_id, kp, ki, kd]
+  args: [motor_id, kp, ki, kd, kp_speed, ki_speed, kd_speed]
 
 - name: get_motor_pos_pid_param
   op: "7"

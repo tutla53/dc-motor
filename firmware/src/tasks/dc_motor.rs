@@ -43,6 +43,7 @@ pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_ccw: PioPwm<'d, T, SM2>,
     speed_control: PIDcontrol,
     position_control: PIDcontrol,
+    speed_for_position_control: PIDcontrol, 
     control_mode: ControlMode,
     motor: &'static MotorState,
 }
@@ -54,6 +55,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             pwm_ccw,
             speed_control: PIDcontrol::new_speed_pid(motor.get_max_pwm_output_us() as i32),
             position_control: PIDcontrol::new_position_pid(motor.get_max_speed_cps() as i32),
+            speed_for_position_control: PIDcontrol::new_speed_pid(motor.get_max_pwm_output_us() as i32),
             control_mode: ControlMode::Stop,
             motor,
         }
@@ -78,6 +80,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         
         self.position_control.reset();
         self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
+        
+        self.speed_for_position_control.reset();
+        self.speed_for_position_control.update_pid_param(new_pos_pid.kp_speed, new_pos_pid.ki_speed, new_pos_pid.kd_speed);
         self.motor.set_commanded_pos(current_pos).await;
     }
 
@@ -146,6 +151,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                 MotorCommand::PositionControl(input_shape) => {
                     if self.control_mode != ControlMode::Position {
                         self.position_control.reset();
+                        self.speed_for_position_control.reset();
                         self.control_mode = ControlMode::Position;
                         initial_pos = self.motor.get_current_pos().await;
                         start_time = Instant::now();
@@ -170,7 +176,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 
                     let current_speed = self.motor.get_current_speed().await;
                     let speed_error = target_speed - current_speed;
-                    let sig = self.speed_control.compute(speed_error as f32);
+                    let sig = self.speed_for_position_control.compute(speed_error as f32);
                     self.move_motor(sig);
                     ticker.next().await;
                 },

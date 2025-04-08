@@ -8,6 +8,7 @@ use {
             MotorCommand,
             Shape,
             PIDConfig,
+            PosPIDConfig,
             MotorState,
             MOTOR_0,
             LOGGER,
@@ -149,14 +150,34 @@ impl<'a> CommandHandler<'a> {
                         Ok(ki) => {
                             match self.parts[4].parse::<f32>() {
                                 Ok(kd) => {
-                                    motor_id.set_pos_pid(PIDConfig{kp: kp, ki: ki, kd: kd}).await;
-                                },
+                                    match self.parts[5].parse::<f32>() {
+                                        Ok(kp_speed) => {
+                                            match self.parts[6].parse::<f32>() {
+                                                Ok(ki_speed) => {
+                                                    match self.parts[7].parse::<f32>() {
+                                                        Ok(kd_speed) => {                                    
+                                                            motor_id.set_pos_pid(PosPIDConfig{kp: kp, ki: ki, kd: kd, kp_speed: kp_speed, ki_speed: ki_speed, kd_speed: kd_speed}).await;
+                                                        },
+                                                        Err(e) => {
+                                                            log::info!("Invalid kd_speed value {:?}", e);
+                                                        }
+                                                    }
+                                                },
+                                                Err(e) => {
+                                                    log::info!("Invalid ki_speed value {:?}", e);
+                                                }
+                                            }
+                                        },
+                                        Err(e) => {
+                                            log::info!("Invalid kp_speed value {:?}", e);
+                                        }
+                                    }
+                                },    
                                 Err(e) => {
-                                    log::info!("Invalid kp value {:?}", e);
+                                    log::info!("Invalid kd value {:?}", e);
                                 }
                             } 
                         },
-
                         Err(e) => {
                             log::info!("Invalid ki value {:?}", e);
                         }
@@ -177,7 +198,7 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let pid = motor_id.get_pos_pid().await;
-            log::info!("Pos => kp:{}, ki:{}, kd:{}", pid.kp, pid.ki, pid.kd);
+            log::info!("Pos => kp:{}, ki:{}, kd:{}, kp_speed:{}, ki_speed:{}, kd_speed:{}", pid.kp, pid.ki, pid.kd, pid.kp_speed, pid.ki_speed, pid.kd_speed);
         }
     }
 
