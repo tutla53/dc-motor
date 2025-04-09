@@ -7,10 +7,10 @@ import Config.Motor0 as config
 N_ENUM = 4
 
 LOG_MASK = [
-    'MotorPosition(Rotation)', #1
-    'MotorSpeed(RPM)', #2
-    'CommandedPosition(Rotation)', #4
-    'CommandedSpeed(RPM)', #8
+    'Motor_Position', #1
+    'Motor_Speed', #2
+    'Commanded_Position', #4
+    'Commanded_Speed', #8
 ]
 
 SCALE_OFFSET_MOTOR = [

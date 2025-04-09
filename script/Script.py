@@ -1,4 +1,7 @@
 from Device.Device import *
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 import time
 import math
 
@@ -11,7 +14,7 @@ def speed_test(speed_rpm, time_sampling = 5):
 
 def pos_trapezoid_test(position_rotation, speed, acc, time_sampling=5):
     current_pos = motor0.get_motor_pos()['pos_rotation']
-    duration = calculate_motion_time(position_rotation-current_pos, speed, acc) + 2
+    duration = calculate_motion_time(position_rotation-current_pos, speed, acc) + 1
 
     logger.run(time_sampling=time_sampling, mask=5)
     motor0.move_motor_pos_trapezoid(position_rotation, speed, acc)
@@ -54,3 +57,34 @@ def calculate_motion_time(target_distance, speed_rpm, acceleration_rpm_per_s):
         t_total = 2 * t_acc
     
     return t_total
+
+def save_image(path="LOG/20250409103638.csv"):
+    data = pd.read_csv(path)
+    t = data["Timestamp"]/1000.0
+    column_names = []
+    tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    plot_mode = "Position"
+
+    for column in data.columns:
+        if column == "Timestamp":
+            continue
+        if "Speed" in column:
+            plot_mode = "Speed"
+        column_names.append(column)
+
+    for column in column_names:
+        plt.plot(t, data[column], label = column)
+    
+    if plot_mode == "Position":
+        plt.ylabel("Position (Rotation)")
+        plt.title("Position Response")
+
+    elif plot_mode == "Speed":
+        plt.ylabel("Speed (RPM)")
+        plt.title("Speed Response")
+
+    plt.xlabel("Time (s)")
+    plt.legend()
+    plt.grid()
+    plt.savefig("LOG/IMG/result_"+tag+".jpg", dpi = 300)
+    plt.close()
