@@ -23,11 +23,12 @@ class Pico:
             name = cmd['name']
             op = cmd['op']
             args = cmd.get('args', [])
+            ret = cmd.get('ret', [])
             
             # Create method with appropriate signature
-            def command_method(self, *values, op_code=op, params=args):
+            def command_method(self, *values, op_code=op, params=args, ret=ret):
                 if len(values) != len(params):
-                    raise ValueError(f"Expected {len(params)} arguments, got {len(values)}")
+                    return f"Expected {params} arguments, got {len(values)}"
                 
                 # Build command string
                 cmd_str = op_code
@@ -35,8 +36,13 @@ class Pico:
                     cmd_str += f" {val}"
                 
                 # Determine if we should print echo (default True except for logger commands)
-                print_echo = not op_code in ["1", "2", "10", "11"]
-                self.send_cmd(cmd_str.encode('UTF-8'), print_echo)
+                print_echo = True if len(ret)>0 else False
+                value = self.send_cmd(cmd_str.encode('UTF-8'), print_echo)  # Return the response
+                if print_echo :
+                    response = {}
+                    for i in range(0, len(value)):
+                        response[ret[i]] = value[i]
+                    return response
             
             # Set method name and parameters
             command_method.__name__ = name
@@ -92,11 +98,23 @@ class Pico:
                 time.sleep(0.1)
 
                 if print_echo:
+                    response_lines = []
+                    raw_lines = []
                     while self.ser.in_waiting:
                         data = self.ser.readline()
-                        print(data.decode("UTF-8").strip())
+                        raw_lines.append(data)
 
+                    for line in raw_lines:
+                        value = line.decode('utf-8', errors='replace').strip()
+                        for x in value.split(' '):
+                            try:
+                                new_value = float(x.strip())
+                                response_lines.append(new_value)
+                            except:
+                                continue
+                    return response_lines
+                return None  # Return None if print_echo is False
             except serial.SerialException as e:
-                print(f"Serial error: {e}")
+                return f"Serial error: {e}"
             except Exception as e:
-                print(f"Unexpected error: {e}")
+                return f"Unexpected error: {e}"

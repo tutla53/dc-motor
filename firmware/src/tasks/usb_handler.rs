@@ -198,7 +198,7 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let pid = motor_id.get_pos_pid().await;
-            log::info!("Pos => kp:{}, ki:{}, kd:{}, kp_speed:{}, ki_speed:{}, kd_speed:{}", pid.kp, pid.ki, pid.kd, pid.kp_speed, pid.ki_speed, pid.kd_speed);
+            log::info!("{} {} {} {} {} {}", pid.kp, pid.ki, pid.kd, pid.kp_speed, pid.ki_speed, pid.kd_speed);
         }
     }
 
@@ -243,7 +243,7 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let pid = motor_id.get_speed_pid().await;
-            log::info!("Speed => kp:{}, ki:{}, kd:{}", pid.kp, pid.ki, pid.kd);
+            log::info!("{} {} {}", pid.kp, pid.ki, pid.kd);
         }
     }
 

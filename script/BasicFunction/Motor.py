@@ -31,7 +31,11 @@ class MoveMotor:
         self.dev.stop_motor(self.motor_id)
     
     def get_motor_pos(self):
-        self.dev.get_motor_pos(self.motor_id)
+        pos = self.dev.get_motor_pos(self.motor_id)
+        pos['pos_rotation'] = pos['pos_count']/48.4
+        return pos
     
     def get_motor_speed(self):
-        self.dev.get_motor_speed(self.motor_id)
+        speed  = self.dev.get_motor_speed(self.motor_id)
+        speed['speed_rpm'] = (speed['speed_cps']*60)/48.4
+        return speed
