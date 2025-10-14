@@ -42,6 +42,7 @@ impl<'a> CommandHandler<'a> {
             "12" => { self.move_motor_abs_pos_trapezoid().await; }
             "13" => { self.get_motor_pos().await; }
             "14" => { self.get_motor_speed().await; }
+            "15" => { self.move_motor_open_loop().await;}
             _ => { log::info!("Command not found"); },
         }
     }
@@ -95,6 +96,22 @@ impl<'a> CommandHandler<'a> {
 
     async fn stop_logger(&self) {
         LOGGER.set_logging_state(false).await;
+    }
+
+    async fn move_motor_open_loop(&self) {
+        if self.parts.len() < 3 {
+            log::info!("Insufficient Argument(s): [motor_id: u8, pwm: i32]");
+            return;
+        }
+        
+        if let Some(motor_id) = self.get_motor_id(1) {
+            match self.parts[2].parse::<i32>() {
+                Ok(pos) => { 
+                    motor_id.set_motor_command(MotorCommand::OpenLoop(pos)).await; 
+                },
+                Err(e) => { log::info!("Invalid Motor Speed: {:?}", e); }
+            } 
+        }
     }
 
     async fn move_motor_speed(&self) {

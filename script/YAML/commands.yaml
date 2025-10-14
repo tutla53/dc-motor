@@ -1,4 +1,4 @@
-# Version: 0.0.4
+# Version: 0.0.5
 
 - name: start_logger
   op: "1"
@@ -69,3 +69,8 @@
   op: "14"
   args: [motor_id]
   ret: [speed_cps]
+
+- name: move_motor_open_loop
+  op: "15"
+  args: [motor_id, pwm]
+  ret: []

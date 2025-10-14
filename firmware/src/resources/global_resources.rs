@@ -23,6 +23,7 @@ pub enum Shape {
 pub enum MotorCommand {
     SpeedControl(Shape),
     PositionControl(Shape),
+    OpenLoop(i32),
     Stop,
 }
 

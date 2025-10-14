@@ -31,6 +31,7 @@ use embassy_time::Duration;
 enum ControlMode {
     Speed,
     Position,
+    OpenLoop,
     Stop,
 }
 
@@ -118,6 +119,17 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             let command = self.motor.get_motor_command().await;
                 
             match command {
+                MotorCommand::OpenLoop(sig) => {
+                    if self.control_mode != ControlMode::OpenLoop {
+                        self.speed_control.reset();
+                        self.control_mode = ControlMode::OpenLoop;
+                        initial_speed = self.motor.get_current_speed().await;
+                    }
+                    
+                    self.motor.set_commanded_speed(sig).await;
+                    self.move_motor(sig);
+                    ticker.next().await;
+                },
                 MotorCommand::SpeedControl(input_shape) => {
                     if self.control_mode != ControlMode::Speed {
                         self.speed_control.reset();
