@@ -3,12 +3,8 @@
 */
 
 // Resources
-use crate::resources::{
-        global_resources:: {
-            MOTOR_0,
-            LOGGER,
-        },
-    };
+use crate::resources::global_resources::MOTOR_0;
+use crate::resources::global_resources::LOGGER;
 
 // Library
 use core::fmt::Write;
