@@ -5,32 +5,28 @@
 *  - Overall PPR = 48.4 PPR or 484 Pulse per 10 Rotation
 */
 
-use {
-    crate::{
-        tasks::{
-            pid_control::PIDcontrol,
-            motion_profile::TrapezoidProfile,
-        },
-        resources::{
-            global_resources::{
-                MotorCommand,
-                Shape, 
-                MotorState,
-            },
-        },
-    },
-    embassy_rp::{
-        peripherals::PIO0,
-        pio::Instance,
-        pio_programs::pwm::PioPwm,
-    },
-    embassy_time::{Ticker, Duration, Instant, Timer},
-    core::{
-        time::Duration as CoreDuration
-    },
-    {defmt_rtt as _, panic_probe as _},
-};
+// Resources
+use crate::resources::global_resources::Shape;
+use crate::resources::global_resources::MotorState;
+use crate::resources::global_resources::MotorCommand;
 
+// Tasks
+use crate::tasks::pid_control::PIDcontrol;
+use crate::tasks::motion_profile::TrapezoidProfile;
+
+// Library
+use core::time::Duration as CoreDuration;
+use defmt_rtt as _;
+use panic_probe as _;
+use embassy_rp::peripherals::PIO0;
+use embassy_rp::pio::Instance;
+use embassy_rp::pio_programs::pwm::PioPwm;
+use embassy_time::Timer;
+use embassy_time::Ticker;
+use embassy_time::Instant;
+use embassy_time::Duration;
+
+/* --------------------------- Code -------------------------- */
 #[derive(PartialEq)]
 enum ControlMode {
     Speed,

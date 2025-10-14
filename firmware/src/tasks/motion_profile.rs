@@ -2,11 +2,12 @@
     Motion Profile Generator
 */
 
-use {
-    libm::sqrtf,
-    {defmt_rtt as _, panic_probe as _},
-};
+// Library
+use defmt_rtt as _;
+use panic_probe as _;
+use libm::sqrtf;
 
+/* --------------------------- Code -------------------------- */
 pub struct TrapezoidProfile {
     initial_position: f32,
     target_position: f32,

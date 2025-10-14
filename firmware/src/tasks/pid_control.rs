@@ -2,10 +2,11 @@
     Encoder Task
 */
 
-use {
-    {defmt_rtt as _, panic_probe as _},
-};
+// Library
+use defmt_rtt as _;
+use panic_probe as _;
 
+/* --------------------------- Code -------------------------- */
 pub struct PIDcontrol {
     kp: f32,
     ki: f32,

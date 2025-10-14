@@ -1,13 +1,15 @@
+/* 
+* Global Resources 
+*/
 
-use {
-    embassy_sync::{
-        mutex::Mutex,
-        channel::Channel,
-        blocking_mutex::raw::CriticalSectionRawMutex,
-    },
-    {defmt_rtt as _, panic_probe as _},
-};
+// Library
+use defmt_rtt as _;
+use panic_probe as _;
+use embassy_sync::mutex::Mutex;
+use embassy_sync::channel::Channel;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
+/* --------------------------- Code -------------------------- */
 pub static MOTOR_0: MotorState = MotorState::new();
 pub static LOGGER: LoggerState = LoggerState::new();
 

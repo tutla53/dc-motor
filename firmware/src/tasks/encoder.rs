@@ -2,21 +2,21 @@
     Encoder Task
 */
 
-use {
-    crate::resources::{
-        global_resources::MotorState,
-    },
-    embassy_rp::{
-        peripherals::PIO0,
-        pio::Instance,
-        pio_programs::{
-            rotary_encoder::{Direction, PioEncoder},
-        },
-    },
-    embassy_time::{Duration, Instant, with_timeout},
-    {defmt_rtt as _, panic_probe as _},
-};
+// Resources
+use crate::resources::global_resources::MotorState;
 
+// Library
+use defmt_rtt as _;
+use panic_probe as _;
+use embassy_rp::peripherals::PIO0;
+use embassy_rp::pio::Instance;
+use embassy_rp::pio_programs::rotary_encoder::Direction;
+use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
+use embassy_time::Duration;
+use embassy_time::Instant;
+use embassy_time::with_timeout;
+
+/* --------------------------- Code -------------------------- */
 pub struct MovingAverage<const N: usize> {
     buffer: [i32; N],
     index: usize,

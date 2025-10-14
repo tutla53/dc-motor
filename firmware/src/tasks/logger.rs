@@ -2,22 +2,26 @@
 * Logger Task
 */
 
-use {
-    crate::resources::{
+// Resources
+use crate::resources::{
         global_resources:: {
             MOTOR_0,
             LOGGER,
         },
-    },
-    embassy_sync::{
-        channel::Channel,
-        blocking_mutex::raw::CriticalSectionRawMutex,
-    },
-    core::fmt::Write,
-    embassy_time::{Ticker, Duration, Instant, Timer},
-    {defmt_rtt as _, panic_probe as _},
-};
+    };
 
+// Library
+use core::fmt::Write;
+use defmt_rtt as _;
+use panic_probe as _;
+use embassy_sync::channel::Channel;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_time::Ticker;
+use embassy_time::Duration;
+use embassy_time::Instant;
+use embassy_time::Timer;
+
+/* --------------------------- Code -------------------------- */
 static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogData, 2048> = Channel::new();
 
 fn send_logged_data(data: LogData) {

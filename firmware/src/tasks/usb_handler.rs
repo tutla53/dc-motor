@@ -2,22 +2,21 @@
 * USB Handler
 */
 
-use {
-    crate::resources::{
-        global_resources::{
-            MotorCommand,
-            Shape,
-            PIDConfig,
-            PosPIDConfig,
-            MotorState,
-            MOTOR_0,
-            LOGGER,
-        },
-    },
-    core::str, 
-    {defmt_rtt as _, panic_probe as _},
-};
+// Resources
+use crate::resources::global_resources::MotorCommand;
+use crate::resources::global_resources::Shape;
+use crate::resources::global_resources::PIDConfig;
+use crate::resources::global_resources::PosPIDConfig;
+use crate::resources::global_resources::MotorState;
+use crate::resources::global_resources::MOTOR_0;
+use crate::resources::global_resources::LOGGER;
 
+// Library
+use core::str;
+use defmt_rtt as _;
+use panic_probe as _;
+
+/* --------------------------- Code -------------------------- */
 pub struct CommandHandler<'a> {
     pub parts: &'a [&'a str],
 }
