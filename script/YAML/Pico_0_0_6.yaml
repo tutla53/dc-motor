@@ -1,0 +1,131 @@
+# Version: 0.0.5
+
+#---------------------------------- Logger -----------------------------------#
+- LogMotorBitMask: 
+  - Motor_Position:     1
+  - Motor_Speed:        2
+  - Commanded_Position: 4
+  - Commanded_Speed:    8
+
+- name: start_logger
+  op: "1"
+  args: [time_sampling, logmask]
+  ret: []
+  desc: |
+        Start data logger
+        Argument(s)
+        - time_sampling -> time sampling in ms (min 1 ms)
+        - logmask -> please see LogMotorBitMask
+  
+- name: stop_logger
+  op: "2"
+  args: []
+  ret: []
+  desc: Command the firmware to stop logging the data
+
+- name: get_logged_item
+  op: "10"
+  args: []
+  ret: []
+  desc: Read log data from a starting index, maximum data per command is 50 items.
+
+- name: clear_logged_item
+  op: "11"
+  args: []
+  ret: []
+  desc: Clear logged item list
+
+#-------------------------------- Motor Config ---------------------------------#
+- name: set_pid_motor_pos
+  op: "6"
+  args: [motor_id, kp, ki, kd, kp_speed, ki_speed, kd_speed]
+  ret: []
+  desc: |
+        Set motor position PID parameter 
+        Argument(s)
+        - kp -> position proportional gain
+        - ki -> position integral gain
+        - kd -> position derivative gain
+        - kp_speed -> speed proportional gain
+        - ki_speed -> speed integral gain
+        - kd_speed -> speed derivative gain
+
+- name: set_pid_motor_speed
+  op: "8"
+  args: [motor_id, kp, ki, kd]
+  ret: []
+  desc: |
+        Set motor speed PID parameter 
+        Argument(s)
+        - kp -> speed proportional gain
+        - ki -> speed integral gain
+        - kd -> speed derivative gain
+
+- name: get_pid_motor_pos
+  op: "7"
+  args: [motor_id]
+  ret: [kp, ki, kd, kp_speed, ki_speed, kd_speed]
+  desc: Get motor position PID parameter, please see set_pid_motor_pos
+
+- name: get_pid_motor_speed
+  op: "9"
+  args: [motor_id]
+  ret: [kp, ki, kd]
+  desc: Get motor speed PID parameter, please see set_pid_motor_speed
+
+#--------------------------------- Move Motor ----------------------------------#
+- name: move_motor_speed
+  op: "3"
+  args: [motor_id, speed]
+  ret: []
+  desc: |
+        Motor Speed Control with Commanded Step Motion Profile
+        Argument(s)
+        - speed -> Speed Target in count per second (cps)
+
+- name: move_motor_abs_pos
+  op: "4"
+  args: [motor_id, target]
+  ret: []
+  desc: |
+        Motor Position Control with Commanded Step Motion Profile
+        Argument(s)
+        - target -> Position Target in Count
+
+- name: move_motor_abs_pos_trapezoid
+  op: "12"
+  args: [motor_id, target, vel, acc]
+  ret: []
+  desc: |
+        Motor Position Control with Commanded Trapezoid Motion Profile
+        Argument(s)
+        - target -> Position Target in Count
+        - vel -> Commanded Velocity in Count per Second (cps)
+        - acc -> Commanded Acceleration in Count per Second Square (cps2)
+
+- name: move_motor_open_loop
+  op: "15"
+  args: [motor_id, pwm]
+  ret: []
+  desc: | 
+        Motor Speed Control with Open Loop Mode
+        Argument(s)
+        - pwm -> pwm duty cycle from 0 - 1000
+
+- name: stop_motor
+  op: "5"
+  args: [motor_id]
+  ret: []
+  desc: Stop the motor
+
+- name: get_motor_pos
+  op: "13"
+  args: [motor_id]
+  ret: [pos_count]
+  desc: Get motor position in Count
+
+- name: get_motor_speed
+  op: "14"
+  args: [motor_id]
+  ret: [speed_cps]
+  desc: Get motor speed in Count per Second (cps)
