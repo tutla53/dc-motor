@@ -1,30 +1,39 @@
-from Device.Device import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import time
 import math
 
+import Board.Pico as Board
+import FWLogger.FWLogger as Logger
+import BasicFunction.Motor as Motor
+import Config.Motor0
+
+yaml_path = "YAML/Pico_0_0_6.yaml"
+p = Board.Pico(yaml_path)
+m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
+logger = Logger.FWLogger(p)
+
 def speed_test(speed_rpm, time_sampling = 5):
     logger.run(time_sampling=time_sampling, mask=10)
-    motor0.move_motor_speed(speed_rpm)
+    m0.move_motor_speed(speed_rpm)
     time.sleep(3)
     logger.stop()
     p.stop_motor(0)
 
 def pos_trapezoid_test(position_rotation, speed, acc, time_sampling=5):
-    current_pos = motor0.get_motor_pos()['pos_rotation']
+    current_pos = m0.get_motor_pos()['pos_rotation']
     duration = calculate_motion_time(position_rotation-current_pos, speed, acc) + 1
 
     logger.run(time_sampling=time_sampling, mask=5)
-    motor0.move_motor_pos_trapezoid(position_rotation, speed, acc)
+    m0.move_motor_pos_trapezoid(position_rotation, speed, acc)
     time.sleep(duration)
     logger.stop()
     p.stop_motor(0)
 
 def pos_step_test(position_rotation, duration=3, time_sampling=5):
     logger.run(time_sampling=time_sampling, mask=5)
-    motor0.move_motor_pos_step(position_rotation)
+    m0.move_motor_pos_step(position_rotation)
     time.sleep(duration)
     logger.stop()
     p.stop_motor(0)
