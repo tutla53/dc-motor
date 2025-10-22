@@ -20,10 +20,13 @@ class Pico:
             commands = yaml.safe_load(f)
         
         for cmd in commands:
-            name = cmd['name']
-            op = cmd['op']
-            args = cmd.get('args', [])
-            ret = cmd.get('ret', [])
+            try:
+                name = cmd['name']
+                op = cmd['op']
+                args = cmd.get('args', [])
+                ret = cmd.get('ret', [])
+            except:
+                continue
             
             # Create method with appropriate signature
             def command_method(self, *values, op_code=op, params=args, ret=ret):
