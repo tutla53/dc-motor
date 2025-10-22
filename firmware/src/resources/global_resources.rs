@@ -35,7 +35,6 @@ pub struct PosPIDConfig {
     pub kp_speed: f32,
     pub ki_speed: f32,
     pub kd_speed: f32,
-
 }
 
 #[derive(Clone, Copy)]
