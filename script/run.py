@@ -38,6 +38,18 @@ def pos_step_test(position_rotation, duration=3, time_sampling=5):
     logger.stop()
     p.stop_motor(0)
 
+def open_loop_test(pwm, duration=3, time_sampling=5):
+    logger.run(time_sampling=time_sampling, mask=18)
+    m0.move_motor_open_loop(pwm)
+    time.sleep(duration)
+    logger.stop()
+    p.stop_motor(0)
+
+def encoder_check():
+    while True:
+        print(m0.get_motor_pos())
+        time.sleep(0.1)
+
 def calculate_motion_time(target_distance, speed_rpm, acceleration_rpm_per_s):
     # Convert RPM and RPM/s to rotations per second and rotations per second squared
     v_max = speed_rpm / 60.0  # rotations per second

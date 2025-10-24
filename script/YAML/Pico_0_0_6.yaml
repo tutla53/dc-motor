@@ -6,6 +6,7 @@
   - Motor_Speed:        2
   - Commanded_Position: 4
   - Commanded_Speed:    8
+  - Commanded_Pwm:      16 # Available only on move_motor_open_loop
 
 - name: start_logger
   op: "1"

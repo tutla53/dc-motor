@@ -92,16 +92,18 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.motor.set_commanded_speed(current_speed).await;
     }
 
-    pub fn move_motor(&mut self, mut pwm: i32) {
+    pub async fn move_motor(&mut self, mut pwm: i32) {
         let threshold = self.motor.get_max_pwm_output_us() as i32;
 
         if pwm > 0 {
             if pwm > threshold { pwm = threshold; }
+            self.motor.set_commanded_pwm(pwm).await;
             self.pwm_cw.write(CoreDuration::from_micros(pwm.abs() as u64));
             self.pwm_ccw.write(CoreDuration::from_micros(0));
         }
         else {
             if pwm < -threshold { pwm = -threshold; }
+            self.motor.set_commanded_pwm(pwm).await;
             self.pwm_cw.write(CoreDuration::from_micros(0));
             self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
         }
@@ -126,8 +128,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                         initial_speed = self.motor.get_current_speed().await;
                     }
                     
-                    self.motor.set_commanded_speed(sig).await;
-                    self.move_motor(sig);
+                    self.move_motor(sig).await;
                     ticker.next().await;
                 },
                 MotorCommand::SpeedControl(input_shape) => {
@@ -153,7 +154,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     let current_speed = self.motor.get_current_speed().await;
                     let error = commanded_speed - current_speed;
                     let sig = self.speed_control.compute(error as f32);
-                    self.move_motor(sig);
+                    self.move_motor(sig).await;
                     ticker.next().await;    
                 },
                 MotorCommand::PositionControl(input_shape) => {
@@ -185,12 +186,12 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     let current_speed = self.motor.get_current_speed().await;
                     let speed_error = target_speed - current_speed;
                     let sig = self.speed_for_position_control.compute(speed_error as f32);
-                    self.move_motor(sig);
+                    self.move_motor(sig).await;
                     ticker.next().await;
                 },
                 MotorCommand::Stop => {
                     self.control_mode = ControlMode::Stop;
-                    self.move_motor(0);
+                    self.move_motor(0).await;
                     
                     self.update_pos_config().await;
                     self.update_speed_config().await;

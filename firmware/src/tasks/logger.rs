@@ -37,6 +37,7 @@ enum LogMask {
     MotorSpeed = 1 << 1,
     CommandedPosition = 1 << 2,
     CommandedSpeed = 1 << 3,
+    CommandedPwm = 1 << 4,
 }
 
 struct LogData {
@@ -46,6 +47,7 @@ struct LogData {
     motor_position: i32,
     commanded_speed: i32,
     commanded_position: i32,
+    commanded_pwm: i32,
 }
 
 impl LogData {
@@ -73,6 +75,11 @@ impl LogData {
             } else {
                 0
             },
+            commanded_pwm: if (mask & LogMask::CommandedPwm as u32) != 0 {
+                MOTOR_0.get_commanded_pwm().await
+            } else {
+                0
+            },            
         }
     }
     
@@ -92,6 +99,9 @@ impl LogData {
         }
         if (self.mask & LogMask::CommandedPosition as u32) != 0 {
             write!(&mut output, " {}", self.commanded_position).unwrap();
+        }
+        if (self.mask & LogMask::CommandedPwm as u32) != 0 {
+            write!(&mut output, " {}", self.commanded_pwm).unwrap();
         }
 
         return output;

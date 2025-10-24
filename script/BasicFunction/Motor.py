@@ -20,7 +20,11 @@ class MoveMotor:
         speed = int ((speed_rpm * 48.4)/60)
         acc = int ((acc_rpm * 48.4)/60)
         self.dev.move_motor_abs_pos_trapezoid(self.motor_id, position, speed, acc)
-    
+
+    # Move Motor Speed Open Loop
+    def move_motor_open_loop(self, pwm):
+        self.dev.move_motor_open_loop(self.motor_id, pwm)
+
     def stop(self):
         self.dev.stop_motor(self.motor_id)
     

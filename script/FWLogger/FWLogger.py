@@ -4,13 +4,14 @@ import csv
 import Config.Motor0 as config
 
 # Logger Mask
-N_ENUM = 4
+N_ENUM = 5
 
 LOG_MASK = [
-    'Motor_Position', #1
-    'Motor_Speed', #2
-    'Commanded_Position', #4
-    'Commanded_Speed', #8
+    'Motor_Position(rotation)', #1
+    'Motor_Speed(RPM)', #2
+    'Commanded_Position(rotation)', #4
+    'Commanded_Speed(RPM)', #8
+    'Commanded_PWM', #16
 ]
 
 SCALE_OFFSET_MOTOR = [
@@ -18,6 +19,7 @@ SCALE_OFFSET_MOTOR = [
     [(60.0*config.ROTATION_PER_PULSE), 0],
     [(config.ROTATION_PER_PULSE), 0],
     [(60.0*config.ROTATION_PER_PULSE), 0],
+    [1, 0],
 ]
 
 class SThread:

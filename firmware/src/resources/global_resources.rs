@@ -102,6 +102,7 @@ pub struct MotorState {
     current_speed: Mutex<CriticalSectionRawMutex, i32>,
     current_commanded_pos: Mutex<CriticalSectionRawMutex, i32>,
     current_commanded_speed: Mutex<CriticalSectionRawMutex, i32>,
+    current_commanded_pwm: Mutex<CriticalSectionRawMutex, i32>,
     commanded_motor_speed: Mutex<CriticalSectionRawMutex, MotorCommand>,
     pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
@@ -117,6 +118,7 @@ impl MotorState {
             current_speed: Mutex::new(0),
             current_commanded_pos: Mutex::new(0),
             current_commanded_speed: Mutex::new(0),
+            current_commanded_pwm: Mutex::new(0),
             commanded_motor_speed: Mutex::new(MotorCommand::Stop),
             pos_pid: Mutex::new(PosPIDConfig{ kp: 10.0, ki: 0.0, kd: 2.0, kp_speed: 1.0, ki_speed: 0.025, kd_speed: 0.0}),
             speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.1, kd: 2.0}),
@@ -171,6 +173,15 @@ impl MotorState {
         *current_speed = speed;    
     }
     
+    pub async fn get_commanded_pwm(&self) -> i32 {
+        return *self.current_commanded_pwm.lock().await;
+    }
+    
+    pub async fn set_commanded_pwm(&self, pwm: i32) {
+        let mut current_pwm = self.current_commanded_pwm.lock().await;
+        *current_pwm = pwm;    
+    }
+
     pub async fn get_commanded_pos(&self) -> i32 {
         return *self.current_commanded_pos.lock().await;
     }
