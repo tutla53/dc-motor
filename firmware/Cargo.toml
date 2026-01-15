@@ -17,16 +17,15 @@ embassy-usb-logger = { version = "0.4.0" }
 defmt = "0.3"
 defmt-rtt = "0.4"
 
-# for assign resources example
 assign-resources = {version = "0.4.1"}
-
 heapless = { version = "0.8", default-features = false }
 cortex-m-rt = "0.7.0"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 log = "0.4"
 pio = "0.2.1"
-
 libm = "0.2.11"
+static_cell = "2.1.1"
+portable-atomic = { version = "1.13.0", features = ["critical-section"] }
 
 [profile.release]
 debug = 2

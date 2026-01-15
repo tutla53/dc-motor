@@ -25,10 +25,17 @@ use crate::tasks::encoder::encoder_task;
 // Library
 use core::str;
 use heapless::Vec;
+use static_cell::StaticCell;
 use defmt_rtt as _;
 use panic_probe as _;
 
-use embassy_executor::Spawner;
+use embassy_executor::Executor;
+use embassy_executor::InterruptExecutor;
+use embassy_rp::multicore::Stack;
+use embassy_rp::multicore::spawn_core1;
+use embassy_rp::interrupt;
+use embassy_rp::interrupt::InterruptExt;
+use embassy_rp::interrupt::Priority;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_rp::pio::Pio;
@@ -39,6 +46,11 @@ use embassy_rp::pio_programs::pwm::PioPwm;
 use embassy_usb_logger::ReceiverHandler;
 
 /* --------------------------- Code -------------------------- */
+static mut CORE1_STACK: Stack<4096> = Stack::new();
+static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
+static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
+static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+
 struct UsbHandler;
 
 impl ReceiverHandler for UsbHandler {
@@ -64,8 +76,13 @@ async fn usb_logger_task(driver: Driver<'static, USB>) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver, UsbHandler);
 }
 
-#[embassy_executor::main]
-async fn main(spawner: Spawner) {
+#[interrupt]
+unsafe fn SWI_IRQ_1() {
+    unsafe { EXECUTOR_HIGH.on_interrupt() }
+}
+
+#[cortex_m_rt::entry]
+fn main() -> ! {
     let ph = embassy_rp::init(Default::default());
     let p =  split_resources!(ph);
     let usb_driver = Driver::new(ph.USB, Irqs);
@@ -102,10 +119,25 @@ async fn main(spawner: Spawner) {
                     filter,
                 );
     
-    spawner.must_spawn(usb_logger_task(usb_driver));
-    spawner.must_spawn(encoder_task(encoder));
-    spawner.must_spawn(motor_task(dc_motor));
-    spawner.must_spawn(firmware_logger_task());
-    spawner.must_spawn(send_logger_task());
+    spawn_core1(
+        ph.CORE1,
+        unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
+        move || {
+            let executor1 = EXECUTOR1.init(Executor::new());
+            executor1.run(|spawner| {
+                spawner.must_spawn(motor_task(dc_motor))
+            });
+        },
+    );
 
+    interrupt::SWI_IRQ_1.set_priority(Priority::P2);
+    let spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_1);
+    spawner.must_spawn(encoder_task(encoder));    
+
+    let executor0 = EXECUTOR0.init(Executor::new());
+    executor0.run(|spawner| {
+        spawner.must_spawn(usb_logger_task(usb_driver));
+        spawner.must_spawn(firmware_logger_task());
+        spawner.must_spawn(send_logger_task());
+    });
 }
