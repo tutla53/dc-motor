@@ -95,6 +95,7 @@ class FWLogger:
         
         tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
         self.save_to_csv("LOG/"+tag+".csv")
+        self.p.clear_logged_item()
     
     def get_n_col(self, mask: int):
         count = 0
