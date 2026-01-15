@@ -23,12 +23,14 @@ def speed_test(speed_rpm, time_sampling = 5):
 
 def pos_trapezoid_test(position_rotation, speed, acc, time_sampling=5):
     current_pos = m0.get_motor_pos()['pos_rotation']
-    duration = calculate_motion_time(position_rotation-current_pos, speed, acc) + 1
+    additional_duration = 5 # Percent of main duration
+    duration = calculate_motion_time(position_rotation-current_pos, speed, acc)
     print(f"Duration (est): {duration:.2f}s")
 
     logger.run(time_sampling=time_sampling, mask=5)
+    time.sleep(duration*(additional_duration/100))
     m0.move_motor_pos_trapezoid(position_rotation, speed, acc)
-    time.sleep(duration)
+    time.sleep(duration*((100+(2*additional_duration))/100))
     logger.stop()
     p.stop_motor(0)
 
