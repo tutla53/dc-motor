@@ -89,9 +89,9 @@ class FWLogger:
             with self.p.lock:
                 self.p.get_logged_item()
                 data = self.ser.readline()
-            if len(data) == 3:
-                break
-            self.logged_data.append(data)
+                if len(data) == 3:
+                    break
+                self.logged_data.append(data)
         
         tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
         self.save_to_csv("LOG/"+tag+".csv")
@@ -142,8 +142,11 @@ class FWLogger:
                 
                 for data_line in self.logged_data:
                     try:
-                        decoded = data_line.decode('utf-8', errors='replace').strip()
-                        integer_list = list(map(int, decoded.split()))
+                        decoded = data_line.decode('utf-8', errors='replace').strip().split(" ")
+                        if decoded[0] == "event":
+                            continue
+                        decoded = decoded[1:]
+                        integer_list = list(map(int, decoded))
                         count = integer_list[0] if integer_list else 0
                         idx = 1
                         

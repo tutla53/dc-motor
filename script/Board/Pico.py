@@ -5,6 +5,31 @@ import serial.tools.list_ports
 import threading
 import time
 
+class SThread:
+    def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
+        self.func = func
+        self.arg = args
+        self.daemon = daemon
+        self.thread = None
+        self.lock = threading.Lock()
+        self.withlock = withlock
+        if runimmidietly:self.run(*self.arg ,withlock=withlock)
+        
+    def run(self,*args,withlock=False):
+        if withlock:
+            with self.lock:
+
+                self.thread = threading.Thread(target=self.func, args=(*args,))
+                self.thread.daemon = self.daemon
+                self.thread.start()
+        else:
+            self.thread = threading.Thread(target=self.func, args=(*args,))
+            self.thread.daemon = self.daemon
+            self.thread.start()
+
+    def stop(self):
+        self.thread.join()
+
 class Pico:
     def __init__(self, yaml_path="", com=None):
         self.ser = None
@@ -12,8 +37,13 @@ class Pico:
         self.defaultCOM = None
         self.baud_rate = 115200
         self.lock = threading.RLock()  # Use RLock for reentrant locking
+        self.event_queue = []
+        self.error_queue = []
+        self.is_listener_on = False
         self.connect(com)
         self._load_commands_from_yaml(yaml_path)  # Load command definitions
+        self.run()
+        # self.get_motor_pos(0)
 
     def _load_commands_from_yaml(self, yaml_path):
         with open(yaml_path, 'r') as f:
@@ -40,12 +70,28 @@ class Pico:
                 
                 # Determine if we should print echo (default True except for logger commands)
                 print_echo = True if len(ret)>0 else False
-                value = self.send_cmd(cmd_str.encode('UTF-8'), print_echo)  # Return the response
-                if print_echo :
+                status = self.send_cmd(cmd_str.encode('UTF-8'), print_echo)  # Return the response
+                retry_count = 10
+
+                if status == None:
+                    return None
+                
+                elif status[0] == "data":
+                    value = status[1:]
+                    response_lines = []
                     response = {}
+
                     for i in range(0, len(value)):
-                        response[ret[i]] = value[i]
+                        for x in value:
+                            try:
+                                new_value = float(x.strip())
+                                response_lines.append(new_value)
+                            except:
+                                continue
+                        response[ret[i]] = response_lines[i]
                     return response
+                else:
+                    return None
             
             # Set method name and parameters
             command_method.__name__ = name
@@ -93,31 +139,59 @@ class Pico:
             if not stat:
                 self.defaultCOM = self.newinput
                 self.connect(self.newinput)
-
+    
     def send_cmd(self, cmd, print_echo=True):
-        with self.lock:  # Use the RLock to synchronize
-            try:
+        try:
+            with self.lock:  # Use the RLock to synchronize
                 self.ser.write(cmd)
-                time.sleep(0.1)
+                time.sleep(0.01)
 
                 if print_echo:
-                    response_lines = []
-                    raw_lines = []
                     while self.ser.in_waiting:
                         data = self.ser.readline()
-                        raw_lines.append(data)
 
-                    for line in raw_lines:
-                        value = line.decode('utf-8', errors='replace').strip()
-                        for x in value.split(' '):
-                            try:
-                                new_value = float(x.strip())
-                                response_lines.append(new_value)
-                            except:
-                                continue
-                    return response_lines
-                return None  # Return None if print_echo is False
-            except serial.SerialException as e:
-                return f"Serial error: {e}"
-            except Exception as e:
-                return f"Unexpected error: {e}"
+                    message = data.decode('utf-8', errors='replace').strip().split(" ")
+                    return message
+                
+            time.sleep(0.1)
+            return None
+        except serial.SerialException as e:
+            return f"Serial error: {e}"
+        except Exception as e:
+            return f"Unexpected error: {e}"
+    
+    def __EventListener(self, limit=1_000_000):
+        try:
+            count = 0
+            print("Event Listener is Ready")
+
+            while self.is_listener_on: # and count < limit:
+                if self.ser.in_waiting:
+                    with self.lock:  # Ensure atomic command and read
+                        message = self.ser.readline().decode('utf-8', errors='replace').strip().split(" ")
+                        
+                        if message[0] == "data" or message[0] == "log":
+                            continue
+                        elif message[0] == "event":
+                            self.event_queue.append(message[1:])
+                            # TODO: Implement Event Handler
+                        else:
+                            if len(message) > 1:
+                                self.error_queue.append(message)
+                            # TODO: Implement Error Handler
+
+                time.sleep(0.1)
+                count += 1
+        except Exception as e:
+            print(f"Logger error: {e}")
+
+    def run(self, limit=1_000_000):
+        try:
+            self.is_listener_on = True
+            self.logger_thread = SThread(self.__EventListener, True, limit)
+        except Exception as e:
+            print(f"Failed to start listener: {e}")
+
+    def print_queue(self):
+        print("Event:", self.event_queue)
+        print("Error:", self.error_queue)

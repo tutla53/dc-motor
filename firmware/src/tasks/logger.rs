@@ -152,7 +152,7 @@ pub async fn send_logger_task() {
                     }
                 }
 
-                log::info!("{}{}", count, output);
+                log::info!("log {}{}", count, output);
             }
             else {
                 log::info!("0");

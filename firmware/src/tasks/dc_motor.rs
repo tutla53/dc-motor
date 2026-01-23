@@ -42,6 +42,8 @@ pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     position_control: PIDcontrol,
     speed_for_position_control: PIDcontrol, 
     control_mode: ControlMode,
+    move_done: bool,
+    max_target:i32,
     motor: &'static MotorState,
 }
 
@@ -54,6 +56,8 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             position_control: PIDcontrol::new_position_pid(motor.get_max_speed_cps() as i32),
             speed_for_position_control: PIDcontrol::new_speed_pid(motor.get_max_pwm_output_us() as i32),
             control_mode: ControlMode::Stop,
+            move_done: false,
+            max_target: 10,
             motor,
         }
     }
@@ -162,17 +166,20 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                         self.position_control.reset();
                         self.speed_for_position_control.reset();
                         self.control_mode = ControlMode::Position;
+                        self.move_done = false;
                         initial_pos = self.motor.get_current_pos().await;
                         start_time = Instant::now();
                     }
-
+                    
                     let commanded_position = match input_shape {
                         Shape::Step(position) => {
+                            self.max_target = position;
                             position
                         }
                         Shape::Trapezoidal(distance, vel, acc) => {
                             let profile = TrapezoidProfile::new(initial_pos as f32, distance, vel, acc);
                             let elapsed = ((start_time.elapsed().as_millis()) as f32)/ 1000.0;
+                            self.max_target = distance as i32;
                             profile.position(elapsed) as i32
                         }
                     };
@@ -187,6 +194,15 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     let speed_error = target_speed - current_speed;
                     let sig = self.speed_for_position_control.compute(speed_error as f32);
                     self.move_motor(sig).await;
+                    
+                    // Move Done Event
+                    
+                    if (current_position - self.max_target).abs() < 5 && !self.move_done {
+                        self.move_done = true;
+                        log::info!("event Move Done");
+                        // TODO: Add Event Handler
+                    }
+
                     ticker.next().await;
                 },
                 MotorCommand::Stop => {
