@@ -18,18 +18,14 @@ use embassy_time::Instant;
 use embassy_time::Timer;
 
 /* --------------------------- Code -------------------------- */
-static LOGGER_CONTROL: Channel<CriticalSectionRawMutex, LogData, 2048> = Channel::new();
+static LOGGER_BUFFER: Channel<CriticalSectionRawMutex, LogData, 2048> = Channel::new();
 
-fn send_logged_data(data: LogData) {
-    let _ = LOGGER_CONTROL.try_send(data);
+fn send_data_to_buffer(data: LogData) {
+    let _ = LOGGER_BUFFER.try_send(data);
 }
 
-fn get_logged_data_len() -> usize {
-    return LOGGER_CONTROL.len();
-}
-
-fn clear_logged_data() {
-    LOGGER_CONTROL.clear();
+fn clear_buffer() {
+    LOGGER_BUFFER.clear();
 }
 
 enum LogMask {
@@ -83,28 +79,28 @@ impl LogData {
         }
     }
     
-    fn process(self) ->  heapless::String::<128> {
-        let mut output = heapless::String::<128>::new();
+    fn process(&self, output: &mut heapless::String<1024>) {
+        // let mut output = heapless::String::<256>::new();
 
-        write!(&mut output, "{}", self.dt).unwrap();
+        write!(output, " {}", self.dt).unwrap();
 
         if (self.mask & LogMask::MotorSpeed as u32) != 0 {
-            write!(&mut output, " {}", self.motor_speed).unwrap();
+            write!(output, " {}", self.motor_speed).unwrap();
         }
         if (self.mask & LogMask::MotorPosition as u32) != 0 {
-            write!(&mut output, " {}", self.motor_position).unwrap();
+            write!(output, " {}", self.motor_position).unwrap();
         }
         if (self.mask & LogMask::CommandedSpeed as u32) != 0 {
-            write!(&mut output, " {}", self.commanded_speed).unwrap();
+            write!(output, " {}", self.commanded_speed).unwrap();
         }
         if (self.mask & LogMask::CommandedPosition as u32) != 0 {
-            write!(&mut output, " {}", self.commanded_position).unwrap();
+            write!(output, " {}", self.commanded_position).unwrap();
         }
         if (self.mask & LogMask::CommandedPwm as u32) != 0 {
-            write!(&mut output, " {}", self.commanded_pwm).unwrap();
+            write!(output, " {}", self.commanded_pwm).unwrap();
         }
 
-        return output;
+        // return output;
     }
 }
 
@@ -119,9 +115,11 @@ pub async fn firmware_logger_task() {
         if logging {
             let mask = LOGGER.get_log_mask().await;
             let dt = start.elapsed().as_millis();
+            
+            // TODO: Optimize thise method --> reduce write! call
             let data = LogData::select(mask, dt).await;
 
-            send_logged_data(data);
+            send_data_to_buffer(data);
             ticker.next().await;
         }
         else {
@@ -139,16 +137,16 @@ pub async fn send_logger_task() {
     let mut output = heapless::String::<1024>::new();
 
     loop {
-        let command = LOGGER.get_logged_item().await;
+        let command = LOGGER.wait_for_log_request().await;
 
         if command {
-            let len = get_logged_data_len();
-            let count = len.min(50);
+            let count = LOGGER_BUFFER.len().min(50);
 
             if count > 0 {
                 for _ in 0..count {
-                    if let Ok(data) = LOGGER_CONTROL.try_receive() {   
-                        write!(&mut output, " {}", data.process()).unwrap(); 
+                    if let Ok(data) = LOGGER_BUFFER.try_receive() {   
+                        data.process(&mut output);
+                        // write!(&mut output, " {}", data.process()).unwrap(); 
                     }
                 }
 
@@ -161,7 +159,7 @@ pub async fn send_logger_task() {
         }
 
         else {
-            clear_logged_data();
+            clear_buffer();
             output.clear();
         }
     }
