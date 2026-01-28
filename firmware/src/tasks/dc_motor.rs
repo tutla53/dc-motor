@@ -9,6 +9,8 @@
 use crate::resources::global_resources::Shape;
 use crate::resources::global_resources::MotorState;
 use crate::resources::global_resources::MotorCommand;
+use crate::resources::global_resources::EventList;
+use crate::resources::global_resources::EVENT;
 
 // Tasks
 use crate::tasks::pid_control::PIDcontrol;
@@ -139,17 +141,20 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     if self.control_mode != ControlMode::Speed {
                         self.speed_control.reset();
                         self.control_mode = ControlMode::Speed;
+                        self.move_done = false;
                         initial_speed = self.motor.get_current_speed().await;
                         start_time = Instant::now();
                     }
 
                     let commanded_speed = match input_shape {
                         Shape::Step(speed) => {
+                            self.max_target = speed;
                             speed
                         },
                         Shape::Trapezoidal(distance, vel, acc) => {
                             let profile = TrapezoidProfile::new(initial_speed as f32, distance, vel, acc);
                             let elapsed = ((start_time.elapsed().as_millis()) as f32)/ 1000.0;
+                            self.max_target = distance as i32;
                             profile.position(elapsed) as i32
                         }
                     };
@@ -159,6 +164,13 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     let error = commanded_speed - current_speed;
                     let sig = self.speed_control.compute(error as f32);
                     self.move_motor(sig).await;
+
+                    // Move Done Event
+                    if (current_speed - self.max_target).abs() < 5 && !self.move_done {
+                        self.move_done = true;
+                        EVENT.set_event_item(EventList::MotorMoveDone(self.motor.get_id()));
+                    }
+
                     ticker.next().await;    
                 },
                 MotorCommand::PositionControl(input_shape) => {
@@ -196,11 +208,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     self.move_motor(sig).await;
                     
                     // Move Done Event
-                    
                     if (current_position - self.max_target).abs() < 5 && !self.move_done {
                         self.move_done = true;
-                        log::info!("event Move Done");
-                        // TODO: Add Event Handler
+                        EVENT.set_event_item(EventList::MotorMoveDone(self.motor.get_id()));
                     }
 
                     ticker.next().await;

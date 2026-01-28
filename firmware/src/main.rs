@@ -21,6 +21,7 @@ use crate::tasks::dc_motor::motor_task;
 use crate::tasks::encoder::RotaryEncoder;
 use crate::tasks::encoder::MovingAverage;
 use crate::tasks::encoder::encoder_task;
+use crate::tasks::event_handler::event_handler_task;
 
 // Library
 use core::str;
@@ -42,8 +43,6 @@ use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
 use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
 use embassy_usb_logger::ReceiverHandler;
-use embassy_time::Duration;
-use embassy_time::Ticker;
 
 /* --------------------------- Code -------------------------- */
 static mut CORE1_STACK: Stack<4096> = Stack::new();
@@ -68,18 +67,6 @@ impl ReceiverHandler for UsbHandler {
 
     fn new() -> Self {
         Self
-    }
-}
-
-#[embassy_executor::task]
-async fn event_task() {
-    let mut ticker = Ticker::every(Duration::from_secs(1));
-    let mut count = 0;
-
-    loop {
-        log::info!("event {}", count);
-        count += 1;
-        ticker.next().await;
     }
 }
 
@@ -137,16 +124,17 @@ fn main() -> ! {
         move || {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
-                spawner.must_spawn(motor_task(dc_motor))
+                spawner.must_spawn(motor_task(dc_motor));
+                spawner.must_spawn(encoder_task(encoder));  
             });
         },
     );   
 
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
-        spawner.must_spawn(encoder_task(encoder));  
         spawner.must_spawn(usb_logger_task(usb_driver));
         spawner.must_spawn(firmware_logger_task());
         spawner.must_spawn(send_logger_task());
+        spawner.must_spawn(event_handler_task());
     });
 }

@@ -9,10 +9,12 @@ use embassy_sync::mutex::Mutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
-/* --------------------------- Code -------------------------- */
-pub static MOTOR_0: MotorState = MotorState::new();
+/* --------------------------- Global Variables -------------------------- */
+pub static MOTOR_0: MotorState = MotorState::new(0);
 pub static LOGGER: LoggerState = LoggerState::new();
+pub static EVENT: EventHandler = EventHandler::new();
 
+/* --------------------------- ENUM -------------------------- */
 #[derive(Clone, Copy)]
 pub enum Shape {
     Step(i32),
@@ -27,6 +29,12 @@ pub enum MotorCommand {
     Stop,
 }
 
+#[derive(Clone, Copy)]
+pub enum EventList {
+    MotorMoveDone(i32),
+}
+
+/* --------------------------- Struct -------------------------- */
 #[derive(Clone, Copy)]
 pub struct PosPIDConfig {
     pub kp: f32,
@@ -48,16 +56,36 @@ pub struct LoggerState {
     logger_run: Mutex<CriticalSectionRawMutex, bool>,
     logger_time_sampling: Mutex<CriticalSectionRawMutex, u64>,
     log_mask: Mutex<CriticalSectionRawMutex, u32>,
-    log_item: Channel<CriticalSectionRawMutex, bool, 1024>,
+    log_request_queue: Channel<CriticalSectionRawMutex, bool, 1024>,
 }
 
+pub struct MotorState {
+    current_pos: Mutex<CriticalSectionRawMutex, i32>,
+    current_speed: Mutex<CriticalSectionRawMutex, i32>,
+    current_commanded_pos: Mutex<CriticalSectionRawMutex, i32>,
+    current_commanded_speed: Mutex<CriticalSectionRawMutex, i32>,
+    current_commanded_pwm: Mutex<CriticalSectionRawMutex, i32>,
+    commanded_motor_speed: Mutex<CriticalSectionRawMutex, MotorCommand>,
+    pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
+    speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
+    refresh_interval_us: u64,
+    max_pwm_output_us: u64,
+    max_speed_cps: i32,
+    id: i32, 
+}
+
+pub struct EventHandler {
+    motor_event: Channel<CriticalSectionRawMutex, EventList, 256>,
+}
+
+/* --------------------------- Struct Implementation -------------------------- */
 impl LoggerState {
     pub const fn new() -> Self {
         Self {
             logger_run: Mutex::new(false),
             logger_time_sampling: Mutex::new(10),
             log_mask: Mutex::new(0),
-            log_item: Channel::new(),
+            log_request_queue: Channel::new(),
         }
     }
 
@@ -88,31 +116,17 @@ impl LoggerState {
         *current = log_mask;
     }
 
-    pub fn set_logged_item(&self, cmd: bool) {
-        let _ = self.log_item.try_send(cmd);
+    pub fn add_log_request(&self, cmd: bool) {
+        let _ = self.log_request_queue.try_send(cmd);
     }
 
-    pub async fn get_logged_item(&self) -> bool {
-        return self.log_item.receive().await;
+    pub async fn wait_for_log_request(&self) -> bool {
+        return self.log_request_queue.receive().await;
     }
-}
-
-pub struct MotorState {
-    current_pos: Mutex<CriticalSectionRawMutex, i32>,
-    current_speed: Mutex<CriticalSectionRawMutex, i32>,
-    current_commanded_pos: Mutex<CriticalSectionRawMutex, i32>,
-    current_commanded_speed: Mutex<CriticalSectionRawMutex, i32>,
-    current_commanded_pwm: Mutex<CriticalSectionRawMutex, i32>,
-    commanded_motor_speed: Mutex<CriticalSectionRawMutex, MotorCommand>,
-    pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
-    speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
-    refresh_interval_us: u64,
-    max_pwm_output_us: u64,
-    max_speed_cps: i32,
 }
 
 impl MotorState {
-    pub const fn new() -> Self {
+    pub const fn new(id: i32) -> Self {
         Self {
             current_pos: Mutex::new(0),
             current_speed: Mutex::new(0),
@@ -125,6 +139,7 @@ impl MotorState {
             refresh_interval_us: 1000,
             max_pwm_output_us: 1000,
             max_speed_cps: 1130,
+            id: id,
         }
     }
 
@@ -210,5 +225,24 @@ impl MotorState {
 
     pub fn get_max_speed_cps(&self) -> i32 {
         return self.max_speed_cps;
+    }
+
+    pub fn get_id(&self) -> i32 {
+        return self.id;
+    }
+}
+
+impl EventHandler {
+    pub const fn new() -> Self {
+        Self {
+            motor_event: Channel::new(),
+        }
+    }
+    pub fn set_event_item(&self, cmd: EventList) {
+        let _ = self.motor_event.try_send(cmd);
+    }
+
+    pub async fn get_event_item(&self) -> EventList {
+        return self.motor_event.receive().await;
     }
 }

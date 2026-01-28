@@ -81,7 +81,7 @@ impl<'a> CommandHandler<'a> {
                         LOGGER.set_logging_time_sampling(time_sampling_ms).await;
                         LOGGER.set_log_mask(log_mask).await;
                         LOGGER.set_logging_state(true).await;
-                        LOGGER.set_logged_item(false);
+                        LOGGER.add_log_request(false);
                     },
                     Err(e) => {
                         log::info!("Invalid Log Mask {:?}", e);
@@ -264,11 +264,11 @@ impl<'a> CommandHandler<'a> {
     }
 
     fn get_logged_item(&self) {
-        let _ = LOGGER.set_logged_item(true);
+        let _ = LOGGER.add_log_request(true);
     }
 
     fn clear_logged_item(&self) {
-        let _ = LOGGER.set_logged_item(false);
+        let _ = LOGGER.add_log_request(false);
     }
 
     async fn move_motor_abs_pos_trapezoid(&self) {
@@ -327,5 +327,4 @@ impl<'a> CommandHandler<'a> {
             log::info!("data {}", motor_speed);
         }
     }
-
 }
