@@ -10,6 +10,8 @@ use crate::resources::global_resources::PosPIDConfig;
 use crate::resources::global_resources::MotorState;
 use crate::resources::global_resources::MOTOR_0;
 use crate::resources::global_resources::LOGGER;
+use crate::USB_TX_CHANNEL;
+use crate::Packet;
 
 // Library
 use core::str;
@@ -27,6 +29,7 @@ impl<'a> CommandHandler<'a> {
     }
 
     pub async fn process_command(&self) {
+        
         match self.parts[0] {
             "1" => { self.start_logger().await; },
             "2" => { self.stop_logger().await; },
@@ -43,13 +46,13 @@ impl<'a> CommandHandler<'a> {
             "13" => { self.get_motor_pos().await; }
             "14" => { self.get_motor_speed().await; }
             "15" => { self.move_motor_open_loop().await;}
-            _ => { log::info!("Command not found"); },
+            _ => { let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown Cmd\n")); },
         }
     }
     
     fn get_motor_id(&self, idx: usize) -> Option<&'static MotorState> {
         if self.parts.len() <= idx {
-            log::info!("Invalid Motor ID");
+            let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("Invalid Motor ID\n"));
             return None;
         }
 
@@ -214,7 +217,16 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let pid = motor_id.get_pos_pid().await;
-            log::info!("data {} {} {} {} {} {}", pid.kp, pid.ki, pid.kd, pid.kp_speed, pid.ki_speed, pid.kd_speed);
+            
+            let mut buffer = Packet::new();            
+            buffer.push_bytes(&[0x07]);
+            buffer.push_bytes(&pid.kp.to_le_bytes());
+            buffer.push_bytes(&pid.ki.to_le_bytes());
+            buffer.push_bytes(&pid.kd.to_le_bytes());
+            buffer.push_bytes(&pid.kp_speed.to_le_bytes());
+            buffer.push_bytes(&pid.ki_speed.to_le_bytes());
+            buffer.push_bytes(&pid.kd_speed.to_le_bytes());
+            let _ = USB_TX_CHANNEL.sender().try_send(buffer);
         }
     }
 
@@ -259,7 +271,13 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let pid = motor_id.get_speed_pid().await;
-            log::info!("data {} {} {}", pid.kp, pid.ki, pid.kd);
+            let mut buffer = Packet::new();
+
+            buffer.push_bytes(&[0x09]);
+            buffer.push_bytes(&pid.kp.to_le_bytes());
+            buffer.push_bytes(&pid.ki.to_le_bytes());
+            buffer.push_bytes(&pid.kd.to_le_bytes());
+            let _ = USB_TX_CHANNEL.sender().try_send(buffer);
         }
     }
 
@@ -312,7 +330,10 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let motor_pos = motor_id.get_current_pos().await;
-            log::info!("data {}", motor_pos);
+            let mut buffer = Packet::new();            
+            buffer.push_bytes(&[0x13]);
+            buffer.push_bytes(&motor_pos.to_le_bytes());
+            let _ = USB_TX_CHANNEL.sender().try_send(buffer);
         }
     }
 
@@ -324,7 +345,10 @@ impl<'a> CommandHandler<'a> {
 
         if let Some(motor_id) = self.get_motor_id(1) {
             let motor_speed = motor_id.get_current_speed().await;
-            log::info!("data {}", motor_speed);
+            let mut buffer = Packet::new();            
+            buffer.push_bytes(&[0x14]);
+            buffer.push_bytes(&motor_speed.to_le_bytes());
+            let _ = USB_TX_CHANNEL.sender().try_send(buffer);
         }
     }
 }

@@ -42,37 +42,87 @@ use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
 use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
-use embassy_usb_logger::ReceiverHandler;
+
+use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
+use embassy_sync::channel::Channel;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
 /* --------------------------- Code -------------------------- */
+pub struct Packet {
+    pub data: [u8; 64],
+    pub len: usize,
+}
+
+impl Packet {
+    pub fn new() -> Self {
+        Self { data: [0u8; 64], len: 0 }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        let mut data = [0u8; 64];
+        let bytes = s.as_bytes();
+        let len = bytes.len().min(64);
+        data[..len].copy_from_slice(&bytes[..len]);
+        Self { data, len }
+    }
+    pub fn push_bytes(&mut self, bytes: &[u8]) {
+        let remain = 64 - self.len;
+        let to_copy = bytes.len().min(remain);
+        self.data[self.len..self.len + to_copy].copy_from_slice(&bytes[..to_copy]);
+        self.len += to_copy;
+    }
+}
+
+static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, 16> = Channel::new();
+
+// 2. Static memory for USB (Required)
+static STATE: StaticCell<State> = StaticCell::new();
+static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+
 static mut CORE1_STACK: Stack<4096> = Stack::new();
 static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 
-struct UsbHandler;
-
-impl ReceiverHandler for UsbHandler {
-    async fn handle_data(&self, raw_data: &[u8]) {
-        if let Ok(raw_data) = str::from_utf8(raw_data) {
-
-            let parts: Vec<&str, 8> = raw_data.split_whitespace().collect();
-
-            if !parts.is_empty() { 
-                let handler = CommandHandler::new(&parts);
-                handler.process_command().await;
-            }
-        }
-    }
-
-    fn new() -> Self {
-        Self
-    }
+#[embassy_executor::task]
+async fn usb_device_task(mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB>>) {
+    usb.run().await;
 }
 
 #[embassy_executor::task]
-async fn usb_logger_task(driver: Driver<'static, USB>) {
-    embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver, UsbHandler);
+async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'static, USB>>) {
+    let mut rx_buf = [0u8; 64];
+    let subscriber = USB_TX_CHANNEL.receiver();
+
+    loop {
+        class.wait_connection().await;
+        
+        loop {
+            use embassy_futures::select::{select, Either};
+
+            match select(class.read_packet(&mut rx_buf), subscriber.receive()).await {
+                Either::First(result) => {
+                    match result {
+                        Ok(len) => {
+                            if let Ok(data) = core::str::from_utf8(&rx_buf[..len]) {
+                                let parts: Vec<&str, 8> = data.split_whitespace().collect();
+                                if !parts.is_empty() {
+                                    let handler = CommandHandler::new(&parts);
+                                    handler.process_command().await;
+                                }
+                            }
+                        }
+                        Err(_e) => break,
+                    }
+                }
+                Either::Second(packet) => {
+                    let _ = class.write_packet(&packet.data[..packet.len]).await;
+                }
+            }
+        }
+    }
 }
 
 #[interrupt]
@@ -85,6 +135,32 @@ fn main() -> ! {
     let ph = embassy_rp::init(Default::default());
     let p =  split_resources!(ph);
     let usb_driver = Driver::new(ph.USB, Irqs);
+
+    let config = {
+        let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
+        config.manufacturer = Some("Embassy");
+        config.product = Some("USB-serial example");
+        config.serial_number = Some("12345678");
+        config.max_power = 100;
+        config.max_packet_size_0 = 64;
+        config
+    };
+
+    let mut builder = {
+        let builder = embassy_usb::Builder::new(
+            usb_driver,
+            config,
+            CONFIG_DESC.init([0; 256]),
+            BOS_DESC.init([0; 256]),
+            &mut [],
+            CONTROL_BUF.init([0; 64]),
+        );
+        builder
+    };
+
+    let class = CdcAcmClass::new(&mut builder, STATE.init(State::new()), 64);
+    
+    let usb_dev = builder.build();
 
     let Pio {
         mut common, sm0, sm1, sm2, ..
@@ -132,7 +208,9 @@ fn main() -> ! {
 
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
-        spawner.must_spawn(usb_logger_task(usb_driver));
+        spawner.must_spawn(usb_device_task(usb_dev));
+        spawner.must_spawn(usb_communication_task(class));
+
         spawner.must_spawn(firmware_logger_task());
         spawner.must_spawn(send_logger_task());
         spawner.must_spawn(event_handler_task());

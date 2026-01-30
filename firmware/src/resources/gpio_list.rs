@@ -1,4 +1,5 @@
 //  Resource Allocation Module
+use embassy_rp::Peri;
 
 use {
     assign_resources::assign_resources,

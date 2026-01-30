@@ -4,6 +4,7 @@ from functools import partial
 import serial.tools.list_ports
 import threading
 import time
+import struct
 
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
@@ -76,22 +77,7 @@ class Pico:
                 if status == None:
                     return None
                 
-                elif status[0] == "data":
-                    value = status[1:]
-                    response_lines = []
-                    response = {}
-
-                    for i in range(0, len(value)):
-                        for x in value:
-                            try:
-                                new_value = float(x.strip())
-                                response_lines.append(new_value)
-                            except:
-                                continue
-                        response[ret[i]] = response_lines[i]
-                    return response
-                else:
-                    return None
+                return status
             
             # Set method name and parameters
             command_method.__name__ = name
@@ -110,7 +96,7 @@ class Pico:
         if port is None:
             acm_ports = [
                  port.device for port in serial.tools.list_ports.comports() 
-                 if port.description.startswith("USB-serial logger")]
+                 if port.description.startswith("USB-serial example")]
             
             if not acm_ports:
                 raise OSError("No /dev/ttyACM* ports found. Connect a device.")
@@ -147,13 +133,47 @@ class Pico:
                 time.sleep(0.01)
 
                 if print_echo:
-                    while self.ser.in_waiting:
-                        data = self.ser.readline()
+                    byte = self.ser.read(1)
+                    if not byte:
+                        print("Timeout: No data received")
+                        return None
+                        
+                    if byte == b'\x07':
+                        payload = self.ser.read(24) # 6 * f32 (4 bytes)
+                        if len(payload) < 24: return None
+                        unpacked = struct.unpack('<ffffff', payload)
+                        return {
+                            "kp": unpacked[0], "ki": unpacked[1], "kd": unpacked[2],
+                            "kp_speed": unpacked[3], "ki_speed": unpacked[4], "kd_speed": unpacked[5]
+                        }
 
-                    message = data.decode('utf-8', errors='replace').strip().split(" ")
-                    return message
-                
-            time.sleep(0.1)
+                    # --- Case 0x09: Get Motor Speed PID (3 floats) ---
+                    elif byte == b'\x09':
+                        payload = self.ser.read(12) # 3 * f32 (4 bytes)
+                        if len(payload) < 12: return None
+                        unpacked = struct.unpack('<fff', payload)
+                        return {"kp": unpacked[0], "ki": unpacked[1], "kd": unpacked[2]}
+
+                    # --- Case 0x13: Get Motor Position (1 i32 or f32) ---
+                    elif byte == b'\x13':
+                        payload = self.ser.read(4) 
+                        if len(payload) < 4: return None
+                        # Use 'i' if your Rust motor_pos is i32, 'f' if it is f32
+                        unpacked = struct.unpack('<i', payload) 
+                        return {"pos_count": unpacked[0]}
+
+                    # --- Case 0x14: Get Motor Speed (1 f32) ---
+                    elif byte == b'\x14':
+                        payload = self.ser.read(4)
+                        if len(payload) < 4: return None
+                        unpacked = struct.unpack('<f', payload)
+                        return {"speed_cps": unpacked[0]}
+                    
+                    # --- Fallback: ASCII Response ---
+                    else:
+                        # If it wasn't a binary header, read the rest of the line
+                        _ = byte + self.ser.readline()
+                        return None
             return None
         except serial.SerialException as e:
             return f"Serial error: {e}"
