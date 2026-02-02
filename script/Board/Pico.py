@@ -53,7 +53,7 @@ class Pico:
         for cmd in commands:
             try:
                 name = cmd['name']
-                op = cmd['op']
+                op = int(cmd['op'])
                 args = cmd.get('args', [])
                 ret = cmd.get('ret', [])
             except:
@@ -64,19 +64,33 @@ class Pico:
                 if len(values) != len(params):
                     return f"Expected {params} arguments, got {len(values)}"
                 
-                # Build command string
-                cmd_str = op_code
-                for val in values:
-                    cmd_str += f" {val}"
-                
-                # Determine if we should print echo (default True except for logger commands)
-                print_echo = True if len(ret)>0 else False
-                status = self.send_cmd(cmd_str.encode('UTF-8'), print_echo)  # Return the response
-                retry_count = 10
+                fmt = '<B' 
+                packed_vals = [op_code]
 
-                if status == None:
-                    return None
+                for p_name, val in zip(params, values):
+                    p_name = p_name.lower()
+                    
+                    if "id" in p_name: 
+                        fmt += 'B' # u8 (1 byte)
+                        packed_vals.append(int(val))
+                    elif "time_sampling" in p_name:
+                        fmt += 'Q' # u64 (8 bytes)
+                        packed_vals.append(int(val))
+                    elif "log_mask" in p_name or "logmask" in p_name:
+                        fmt += 'I' # u32 (4 bytes)
+                        packed_vals.append(int(val))
+                    elif isinstance(val, float) or any(x in p_name for x in ["kp", "ki", "kd", "target", "velocity", "acceleration"]):
+                        fmt += 'f' # f32 (4 bytes)
+                        packed_vals.append(float(val))
+                    else:
+                        fmt += 'i' # i32 (4 bytes) - used for speed, pos, pwm
+                        packed_vals.append(int(val))
                 
+                binary_payload = struct.pack(fmt, *packed_vals)
+
+                expect_reply = True if len(ret) > 0 else False
+                status = self.send_cmd(binary_payload, expect_reply)
+                                
                 return status
             
             # Set method name and parameters
@@ -126,11 +140,11 @@ class Pico:
                 self.defaultCOM = self.newinput
                 self.connect(self.newinput)
     
-    def send_cmd(self, cmd, print_echo=True):
+    def send_cmd(self, cmd_bytes, print_echo=True):
         try:
             with self.lock:  # Use the RLock to synchronize
-                self.ser.write(cmd)
-                time.sleep(0.01)
+                self.ser.write(cmd_bytes)
+                self.ser.flush()
 
                 if print_echo:
                     byte = self.ser.read(1)

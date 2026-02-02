@@ -7,7 +7,7 @@
 
 // Resources
 use crate::resources::global_resources::Shape;
-use crate::resources::global_resources::MotorState;
+use crate::resources::global_resources::MotorHandler;
 use crate::resources::global_resources::MotorCommand;
 use crate::resources::global_resources::EventList;
 use crate::resources::global_resources::EVENT;
@@ -46,11 +46,11 @@ pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     control_mode: ControlMode,
     move_done: bool,
     max_target:i32,
-    motor: &'static MotorState,
+    motor: &'static MotorHandler,
 }
 
 impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, SM2> {
-    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor: &'static MotorState) -> Self {
+    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, motor: &'static MotorHandler) -> Self {
         Self {
             pwm_cw,
             pwm_ccw,

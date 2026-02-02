@@ -7,13 +7,22 @@ mod resources;
 
 // Resources
 use crate::resources::global_resources::MOTOR_0;
+use crate::resources::global_resources::USB_STATE;
+use crate::resources::global_resources::CONFIG_DESC;
+use crate::resources::global_resources::BOS_DESC;
+use crate::resources::global_resources::CONTROL_BUF;
+use crate::resources::global_resources::CORE1_STACK;
+use crate::resources::global_resources::EXECUTOR1;
+use crate::resources::global_resources::EXECUTOR0;
+use crate::resources::global_resources::EXECUTOR_HIGH;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::MotorResources;
 use crate::resources::gpio_list::EncoderResources;
 
 // Tasks
-use crate::tasks::usb_handler::CommandHandler;
+use crate::tasks::usb_handler::usb_device_task;
+use crate::tasks::usb_handler::usb_communication_task;
 use crate::tasks::logger::firmware_logger_task;
 use crate::tasks::logger::send_logger_task;
 use crate::tasks::dc_motor::DCMotor;
@@ -24,18 +33,14 @@ use crate::tasks::encoder::encoder_task;
 use crate::tasks::event_handler::event_handler_task;
 
 // Library
-use core::str;
-use heapless::Vec;
-use static_cell::StaticCell;
 use defmt_rtt as _;
 use panic_probe as _;
 
 use embassy_executor::Executor;
-use embassy_executor::InterruptExecutor;
-use embassy_rp::multicore::Stack;
+use embassy_usb::class::cdc_acm::CdcAcmClass;
+use embassy_usb::class::cdc_acm::State;
 use embassy_rp::multicore::spawn_core1;
 use embassy_rp::interrupt;
-use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_rp::pio::Pio;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
@@ -43,87 +48,7 @@ use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
 use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
 
-use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
-use embassy_sync::channel::Channel;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-
 /* --------------------------- Code -------------------------- */
-pub struct Packet {
-    pub data: [u8; 64],
-    pub len: usize,
-}
-
-impl Packet {
-    pub fn new() -> Self {
-        Self { data: [0u8; 64], len: 0 }
-    }
-
-    pub fn from_str(s: &str) -> Self {
-        let mut data = [0u8; 64];
-        let bytes = s.as_bytes();
-        let len = bytes.len().min(64);
-        data[..len].copy_from_slice(&bytes[..len]);
-        Self { data, len }
-    }
-    pub fn push_bytes(&mut self, bytes: &[u8]) {
-        let remain = 64 - self.len;
-        let to_copy = bytes.len().min(remain);
-        self.data[self.len..self.len + to_copy].copy_from_slice(&bytes[..to_copy]);
-        self.len += to_copy;
-    }
-}
-
-static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, 16> = Channel::new();
-
-// 2. Static memory for USB (Required)
-static STATE: StaticCell<State> = StaticCell::new();
-static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
-
-static mut CORE1_STACK: Stack<4096> = Stack::new();
-static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
-static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
-
-#[embassy_executor::task]
-async fn usb_device_task(mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB>>) {
-    usb.run().await;
-}
-
-#[embassy_executor::task]
-async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'static, USB>>) {
-    let mut rx_buf = [0u8; 64];
-    let subscriber = USB_TX_CHANNEL.receiver();
-
-    loop {
-        class.wait_connection().await;
-        
-        loop {
-            use embassy_futures::select::{select, Either};
-
-            match select(class.read_packet(&mut rx_buf), subscriber.receive()).await {
-                Either::First(result) => {
-                    match result {
-                        Ok(len) => {
-                            if let Ok(data) = core::str::from_utf8(&rx_buf[..len]) {
-                                let parts: Vec<&str, 8> = data.split_whitespace().collect();
-                                if !parts.is_empty() {
-                                    let handler = CommandHandler::new(&parts);
-                                    handler.process_command().await;
-                                }
-                            }
-                        }
-                        Err(_e) => break,
-                    }
-                }
-                Either::Second(packet) => {
-                    let _ = class.write_packet(&packet.data[..packet.len]).await;
-                }
-            }
-        }
-    }
-}
 
 #[interrupt]
 unsafe fn SWI_IRQ_1() {
@@ -158,7 +83,7 @@ fn main() -> ! {
         builder
     };
 
-    let class = CdcAcmClass::new(&mut builder, STATE.init(State::new()), 64);
+    let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     
     let usb_dev = builder.build();
 

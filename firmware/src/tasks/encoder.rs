@@ -3,7 +3,7 @@
 */
 
 // Resources
-use crate::resources::global_resources::MotorState;
+use crate::resources::global_resources::MotorHandler;
 
 // Library
 use defmt_rtt as _;
@@ -60,12 +60,12 @@ pub struct RotaryEncoder <'d, T: Instance, const SM: usize, const N: usize> {
     encoder: PioEncoder<'d, T, SM>,
     count_threshold: i32,
     timeout: u32,
-    motor: &'static MotorState,
+    motor: &'static MotorHandler,
     filter: MovingAverage<N>,
 }
 
 impl <'d, T: Instance, const SM: usize, const N: usize> RotaryEncoder <'d, T, SM, N> {
-    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorState, filter: MovingAverage::<N>) -> Self {
+    pub fn new(encoder: PioEncoder<'d, T, SM>, motor: &'static MotorHandler, filter: MovingAverage::<N>) -> Self {
         Self {
             encoder,
             count_threshold: 3,

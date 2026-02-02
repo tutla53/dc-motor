@@ -2,17 +2,47 @@
 * Global Resources 
 */
 
+// Resources
+use crate::tasks::logger::LogData;
+
 // Library
+use core::str;
 use defmt_rtt as _;
 use panic_probe as _;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_executor::InterruptExecutor;
+use static_cell::StaticCell;
+use embassy_executor::Executor;
+use embassy_usb::class::cdc_acm::State;
+use embassy_rp::multicore::Stack;
 
-/* --------------------------- Global Variables -------------------------- */
-pub static MOTOR_0: MotorState = MotorState::new(0);
-pub static LOGGER: LoggerState = LoggerState::new();
+/* --------------------------- Variables -------------------------- */
+pub const USB_RX_BUFFER_SIZE: usize = 64;
+pub const USB_TX_BUFFER_SIZE: usize = 64;
+pub const EVENT_HANDLER_SIZE: usize = 64;
+pub const LOG_BUFFER_SIZE: usize = 1000;
+pub const LOG_REQUEST_SIZE: usize = 64;
+pub const BATCH_SIZE: usize = 50;
+
+/* --------------------------- Handlers-------------------------- */
+pub static MOTOR_0: MotorHandler = MotorHandler::new(0);
+pub static LOGGER: LoggerHandler = LoggerHandler::new();
 pub static EVENT: EventHandler = EventHandler::new();
+
+/* --------------------------- Channels and StaticCell -------------------------- */
+pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_TX_BUFFER_SIZE> = Channel::new();
+
+pub static USB_STATE: StaticCell<State> = StaticCell::new();
+pub static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+pub static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+pub static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+
+pub static mut CORE1_STACK: Stack<4096> = Stack::new();
+pub static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
+pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
+pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 
 /* --------------------------- ENUM -------------------------- */
 #[derive(Clone, Copy)]
@@ -52,14 +82,15 @@ pub struct PIDConfig {
     pub kd: f32,
 }
 
-pub struct LoggerState {
+pub struct LoggerHandler {
     logger_run: Mutex<CriticalSectionRawMutex, bool>,
     logger_time_sampling: Mutex<CriticalSectionRawMutex, u64>,
     log_mask: Mutex<CriticalSectionRawMutex, u32>,
-    log_request_queue: Channel<CriticalSectionRawMutex, bool, 1024>,
+    log_request_queue: Channel<CriticalSectionRawMutex, bool, LOG_REQUEST_SIZE>,
+    log_tx_buffer: Channel<CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
 }
 
-pub struct MotorState {
+pub struct MotorHandler {
     current_pos: Mutex<CriticalSectionRawMutex, i32>,
     current_speed: Mutex<CriticalSectionRawMutex, i32>,
     current_commanded_pos: Mutex<CriticalSectionRawMutex, i32>,
@@ -75,17 +106,23 @@ pub struct MotorState {
 }
 
 pub struct EventHandler {
-    motor_event: Channel<CriticalSectionRawMutex, EventList, 256>,
+    motor_event: Channel<CriticalSectionRawMutex, EventList, EVENT_HANDLER_SIZE>,
+}
+
+pub struct Packet {
+    pub data: [u8; USB_RX_BUFFER_SIZE],
+    pub len: usize,
 }
 
 /* --------------------------- Struct Implementation -------------------------- */
-impl LoggerState {
+impl LoggerHandler {
     pub const fn new() -> Self {
         Self {
             logger_run: Mutex::new(false),
             logger_time_sampling: Mutex::new(10),
             log_mask: Mutex::new(0),
             log_request_queue: Channel::new(),
+            log_tx_buffer: Channel::new(),
         }
     }
 
@@ -123,9 +160,26 @@ impl LoggerState {
     pub async fn wait_for_log_request(&self) -> bool {
         return self.log_request_queue.receive().await;
     }
+    
+    pub fn add_to_buffer(&self, cmd: LogData) {
+        let _ = self.log_tx_buffer.try_send(cmd);
+    }
+
+    pub async fn get_buffered_data(&self) -> LogData {
+        return self.log_tx_buffer.receive().await;
+    }
+
+    pub fn buffer_len(&self) -> usize {
+        return self.log_tx_buffer.len().min(BATCH_SIZE);
+    }
+
+    pub fn clear_buffer(&self) {
+        let _ = self.log_tx_buffer.clear();
+    }
+
 }
 
-impl MotorState {
+impl MotorHandler {
     pub const fn new(id: i32) -> Self {
         Self {
             current_pos: Mutex::new(0),
@@ -244,5 +298,25 @@ impl EventHandler {
 
     pub async fn get_event_item(&self) -> EventList {
         return self.motor_event.receive().await;
+    }
+}
+
+impl Packet {
+    pub fn new() -> Self {
+        Self { data: [0u8; 64], len: 0 }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        let mut data = [0u8; 64];
+        let bytes = s.as_bytes();
+        let len = bytes.len().min(64);
+        data[..len].copy_from_slice(&bytes[..len]);
+        Self { data, len }
+    }
+    pub fn push_bytes(&mut self, bytes: &[u8]) {
+        let remain = 64 - self.len;
+        let to_copy = bytes.len().min(remain);
+        self.data[self.len..self.len + to_copy].copy_from_slice(&bytes[..to_copy]);
+        self.len += to_copy;
     }
 }

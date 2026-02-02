@@ -10,16 +10,12 @@ use crate::resources::global_resources::LOGGER;
 use core::fmt::Write;
 use defmt_rtt as _;
 use panic_probe as _;
-use embassy_sync::channel::Channel;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_time::Ticker;
 use embassy_time::Duration;
 use embassy_time::Instant;
 use embassy_time::Timer;
 
 /* --------------------------- Code -------------------------- */
-static LOGGER_BUFFER: Channel<CriticalSectionRawMutex, LogData, 2048> = Channel::new();
-
 enum LogMask {
     MotorPosition = 1 << 0,
     MotorSpeed = 1 << 1,
@@ -28,7 +24,7 @@ enum LogMask {
     CommandedPwm = 1 << 4,
 }
 
-struct LogData {
+pub struct LogData {
     mask: u32,
     dt: u64,
     values: [i32; 5],
@@ -74,7 +70,7 @@ pub async fn firmware_logger_task() {
             
             let data = LogData::select(mask, dt).await;
 
-            let _ = LOGGER_BUFFER.try_send(data);
+            LOGGER.add_to_buffer(data);
             ticker.next().await;
         }
         else {
@@ -95,13 +91,12 @@ pub async fn send_logger_task() {
         let command = LOGGER.wait_for_log_request().await;
 
         if command {
-            let batch_size = LOGGER_BUFFER.len().min(50);
+            let batch_size = LOGGER.buffer_len();
 
             if batch_size > 0 {
-                for _ in 0..batch_size {
-                    if let Ok(data) = LOGGER_BUFFER.try_receive() {   
-                        data.write_to_buffer(&mut buffer);
-                    }
+                for _ in 0..batch_size {  
+                    let data = LOGGER.get_buffered_data().await;
+                    data.write_to_buffer(&mut buffer);
                 }
 
                 log::info!("log {}{}", batch_size, buffer);
@@ -113,7 +108,7 @@ pub async fn send_logger_task() {
         }
 
         else {
-            LOGGER_BUFFER.clear();
+            LOGGER.clear_buffer();
             buffer.clear();
         }
     }
