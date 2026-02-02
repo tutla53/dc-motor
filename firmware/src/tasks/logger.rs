@@ -16,31 +16,21 @@ use embassy_time::Instant;
 use embassy_time::Timer;
 
 /* --------------------------- Code -------------------------- */
-enum LogMask {
-    MotorPosition = 1 << 0,
-    MotorSpeed = 1 << 1,
-    CommandedPosition = 1 << 2,
-    CommandedSpeed = 1 << 3,
-    CommandedPwm = 1 << 4,
-}
-
 pub struct LogData {
-    mask: u32,
     dt: u64,
     values: [i32; 5],
 }
 
 impl LogData {
-    async fn select(mask: u32, dt: u64) -> Self {
+    async fn select(dt: u64) -> Self {
         Self {
-            mask,
             dt,
             values: [
-                if (mask & LogMask::MotorPosition as u32) != 0 {MOTOR_0.get_current_pos().await} else {0},
-                if (mask & LogMask::MotorSpeed as u32) != 0 {MOTOR_0.get_current_speed().await} else {0},
-                if (mask & LogMask::CommandedPosition as u32) != 0 {MOTOR_0.get_commanded_pos().await} else {0},
-                if (mask & LogMask::CommandedSpeed as u32) != 0 {MOTOR_0.get_commanded_speed().await} else {0},
-                if (mask & LogMask::CommandedPwm as u32) != 0 {MOTOR_0.get_commanded_pwm().await} else {0},   
+                MOTOR_0.get_current_pos().await,
+                MOTOR_0.get_current_speed().await,
+                MOTOR_0.get_commanded_pos().await,
+                MOTOR_0.get_commanded_speed().await,
+                MOTOR_0.get_commanded_pwm().await,
             ]         
         }
     }
@@ -49,9 +39,7 @@ impl LogData {
         write!(buffer, " {}", self.dt).unwrap();
 
         for i in 0..5 {
-            if (self.mask & (1 << i)) != 0 {
-                write!(buffer, " {}", self.values[i]).unwrap();
-            }
+            write!(buffer, " {}", self.values[i]).unwrap();
         }
     }
 }
@@ -65,10 +53,9 @@ pub async fn firmware_logger_task() {
         let logging = LOGGER.is_logging_active().await;
 
         if logging {
-            let mask = LOGGER.get_log_mask().await;
             let dt = start.elapsed().as_millis();
             
-            let data = LogData::select(mask, dt).await;
+            let data = LogData::select(dt).await;
 
             LOGGER.add_to_buffer(data);
             ticker.next().await;

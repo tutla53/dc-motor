@@ -85,7 +85,6 @@ pub struct PIDConfig {
 pub struct LoggerHandler {
     logger_run: Mutex<CriticalSectionRawMutex, bool>,
     logger_time_sampling: Mutex<CriticalSectionRawMutex, u64>,
-    log_mask: Mutex<CriticalSectionRawMutex, u32>,
     log_request_queue: Channel<CriticalSectionRawMutex, bool, LOG_REQUEST_SIZE>,
     log_tx_buffer: Channel<CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
 }
@@ -120,7 +119,6 @@ impl LoggerHandler {
         Self {
             logger_run: Mutex::new(false),
             logger_time_sampling: Mutex::new(10),
-            log_mask: Mutex::new(0),
             log_request_queue: Channel::new(),
             log_tx_buffer: Channel::new(),
         }
@@ -144,15 +142,6 @@ impl LoggerHandler {
         return *self.logger_time_sampling.lock().await;
     }
     
-    pub async fn get_log_mask(&self) -> u32 {
-        return *self.log_mask.lock().await;
-    }
-    
-    pub async fn set_log_mask(&self, log_mask: u32) {
-        let mut current = self.log_mask.lock().await;
-        *current = log_mask;
-    }
-
     pub fn add_log_request(&self, cmd: bool) {
         let _ = self.log_request_queue.try_send(cmd);
     }

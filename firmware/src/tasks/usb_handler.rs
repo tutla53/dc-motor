@@ -70,10 +70,6 @@ pub trait ByteReader {
         i32::from_le_bytes(self.data()[offset..offset + 4].try_into().unwrap_or([0; 4]))
     }
 
-    fn read_u32(&self, offset: usize) -> u32 {
-        u32::from_le_bytes(self.data()[offset..offset + 4].try_into().unwrap_or([0; 4]))
-    }
-
     fn read_f32(&self, offset: usize) -> f32 {
         f32::from_le_bytes(self.data()[offset..offset + 4].try_into().unwrap_or([0; 4]))
     }
@@ -133,19 +129,16 @@ impl<'a> CommandHandler<'a> {
         /*
             OP = 1
             time_sampling (u64) = 8
-            logmask (u32) = 4
         */
 
-        if self.data.len() < 13 {
-            log::info!("Insufficient Argument(s): [time_sampling: u64, logmask: u32]");
+        if self.data.len() < 9 {
+            log::info!("Insufficient Argument(s): [time_sampling: u64]");
             return;
         }
         
         let time_sampling_ms = self.read_u64(1);
-        let log_mask = self.read_u32(9);
     
         LOGGER.set_logging_time_sampling(time_sampling_ms).await;
-        LOGGER.set_log_mask(log_mask).await;
         LOGGER.set_logging_state(true).await;
         LOGGER.add_log_request(false); 
     }
