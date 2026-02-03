@@ -10,7 +10,7 @@ use crate::resources::global_resources::Shape;
 use crate::resources::global_resources::MotorHandler;
 use crate::resources::global_resources::MotorCommand;
 use crate::resources::global_resources::EventList;
-use crate::resources::global_resources::EVENT;
+use crate::resources::global_resources::EVENT_CHANNEL;
 
 // Tasks
 use crate::tasks::pid_control::PIDcontrol;
@@ -168,7 +168,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     // Move Done Event
                     if (current_speed - self.max_target).abs() < 5 && !self.move_done {
                         self.move_done = true;
-                        EVENT.set_event_item(EventList::MotorMoveDone(self.motor.get_id()));
+                        let _ = EVENT_CHANNEL.try_send(EventList::MotorMoveDone(self.motor.get_id()));
                     }
 
                     ticker.next().await;    
@@ -210,7 +210,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     // Move Done Event
                     if (current_position - self.max_target).abs() < 5 && !self.move_done {
                         self.move_done = true;
-                        EVENT.set_event_item(EventList::MotorMoveDone(self.motor.get_id()));
+                        let _ = EVENT_CHANNEL.try_send(EventList::MotorMoveDone(self.motor.get_id()));
                     }
 
                     ticker.next().await;

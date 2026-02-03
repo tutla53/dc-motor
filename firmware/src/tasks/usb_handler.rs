@@ -10,55 +10,14 @@ use crate::resources::global_resources::PosPIDConfig;
 use crate::resources::global_resources::MotorHandler;
 use crate::resources::global_resources::MOTOR_0;
 use crate::resources::global_resources::LOGGER;
-use crate::resources::global_resources::USB_TX_CHANNEL;
 use crate::resources::global_resources::Packet;
-use crate::resources::global_resources::USB_RX_BUFFER_SIZE;
+use crate::resources::global_resources::CMD_CHANNEL;
 
 // Library
 use defmt_rtt as _;
 use panic_probe as _;
-use embassy_usb::class::cdc_acm::CdcAcmClass;
-use embassy_rp::peripherals::USB;
-use embassy_rp::usb::Driver;
-use embassy_futures::select::select;
-use embassy_futures::select::Either;
 
 /* --------------------------- Code -------------------------- */
-#[embassy_executor::task]
-pub async fn usb_device_task(mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB>>) {
-    usb.run().await;
-}
-
-#[embassy_executor::task]
-pub async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'static, USB>>) {
-    let mut rx_buf = [0u8; USB_RX_BUFFER_SIZE];
-    let subscriber = USB_TX_CHANNEL.receiver();
-
-    loop {
-        class.wait_connection().await;
-        
-        loop {
-            match select(class.read_packet(&mut rx_buf), subscriber.receive()).await {
-                Either::First(result) => {
-                    match result {
-                        Ok(len) => {
-                            let data = &rx_buf[..len];
-                            if !data.is_empty() {
-                                let handler = CommandHandler::new(data);
-                                handler.process_command().await;
-                            }
-                        }
-                        Err(_) => break,
-                    }
-                }
-                Either::Second(packet) => {
-                    let _ = class.write_packet(&packet.data[..packet.len]).await;
-                }
-            }
-        }
-    }
-}
-
 pub trait ByteReader {
     fn data(&self) -> &[u8];
 
@@ -105,13 +64,11 @@ impl<'a> CommandHandler<'a> {
             7 => { self.get_motor_pos_pid_param().await; },
             8 => { self.set_motor_speed_pid_param().await; },
             9 => { self.get_motor_speed_pid_param(). await; },
-            10 => { self.get_logged_item(); },
-            11 => { self.clear_logged_item(); },
             12 => { self.move_motor_abs_pos_trapezoid().await; }
             13 => { self.get_motor_pos().await; }
             14 => { self.get_motor_speed().await; }
             15 => { self.move_motor_open_loop().await;}
-            _ => { let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown Cmd\n")); },
+            _ => { let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown Cmd\n")); },
         }
     }
     
@@ -140,7 +97,6 @@ impl<'a> CommandHandler<'a> {
     
         LOGGER.set_logging_time_sampling(time_sampling_ms).await;
         LOGGER.set_logging_state(true).await;
-        LOGGER.add_log_request(false); 
     }
 
     async fn stop_logger(&self) {
@@ -167,7 +123,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_motor_command(MotorCommand::OpenLoop(pwm)).await; 
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -192,7 +148,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_motor_command(MotorCommand::SpeedControl(Shape::Step(speed))).await; 
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -217,7 +173,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_motor_command(MotorCommand::PositionControl(Shape::Step(pos))).await; 
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -240,7 +196,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_motor_command(MotorCommand::Stop).await; 
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -278,7 +234,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_pos_pid(config).await;
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -308,10 +264,10 @@ impl<'a> CommandHandler<'a> {
                 buffer.push_bytes(&pid.kp_speed.to_le_bytes());
                 buffer.push_bytes(&pid.ki_speed.to_le_bytes());
                 buffer.push_bytes(&pid.kd_speed.to_le_bytes());
-                let _ = USB_TX_CHANNEL.sender().try_send(buffer);
+                let _ = CMD_CHANNEL.try_send(buffer);
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -343,7 +299,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_speed_pid(config).await;
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -370,21 +326,13 @@ impl<'a> CommandHandler<'a> {
                 buffer.push_bytes(&pid.kp.to_le_bytes());
                 buffer.push_bytes(&pid.ki.to_le_bytes());
                 buffer.push_bytes(&pid.kd.to_le_bytes());
-                let _ = USB_TX_CHANNEL.sender().try_send(buffer);
+                let _ = CMD_CHANNEL.try_send(buffer);
 
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
-    }
-
-    fn get_logged_item(&self) {
-        let _ = LOGGER.add_log_request(true);
-    }
-
-    fn clear_logged_item(&self) {
-        let _ = LOGGER.add_log_request(false);
     }
 
     async fn move_motor_abs_pos_trapezoid(&self) {
@@ -411,7 +359,7 @@ impl<'a> CommandHandler<'a> {
                 selected_motor.set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(target, velocity, acceleration))).await;
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -436,10 +384,10 @@ impl<'a> CommandHandler<'a> {
                 let mut buffer = Packet::new();            
                 buffer.push_bytes(&[0x13]);
                 buffer.push_bytes(&motor_pos.to_le_bytes());
-                let _ = USB_TX_CHANNEL.sender().try_send(buffer);
+                let _ = CMD_CHANNEL.try_send(buffer);
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }
@@ -464,10 +412,10 @@ impl<'a> CommandHandler<'a> {
                 let mut buffer = Packet::new();            
                 buffer.push_bytes(&[0x14]);
                 buffer.push_bytes(&motor_speed.to_le_bytes());
-                let _ = USB_TX_CHANNEL.sender().try_send(buffer);
+                let _ = CMD_CHANNEL.try_send(buffer);
             },
             None => {
-                let _ = USB_TX_CHANNEL.sender().try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
+                let _ = CMD_CHANNEL.try_send(Packet::from_str("ERR: Unknown selected_motor ID\n"));
             },
         }
     }

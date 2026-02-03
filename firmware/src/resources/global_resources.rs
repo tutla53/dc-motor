@@ -2,9 +2,6 @@
 * Global Resources 
 */
 
-// Resources
-use crate::tasks::logger::LogData;
-
 // Library
 use core::str;
 use defmt_rtt as _;
@@ -12,37 +9,21 @@ use panic_probe as _;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_executor::InterruptExecutor;
-use static_cell::StaticCell;
-use embassy_executor::Executor;
-use embassy_usb::class::cdc_acm::State;
-use embassy_rp::multicore::Stack;
 
 /* --------------------------- Variables -------------------------- */
-pub const USB_RX_BUFFER_SIZE: usize = 64;
-pub const USB_TX_BUFFER_SIZE: usize = 64;
-pub const EVENT_HANDLER_SIZE: usize = 64;
+pub const USB_BUFFER_SIZE: usize = 64;
+pub const EVENT_CHANNEL_SIZE: usize = 64;
+pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 1000;
-pub const LOG_REQUEST_SIZE: usize = 64;
-pub const BATCH_SIZE: usize = 50;
 
 /* --------------------------- Handlers-------------------------- */
 pub static MOTOR_0: MotorHandler = MotorHandler::new(0);
 pub static LOGGER: LoggerHandler = LoggerHandler::new();
-pub static EVENT: EventHandler = EventHandler::new();
 
 /* --------------------------- Channels and StaticCell -------------------------- */
-pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_TX_BUFFER_SIZE> = Channel::new();
-
-pub static USB_STATE: StaticCell<State> = StaticCell::new();
-pub static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-pub static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-pub static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
-
-pub static mut CORE1_STACK: Stack<4096> = Stack::new();
-pub static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
-pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> = Channel::new();
+pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> = Channel::new();
+pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> = Channel::new();
 
 /* --------------------------- ENUM -------------------------- */
 #[derive(Clone, Copy)]
@@ -61,7 +42,7 @@ pub enum MotorCommand {
 
 #[derive(Clone, Copy)]
 pub enum EventList {
-    MotorMoveDone(i32),
+    MotorMoveDone(u8),
 }
 
 /* --------------------------- Struct -------------------------- */
@@ -83,10 +64,9 @@ pub struct PIDConfig {
 }
 
 pub struct LoggerHandler {
-    logger_run: Mutex<CriticalSectionRawMutex, bool>,
-    logger_time_sampling: Mutex<CriticalSectionRawMutex, u64>,
-    log_request_queue: Channel<CriticalSectionRawMutex, bool, LOG_REQUEST_SIZE>,
-    log_tx_buffer: Channel<CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
+    logger_status: Mutex<CriticalSectionRawMutex, bool>,
+    logger_time_sampling_ms: Mutex<CriticalSectionRawMutex, u64>,
+    pub log_tx_buffer: Channel<CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
 }
 
 pub struct MotorHandler {
@@ -101,75 +81,51 @@ pub struct MotorHandler {
     refresh_interval_us: u64,
     max_pwm_output_us: u64,
     max_speed_cps: i32,
-    id: i32, 
-}
-
-pub struct EventHandler {
-    motor_event: Channel<CriticalSectionRawMutex, EventList, EVENT_HANDLER_SIZE>,
+    id: u8, 
 }
 
 pub struct Packet {
-    pub data: [u8; USB_RX_BUFFER_SIZE],
+    pub data: [u8; USB_BUFFER_SIZE],
     pub len: usize,
+}
+
+pub struct LogData {
+    pub seq: u8,
+    pub dt: u32,
+    pub values: [i32; 5],
 }
 
 /* --------------------------- Struct Implementation -------------------------- */
 impl LoggerHandler {
     pub const fn new() -> Self {
         Self {
-            logger_run: Mutex::new(false),
-            logger_time_sampling: Mutex::new(10),
-            log_request_queue: Channel::new(),
+            logger_status: Mutex::new(false),
+            logger_time_sampling_ms: Mutex::new(10),
             log_tx_buffer: Channel::new(),
         }
     }
 
     pub async fn set_logging_state(&self, state: bool) {
-        let mut logging = self.logger_run.lock().await;
+        let mut logging = self.logger_status.lock().await;
         *logging = state;
     }
     
     pub async fn is_logging_active(&self, ) -> bool {
-        return *self.logger_run.lock().await;
+        return *self.logger_status.lock().await;
     }
     
     pub async fn set_logging_time_sampling(&self, time_sampling_ms: u64) {
-        let mut current = self.logger_time_sampling.lock().await;
+        let mut current = self.logger_time_sampling_ms.lock().await;
         *current = time_sampling_ms;
     }
     
     pub async fn get_logging_time_sampling(&self) -> u64 {
-        return *self.logger_time_sampling.lock().await;
+        return *self.logger_time_sampling_ms.lock().await;
     }
-    
-    pub fn add_log_request(&self, cmd: bool) {
-        let _ = self.log_request_queue.try_send(cmd);
-    }
-
-    pub async fn wait_for_log_request(&self) -> bool {
-        return self.log_request_queue.receive().await;
-    }
-    
-    pub fn add_to_buffer(&self, cmd: LogData) {
-        let _ = self.log_tx_buffer.try_send(cmd);
-    }
-
-    pub async fn get_buffered_data(&self) -> LogData {
-        return self.log_tx_buffer.receive().await;
-    }
-
-    pub fn buffer_len(&self) -> usize {
-        return self.log_tx_buffer.len().min(BATCH_SIZE);
-    }
-
-    pub fn clear_buffer(&self) {
-        let _ = self.log_tx_buffer.clear();
-    }
-
 }
 
 impl MotorHandler {
-    pub const fn new(id: i32) -> Self {
+    pub const fn new(id: u8) -> Self {
         Self {
             current_pos: Mutex::new(0),
             current_speed: Mutex::new(0),
@@ -270,23 +226,8 @@ impl MotorHandler {
         return self.max_speed_cps;
     }
 
-    pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> u8 {
         return self.id;
-    }
-}
-
-impl EventHandler {
-    pub const fn new() -> Self {
-        Self {
-            motor_event: Channel::new(),
-        }
-    }
-    pub fn set_event_item(&self, cmd: EventList) {
-        let _ = self.motor_event.try_send(cmd);
-    }
-
-    pub async fn get_event_item(&self) -> EventList {
-        return self.motor_event.receive().await;
     }
 }
 
@@ -307,5 +248,17 @@ impl Packet {
         let to_copy = bytes.len().min(remain);
         self.data[self.len..self.len + to_copy].copy_from_slice(&bytes[..to_copy]);
         self.len += to_copy;
+    }
+}
+
+impl LogData {
+    pub fn pack_data(&self, out: &mut [u8]) {
+        out[0] = 0xFF;            
+        out[1] = self.seq;
+        out[2..6].copy_from_slice(&self.dt.to_le_bytes());
+        for i in 0..5 {
+            let start = 6 + (i * 4);
+            out[start..start + 4].copy_from_slice(&self.values[i].to_le_bytes());
+        }
     }
 }

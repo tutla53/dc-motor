@@ -7,38 +7,32 @@ mod resources;
 
 // Resources
 use crate::resources::global_resources::MOTOR_0;
-use crate::resources::global_resources::USB_STATE;
-use crate::resources::global_resources::CONFIG_DESC;
-use crate::resources::global_resources::BOS_DESC;
-use crate::resources::global_resources::CONTROL_BUF;
-use crate::resources::global_resources::CORE1_STACK;
-use crate::resources::global_resources::EXECUTOR1;
-use crate::resources::global_resources::EXECUTOR0;
-use crate::resources::global_resources::EXECUTOR_HIGH;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::MotorResources;
 use crate::resources::gpio_list::EncoderResources;
 
 // Tasks
-use crate::tasks::usb_handler::usb_device_task;
-use crate::tasks::usb_handler::usb_communication_task;
+use crate::tasks::usb_task::usb_device_task;
+use crate::tasks::usb_task::usb_communication_task;
+use crate::tasks::usb_task::usb_traffic_controller_task;
 use crate::tasks::logger::firmware_logger_task;
-use crate::tasks::logger::send_logger_task;
 use crate::tasks::dc_motor::DCMotor;
 use crate::tasks::dc_motor::motor_task;
 use crate::tasks::encoder::RotaryEncoder;
 use crate::tasks::encoder::MovingAverage;
 use crate::tasks::encoder::encoder_task;
-use crate::tasks::event_handler::event_handler_task;
 
 // Library
 use defmt_rtt as _;
 use panic_probe as _;
+use static_cell::StaticCell;
 
 use embassy_executor::Executor;
+use embassy_executor::InterruptExecutor;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 use embassy_usb::class::cdc_acm::State;
+use embassy_rp::multicore::Stack;
 use embassy_rp::multicore::spawn_core1;
 use embassy_rp::interrupt;
 use embassy_rp::usb::Driver;
@@ -49,6 +43,15 @@ use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
 
 /* --------------------------- Code -------------------------- */
+pub static USB_STATE: StaticCell<State> = StaticCell::new();
+pub static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+pub static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
+pub static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+
+pub static mut CORE1_STACK: Stack<4096> = Stack::new();
+pub static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
+pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
+pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 
 #[interrupt]
 unsafe fn SWI_IRQ_1() {
@@ -135,9 +138,7 @@ fn main() -> ! {
     executor0.run(|spawner| {
         spawner.must_spawn(usb_device_task(usb_dev));
         spawner.must_spawn(usb_communication_task(class));
-
+        spawner.must_spawn(usb_traffic_controller_task());
         spawner.must_spawn(firmware_logger_task());
-        spawner.must_spawn(send_logger_task());
-        spawner.must_spawn(event_handler_task());
     });
 }

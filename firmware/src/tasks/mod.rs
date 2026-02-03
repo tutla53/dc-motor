@@ -4,4 +4,4 @@ pub mod dc_motor;
 pub mod encoder;
 pub mod pid_control;
 pub mod motion_profile;
-pub mod event_handler;
+pub mod usb_task;
