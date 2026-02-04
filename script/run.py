@@ -10,7 +10,7 @@ import BasicFunction.Motor as Motor
 import Config.Motor0
 import Event.Event as Event
 
-yaml_path = "YAML/Pico_0_0_6.yaml"
+yaml_path = "YAML/Pico_0_1_0.yaml"
 p = Board.Pico(yaml_path)
 m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
 logger = Logger.FWLogger(p)
@@ -31,7 +31,7 @@ def wait_move_done(timeout=15):
     while elapsed < timeout:
         if len(p.event_queue) > 0:
             p.event_queue.pop()
-            print("Move Done, Elapsed:", elapsed)
+            print(f"Move Done, Elapsed: {elapsed:.2f} s")
             return True
         time.sleep(0.1)
         elapsed = time.perf_counter() - start
@@ -42,25 +42,32 @@ def wait_move_done(timeout=15):
 def pos_trapezoid_test(position_rotation, speed, acc, time_sampling = 10):
     current_pos = m0.get_motor_pos()['pos_rotation']
     duration = calculate_motion_time(position_rotation-current_pos, speed, acc)
+    print("Current Pos: ", current_pos)
     print(f"Duration (est): {duration:.2f}s")
     
-    logger.run(time_sampling=time_sampling, mask=5)
+    logger.run(time_sampling=time_sampling)
     
     m0.move_motor_pos_trapezoid(position_rotation, speed, acc)
-    wait_move_done(duration+10)
-    time.sleep(1)
+    # wait_move_done(duration+10)
+    time.sleep(5)
     p.stop_motor(0)
     logger.stop()
 
 def pos_step_test(position_rotation, duration=3, time_sampling = 10):
-    logger.run(time_sampling=time_sampling, mask=5)
+    
+    current_pos = m0.get_motor_pos()['pos_rotation']
+    print("Current Pos: ", current_pos)
+    
+    logger.run(time_sampling=time_sampling)
+    
     m0.move_motor_pos_step(position_rotation)
-    time.sleep(duration)
-    logger.stop()
+    # wait_move_done(duration+10)
+    # time.sleep(5)
     p.stop_motor(0)
+    logger.stop()
 
 def open_loop_test(pwm, duration=3, time_sampling = 10):
-    logger.run(time_sampling=time_sampling, mask=18)
+    logger.run(time_sampling=time_sampling)
     m0.move_motor_open_loop(pwm)
     time.sleep(duration)
     logger.stop()

@@ -1,0 +1,128 @@
+# Version: 0.1.0
+
+#---------------------------------- Headers -----------------------------------#
+- Headers:
+    COMMAND: 0xFF
+    EVENT: 0xFE
+    LOGGER: 0xFD
+
+#---------------------------------- ENUMS -----------------------------------#
+- Enums:
+    EventCodes:
+      0: MOVE_MOTOR_DONE
+  
+    ErrorCodes:
+      0: UNKNOWN_COMMAND
+      1: INSUFFICIENT ARGUMENTS
+      2: MOTOR_IS_NOT_AVAILABLE
+    
+#---------------------------------- COMMAND -----------------------------------#
+- command: start_logger
+  op: 1
+  args: {time_sampling: u64}
+  ret: {}
+  desc: |
+        Start data logger
+        Argument(s)
+        - time_sampling -> time sampling in ms (min 1 ms)
+  
+- command: stop_logger
+  op: 2
+  args: {}
+  ret: {}
+  desc: Command the firmware to stop logging the data
+
+#-------------------------------- Motor Config ---------------------------------#
+- command: set_pid_motor_pos
+  op: 6
+  args: {motor_id: u8, kp: f32, ki: f32, kd: f32, kp_speed: f32, ki_speed: f32, kd_speed: f32}
+  ret: {}
+  desc: |
+        Set motor position PID parameter 
+        Argument(s)
+        - kp -> position proportional gain
+        - ki -> position integral gain
+        - kd -> position derivative gain
+        - kp_speed -> speed proportional gain
+        - ki_speed -> speed integral gain
+        - kd_speed -> speed derivative gain
+
+- command: set_pid_motor_speed
+  op: 8
+  args: {motor_id: u8, kp: f32, ki: f32, kd: f32}
+  ret: {}
+  desc: |
+        Set motor speed PID parameter 
+        Argument(s)
+        - kp -> speed proportional gain
+        - ki -> speed integral gain
+        - kd -> speed derivative gain
+
+- command: get_pid_motor_pos
+  op: 7
+  args: {motor_id: u8}
+  ret: {kp: f32, ki: f32, kd: f32, kp_speed: f32, ki_speed: f32, kd_speed: f32}
+  desc: Get motor position PID parameter, please see set_pid_motor_pos
+
+- command: get_pid_motor_speed
+  op: 9
+  args: {motor_id: u8}
+  ret: {kp: f32, ki: f32, kd: f32}
+  desc: Get motor speed PID parameter, please see set_pid_motor_speed
+
+#--------------------------------- Move Motor ----------------------------------#
+- command: move_motor_speed
+  op: 3
+  args: {motor_id: u8, speed: i32}
+  ret: {}
+  desc: |
+        Motor Speed Control with Commanded Step Motion Profile
+        Argument(s)
+        - speed -> Speed Target in count per second (cps)
+
+- command: move_motor_abs_pos
+  op: 4
+  args: {motor_id: u8, target: i32}
+  ret: {}
+  desc: |
+        Motor Position Control with Commanded Step Motion Profile
+        Argument(s)
+        - target -> Position Target in Count
+
+- command: move_motor_abs_pos_trapezoid
+  op: 10
+  args: {motor_id: u8, target: i32, vel: i32, acc: i32}
+  ret: {}
+  desc: |
+        Motor Position Control with Commanded Trapezoid Motion Profile
+        Argument(s)
+        - target -> Position Target in Count
+        - vel -> Commanded Velocity in Count per Second (cps)
+        - acc -> Commanded Acceleration in Count per Second Square (cps2)
+
+- command: move_motor_open_loop
+  op: 13
+  args: {motor_id: u8, pwm: i32}
+  ret: {}
+  desc: | 
+        Motor Speed Control with Open Loop Mode
+        Argument(s)
+        - pwm -> pwm duty cycle from 0 - 1000
+
+- command: stop_motor
+  op: 5
+  args: {motor_id: u8}
+  ret: {}
+  desc: Stop the motor
+
+- command: get_motor_pos
+  op: 11
+  args: {motor_id: u8}
+  ret: {pos_count: i32}
+  desc: Get motor position in Count
+
+- command: get_motor_speed
+  op: 12
+  args: {motor_id: u8}
+  ret: {speed_cps: i32}
+  desc: Get motor speed in Count per Second (cps)

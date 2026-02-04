@@ -3,6 +3,7 @@ import yaml
 from functools import partial
 import serial.tools.list_ports
 import threading
+import queue
 import time
 import struct
 
@@ -32,79 +33,109 @@ class SThread:
         self.thread.join()
 
 class Pico:
+    TYPE_MAP = {
+        'u8': ('B', 1),
+        'u16': ('H', 2),
+        'u32': ('I', 4),
+        'i32': ('i', 4),
+        'f32': ('f', 4),
+        'u64': ('Q', 8),
+    }
+
     def __init__(self, yaml_path="", com=None):
         self.ser = None
         self.newinput = None
         self.defaultCOM = None
         self.baud_rate = 115200
-        self.lock = threading.RLock()  # Use RLock for reentrant locking
+        self.lock = threading.RLock()
         self.event_queue = []
         self.error_queue = []
+        self.log_queue = queue.Queue(maxsize=0)
         self.is_listener_on = False
+        self.headers = {}
+        self.enums = {}
+        self.cmd_meta = {}         
+        self.shared_responses = {}
         self.connect(com)
-        self._load_commands_from_yaml(yaml_path)  # Load command definitions
+        self._load_commands_from_yaml(yaml_path)
         self.run()
-        # self.get_motor_pos(0)
+
+    def _generate_method(self, cmd):
+        name = cmd['command']
+        op = int(cmd['op'])
+        args_dict = cmd.get('args', {})
+        ret_dict = cmd.get('ret', {})
+
+        # 1. Build Packing Format (Outgoing)
+        send_fmt = '<B' # Header: OpCode
+        for t in args_dict.values():
+            send_fmt += self.TYPE_MAP[t][0]
+
+        # 2. Build Unpacking Format (Incoming Response)
+        ret_fmt = '<'
+        ret_size = 0
+        for t in ret_dict.values():
+            char, size = self.TYPE_MAP[t]
+            ret_fmt += char
+            ret_size += size
+        
+        # Save metadata for the EventListener to use
+        self.cmd_meta[op] = {'fmt': ret_fmt, 'size': ret_size, 'keys': list(ret_dict.keys())}
+
+        def method(self, *values, _op=op, _send_fmt=send_fmt, _has_ret=(ret_size > 0)):
+            header_byte = self.headers.get('COMMAND')
+            
+            if header_byte is None:
+                raise ValueError("COMMAND header not found in YAML config!")
+            
+            op_and_args = struct.pack(_send_fmt, _op, *values)
+            payload = header_byte + op_and_args  
+            return self.send_cmd(payload, _op, _has_ret)
+
+        setattr(self, name, partial(method, self))
 
     def _load_commands_from_yaml(self, yaml_path):
         with open(yaml_path, 'r') as f:
-            commands = yaml.safe_load(f)
+            Config = yaml.safe_load(f)
         
-        for cmd in commands:
-            try:
-                name = cmd['name']
-                op = int(cmd['op'])
-                args = cmd.get('args', [])
-                ret = cmd.get('ret', [])
-            except:
-                continue
+        for item in Config:
+            if 'Headers' in item:
+                self.headers = {k: v.to_bytes(1, 'little') for k, v in item['Headers'].items()}
             
-            # Create method with appropriate signature
-            def command_method(self, *values, op_code=op, params=args, ret=ret):
-                if len(values) != len(params):
-                    return f"Expected {params} arguments, got {len(values)}"
+            elif 'Enums' in item:
+                # The YAML parser creates a list for the dashes. 
+                # We convert that list into a single flat dictionary.
+                raw_enums = item['Enums']
+                self.enums = {}
                 
-                fmt = '<B' 
-                packed_vals = [op_code]
+                if isinstance(raw_enums, list):
+                    for entry in raw_enums:
+                        if isinstance(entry, dict):
+                            # This handles the nested 'EventCodes' and 'ErrorCodes'
+                            self.enums.update(entry)
+                else:
+                    self.enums = raw_enums
 
-                for p_name, val in zip(params, values):
-                    p_name = p_name.lower()
-                    
-                    if "id" in p_name: 
-                        fmt += 'B' # u8 (1 byte)
-                        packed_vals.append(int(val))
-                    elif "time_sampling" in p_name:
-                        fmt += 'Q' # u64 (8 bytes)
-                        packed_vals.append(int(val))
-                    elif "log_mask" in p_name or "logmask" in p_name:
-                        fmt += 'I' # u32 (4 bytes)
-                        packed_vals.append(int(val))
-                    elif isinstance(val, float) or any(x in p_name for x in ["kp", "ki", "kd", "target", "velocity", "acceleration"]):
-                        fmt += 'f' # f32 (4 bytes)
-                        packed_vals.append(float(val))
-                    else:
-                        fmt += 'i' # i32 (4 bytes) - used for speed, pos, pwm
-                        packed_vals.append(int(val))
-                
-                binary_payload = struct.pack(fmt, *packed_vals)
-
-                expect_reply = True if len(ret) > 0 else False
-                status = self.send_cmd(binary_payload, expect_reply)
-                                
-                return status
-            
-            # Set method name and parameters
-            command_method.__name__ = name
-            command_method.__qualname__ = f"Device.{name}"
-            command_method.__doc__ = f"Generated method for {name} command"
-            
-            # Create partial method with locked execution
-            locked_method = partial(self._execute_with_lock, command_method)
-            setattr(self, name, locked_method)
+            elif 'command' in item:
+                self._generate_method(item)
 
     def _execute_with_lock(self, func, *args, **kwargs):
         with self.lock:
             return func(self, *args, **kwargs)
+        
+    def _process_log(self, payload):      
+        try:
+            # '<' = Little Endian
+            # 'B' = u8 (Seq)
+            # 'I' = u32 (DT)
+            # '5i' = 5 x i32 (Values)
+            unpacked = struct.unpack('<BI5i', payload)
+            
+            log_entry = [unpacked[1], unpacked[2], unpacked[3], unpacked[4], unpacked[5], unpacked[6]]
+            self.log_queue.put(log_entry)
+            
+        except Exception as e:
+            print(f"Log Unpack Error: {e}")
     
     def connect(self, port):
         if port is None:
@@ -126,8 +157,9 @@ class Pico:
 
         try:
             with self.lock:
-                self.ser = serial.Serial(port, self.baud_rate, timeout=1)
+                self.ser = serial.Serial(port, self.baud_rate, timeout=0.1, write_timeout=0.5)
                 time.sleep(1)
+                self.ser.reset_input_buffer()
                 print(f"Connected to {port}")
                 return True
         except:
@@ -140,84 +172,58 @@ class Pico:
                 self.defaultCOM = self.newinput
                 self.connect(self.newinput)
     
-    def send_cmd(self, cmd_bytes, print_echo=True):
-        try:
-            with self.lock:  # Use the RLock to synchronize
-                self.ser.write(cmd_bytes)
-                self.ser.flush()
+    def send_cmd(self, payload, op, expect_ret, timeout=0.5):
+        if expect_ret:
+            self.shared_responses[op] = None
+            
+        with self.lock:
+            self.ser.write(payload)
+            self.ser.flush()
 
-                if print_echo:
-                    byte = self.ser.read(1)
-                    if not byte:
-                        print("Timeout: No data received")
-                        return None
-                        
-                    if byte == b'\x07':
-                        payload = self.ser.read(24) # 6 * f32 (4 bytes)
-                        if len(payload) < 24: return None
-                        unpacked = struct.unpack('<ffffff', payload)
-                        return {
-                            "kp": unpacked[0], "ki": unpacked[1], "kd": unpacked[2],
-                            "kp_speed": unpacked[3], "ki_speed": unpacked[4], "kd_speed": unpacked[5]
-                        }
+        if not expect_ret: return True
 
-                    # --- Case 0x09: Get Motor Speed PID (3 floats) ---
-                    elif byte == b'\x09':
-                        payload = self.ser.read(12) # 3 * f32 (4 bytes)
-                        if len(payload) < 12: return None
-                        unpacked = struct.unpack('<fff', payload)
-                        return {"kp": unpacked[0], "ki": unpacked[1], "kd": unpacked[2]}
+        start = time.time()
+        while self.shared_responses.get(op) is None:
+            if time.time() - start > timeout:
+                # Instead of hanging, we return None so the UI/Main loop stays alive
+                print(f"Timeout: OP {op} took too long.")
+                return None
+            time.sleep(0.001)
 
-                    # --- Case 0x13: Get Motor Position (1 i32 or f32) ---
-                    elif byte == b'\x13':
-                        payload = self.ser.read(4) 
-                        if len(payload) < 4: return None
-                        # Use 'i' if your Rust motor_pos is i32, 'f' if it is f32
-                        unpacked = struct.unpack('<i', payload) 
-                        return {"pos_count": unpacked[0]}
-
-                    # --- Case 0x14: Get Motor Speed (1 f32) ---
-                    elif byte == b'\x14':
-                        payload = self.ser.read(4)
-                        if len(payload) < 4: return None
-                        unpacked = struct.unpack('<f', payload)
-                        return {"speed_cps": unpacked[0]}
-                    
-                    # --- Fallback: ASCII Response ---
-                    else:
-                        # If it wasn't a binary header, read the rest of the line
-                        _ = byte + self.ser.readline()
-                        return None
-            return None
-        except serial.SerialException as e:
-            return f"Serial error: {e}"
-        except Exception as e:
-            return f"Unexpected error: {e}"
-    
+        # Retrieve and clean up
+        raw_payload = self.shared_responses.pop(op)
+        meta = self.cmd_meta[op]
+        unpacked = struct.unpack(meta['fmt'], raw_payload)
+        return dict(zip(meta['keys'], unpacked))
+        
     def __EventListener(self, limit=1_000_000):
-        try:
-            count = 0
-            print("Event Listener is Ready")
+        while self.is_listener_on:
+            if self.ser.in_waiting > 0:
+                with self.lock:
+                    if self.ser.in_waiting > 0:
+                        header = self.ser.read(1)
+                    
+                        if header == self.headers.get('LOGGER'):
+                            data = self.ser.read(25)
+                            self._process_log(data)
 
-            while self.is_listener_on: # and count < limit:
-                if self.ser.in_waiting:
-                    with self.lock:  # Ensure atomic command and read
-                        message = self.ser.readline().decode('utf-8', errors='replace').strip().split(" ")
-                        
-                        if message[0] == "data" or message[0] == "log":
-                            continue
-                        elif message[0] == "event":
-                            self.event_queue.append(message[1:])
-                            # TODO: Implement Event Handler
+                        elif header == self.headers.get('EVENT'):
+                            ev_code, m_id = struct.unpack('<BB', self.ser.read(2))
+                            name = self.enums['EventCodes'].get(ev_code, "UNKNOWN")
+                            self.event_queue.append({name: m_id})
+                            print(f"[EVENT] Motor {m_id}: {name}")
+
+                        elif header == self.headers.get('COMMAND'):
+                            op_byte = self.ser.read(1)
+                            op = int.from_bytes(op_byte, 'little')
+                            
+                            if op in self.cmd_meta:
+                                size = self.cmd_meta[op]['size']
+                                self.shared_responses[op] = self.ser.read(size)
                         else:
-                            if len(message) > 1:
-                                self.error_queue.append(message)
-                            # TODO: Implement Error Handler
-
-                time.sleep(0.1)
-                count += 1
-        except Exception as e:
-            print(f"Logger error: {e}")
+                            print(f"Unexpected Byte: {header.hex()} - Alignment may be lost!")
+            
+            time.sleep(0.0001)
 
     def run(self, limit=1_000_000):
         try:

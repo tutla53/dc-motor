@@ -2,6 +2,7 @@ import threading
 import time
 import csv
 import Config.Motor0 as config
+import queue
 
 # Logger Mask
 N_ENUM = 5
@@ -35,7 +36,6 @@ class SThread:
     def run(self,*args,withlock=False):
         if withlock:
             with self.lock:
-
                 self.thread = threading.Thread(target=self.func, args=(*args,))
                 self.thread.daemon = self.daemon
                 self.thread.start()
@@ -60,22 +60,18 @@ class FWLogger:
         try:
             count = 0
             while self.logging and count < limit:
-                with self.p.lock:  # Ensure atomic command and read
-                    self.p.get_logged_item()
-                    data = self.ser.readline()
-                self.logged_data.append(data)
-                count += 1
-                time.sleep(0.001)
+                x = self.p.log_queue.get()
+                print(x)
         except Exception as e:
             print(f"Logger error: {e}")
 
     def run(self, time_sampling=10, mask=15, limit=1_000_000):
         try:
-            self.logged_data.clear()
-            self.mask = mask
-            time.sleep(0.1)
+            # self.p.log_queue.clear()
+            # self.mask = mask
+            # time.sleep(0.1)
             with self.p.lock:
-                self.p.start_logger(time_sampling, mask)
+                self.p.start_logger(time_sampling)
             self.logging = True
             self.logger_thread = SThread(self.__MainLogger, True, limit)
         except Exception as e:
@@ -85,17 +81,10 @@ class FWLogger:
         self.logging = False
         with self.p.lock:
             self.p.stop_logger()
-        while True:
-            with self.p.lock:
-                self.p.get_logged_item()
-                data = self.ser.readline()
-                if len(data) == 3:
-                    break
-                self.logged_data.append(data)
-        
-        tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-        self.save_to_csv("LOG/"+tag+".csv")
-        self.p.clear_logged_item()
+
+        print(self.p.log_queue.qsize())
+        self.p.log_queue = queue.Queue(maxsize=0)
+        print(self.p.log_queue.qsize())
     
     def get_n_col(self, mask: int):
         count = 0
