@@ -88,6 +88,12 @@ impl<'a> CommandHandler<'a> {
                 */
                 if self.has_remaining(8) {
                     let time_sampling_ms = self.read_u64();
+                    
+                    if time_sampling_ms == 0 {
+                        // TODO: Add Error Code (PANIC! divided by zero case)
+                        return;
+                    }
+
                     LOGGER.set_logging_time_sampling(time_sampling_ms);
                     LOGGER.set_logging_state(true);
                 }
@@ -118,7 +124,7 @@ impl<'a> CommandHandler<'a> {
                         if self.has_remaining(4) {
                             let speed = self.read_i32();
                             motor.set_motor_command(
-                                MotorCommand::SpeedControl(Shape::Step(speed))
+                                MotorCommand::SpeedControl(speed)
                             );
                         };
                     },
