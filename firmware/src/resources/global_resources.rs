@@ -34,15 +34,15 @@ pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHAN
 pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> = Channel::new();
 
 /* --------------------------- ENUM -------------------------- */
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Shape {
     Step(i32),
     Trapezoidal(f32, f32, f32),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum MotorCommand {
-    SpeedControl(Shape),
+    SpeedControl(i32),
     PositionControl(Shape),
     OpenLoop(i32),
     Stop,
