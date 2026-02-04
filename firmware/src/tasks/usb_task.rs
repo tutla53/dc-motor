@@ -10,6 +10,7 @@ use crate::resources::global_resources::USB_TX_CHANNEL;
 use crate::resources::global_resources::Packet;
 use crate::resources::global_resources::USB_BUFFER_SIZE;
 use crate::resources::global_resources::EventList;
+use crate::resources::global_resources::EVENT_HEADER;
 use crate::tasks::usb_handler::CommandHandler;
 
 // Library
@@ -20,6 +21,24 @@ use embassy_futures::select::select;
 use embassy_futures::select::select3;
 use embassy_futures::select::Either;
 use embassy_futures::select::Either3;
+
+/*
+    Prototype
+
+    Header
+    - Command Header 0xFF (255)
+    - Event Header 0xFE (254)
+    - Logger Header 0XFD (253)
+
+    Event Message Format
+    - [header opcode id]
+    - e.g [0xFE (Event) 0x00 (MotorMoveDone) 0x00 (motor_id)]
+
+    Command Message Format
+    - [header opcode [data]]
+    - e.g. [0xFF (Command) 0x08 (set_motor_speed_pid_param) [kp, ki, kd] (data)]
+
+*/
 
 #[embassy_executor::task]
 pub async fn usb_traffic_controller_task() {
@@ -35,32 +54,28 @@ pub async fn usb_traffic_controller_task() {
 
         match action {
             Either3::First(packet) => {
-                let _ = USB_TX_CHANNEL.send(packet).await;
+                let _ = USB_TX_CHANNEL.try_send(packet);
             }
 
             Either3::Second(event) => {
-                p.data[0] = 0xCC; // Event Header
+                p.data[0] = EVENT_HEADER; // Event Header
                 
                 match event {
                     EventList::MotorMoveDone(motor_id) => {
-                        p.data[0] = motor_id;
+                        p.data[1] = 0x00;
+                        p.data[2] = motor_id;
                     }
                 }
 
-                p.len = 8;
-                let _ = USB_TX_CHANNEL.send(p).await;
+                p.len = 3;
+                let _ = USB_TX_CHANNEL.try_send(p);
             }
 
             Either3::Third(data_1) => {
-                if LOGGER.is_logging_active().await {
-                    data_1.pack_data(&mut p.data[0..32]);
-                    p.len = 32;
-
-                    if let Ok(data_2) = LOGGER.log_tx_buffer.try_receive() {
-                        data_2.pack_data(&mut p.data[32..64]);
-                        p.len = 64;
-                    }
-                    let _ = USB_TX_CHANNEL.send(p).await;
+                if LOGGER.is_logging_active() {
+                    data_1.pack_data(&mut p.data[0..26]);
+                    p.len = 26;
+                    let _ = USB_TX_CHANNEL.try_send(p);
                 }
             }
         }
@@ -87,7 +102,7 @@ pub async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'stat
                         Ok(len) => {
                             let data = &rx_buf[..len];
                             if !data.is_empty() {
-                                let handler = CommandHandler::new(data);
+                                let mut handler = CommandHandler::new(data);
                                 handler.process_command().await;
                             }
                         }
