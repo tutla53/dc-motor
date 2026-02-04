@@ -99,7 +99,7 @@ impl <'d, T: Instance, const SM: usize, const N: usize> RotaryEncoder <'d, T, SM
             };
     
             if count != last_reported_count {
-                self.motor.set_current_pos(count).await;
+                self.motor.set_current_pos(count);
                 last_reported_count = count;
             }
         
@@ -109,7 +109,7 @@ impl <'d, T: Instance, const SM: usize, const N: usize> RotaryEncoder <'d, T, SM
                 delta_count = 0;
                 start = Instant::now();
                 let filtered_speed = self.filter.update(speed);
-                self.motor.set_current_speed(filtered_speed).await;
+                self.motor.set_current_speed(filtered_speed);
             }
         }
     }    
