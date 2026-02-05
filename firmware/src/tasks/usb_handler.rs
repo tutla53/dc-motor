@@ -57,7 +57,7 @@ impl<'a> CommandHandler<'a> {
     }
 
     fn select_motor(&self, id: u8) -> Option<&'static MotorHandler> {
-        if id == 0 {
+        if id == MOTOR_0.id {
             return Some(&MOTOR_0);
         }
         else {

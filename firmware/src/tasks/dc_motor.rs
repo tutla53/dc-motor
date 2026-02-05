@@ -11,6 +11,9 @@ use crate::resources::global_resources::MotorHandler;
 use crate::resources::global_resources::MotorCommand;
 use crate::resources::global_resources::EventList;
 use crate::resources::global_resources::EVENT_CHANNEL;
+use crate::resources::global_resources::POS_TOLERANCE_COUNT;
+use crate::resources::global_resources::SPEED_TOLERANCE_CPS;
+use crate::resources::global_resources::SETTLE_TICKS;
 
 // Tasks
 use crate::tasks::pid_control::PIDcontrol;
@@ -45,9 +48,9 @@ pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     control_mode: ControlMode,
     motion_profile: Option<TrapezoidProfile>,
     move_done: bool,
-    max_target:i32,
-    commanded_speed: i32,
-    commanded_pos: i32,
+    command_just_received: bool,
+    final_target:i32,
+    current_settle_ticks: u32,
     motor: &'static MotorHandler,
 }
 
@@ -62,9 +65,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             control_mode: ControlMode::Stop,
             motion_profile: None, 
             move_done: false,
-            max_target: 0,
-            commanded_speed: 0,
-            commanded_pos: 0,
+            command_just_received: false,
+            final_target: 0,
+            current_settle_ticks: 0,
             motor,
         }
     }
@@ -170,6 +173,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                 if Some(motor_command) != last_command {
                     last_command = Some(motor_command);
                     current_active_cmd = motor_command;
+                    self.move_done = false;
+                    self.current_settle_ticks = 0;
+                    self.command_just_received = true;
                 
                     let new_control_mode = match motor_command {
                         MotorCommand::SpeedControl(_) => { ControlMode::Speed },
@@ -186,7 +192,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                         if let Shape::Trapezoidal(final_pos, vel, acc) = shape {
                             let start_pos = self.motor.get_current_pos();
                             start_time = Instant::now();
-                            self.motion_profile = Some(TrapezoidProfile::new(start_pos as f32, final_pos, vel, acc));
+                            self.motion_profile = Some(
+                                TrapezoidProfile::new(start_pos as f32, final_pos, vel, acc)
+                            );
                         }
                     }
                 }
@@ -206,10 +214,12 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                 MotorCommand::PositionControl(input_shape) => {
                     let commanded_position = match input_shape {
                         Shape::Step(position) => {
+                            self.final_target = position;
                             position
                         },
-                        Shape::Trapezoidal(_, _, _) => {
+                        Shape::Trapezoidal(target, _, _) => {
                             if let Some(ref profile) = self.motion_profile {
+                                self.final_target = target as i32;
                                 let elapsed_ms = start_time.elapsed().as_millis();
                                 let elapsed_s = (elapsed_ms as f32) / 1_000.0;
                                 profile.position(elapsed_s) as i32
@@ -221,12 +231,28 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     };
                     
                     self.motor.set_commanded_pos(commanded_position);
-
                     let current_position = self.motor.get_current_pos();
+                    let current_speed = self.motor.get_current_speed();
+
+                    // Move Done Check
+                    let at_target = (current_position - self.final_target).abs() <= POS_TOLERANCE_COUNT;
+                    let is_steady = current_speed.abs() <= SPEED_TOLERANCE_CPS;
+
+                    if at_target && is_steady && !self.command_just_received {
+                        self.current_settle_ticks += 1;
+                    } else {
+                        self.current_settle_ticks = 0;
+                        self.command_just_received = false; 
+                    } 
+                    if self.current_settle_ticks >= SETTLE_TICKS && !self.move_done {
+                        self.move_done = true;
+                        let _ = EVENT_CHANNEL.try_send(EventList::MotorMoveDone(self.motor.id));
+                    }
+
+                    // PID Computation
                     let pos_error = commanded_position - current_position;
                     let target_speed = self.position_control.compute(pos_error as f32);
 
-                    let current_speed = self.motor.get_current_speed();
                     let speed_error = target_speed - current_speed;
                     let sig = self.speed_for_position_control.compute(speed_error as f32);
                     self.move_motor(sig);

@@ -18,7 +18,7 @@ pub const COMMAND_HEADER: u8 = 0xFF;
 pub const EVENT_HEADER: u8 = 0xFE;
 pub const LOGGER_HEADER: u8 = 0xFD;
 
-/* --------------------------- Variables -------------------------- */
+/* --------------------------- Sizes -------------------------- */
 pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
@@ -32,6 +32,11 @@ pub static LOGGER: LoggerHandler = LoggerHandler::new();
 pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> = Channel::new();
 pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> = Channel::new();
 pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> = Channel::new();
+
+/* --------------------------- Motor Tolerance-------------------------- */
+pub const POS_TOLERANCE_COUNT: i32 = 5;
+pub const SPEED_TOLERANCE_CPS: i32 = 2;
+pub const SETTLE_TICKS: u32 = 20;
 
 /* --------------------------- ENUM -------------------------- */
 #[derive(Clone, Copy, PartialEq)]
