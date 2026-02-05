@@ -91,7 +91,7 @@
 
 - command: move_motor_abs_pos_trapezoid
   op: 10
-  args: {motor_id: u8, target: i32, vel: i32, acc: i32}
+  args: {motor_id: u8, target: f32, vel: f32, acc: f32}
   ret: {}
   desc: |
         Motor Position Control with Commanded Trapezoid Motion Profile
