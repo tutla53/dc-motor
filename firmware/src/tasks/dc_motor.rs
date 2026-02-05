@@ -29,7 +29,7 @@ use embassy_time::Duration;
 
 /* --------------------------- Code -------------------------- */
 #[derive(PartialEq, Clone, Copy)]
-enum ControlMode {
+pub enum ControlMode {
     Speed,
     Position,
     OpenLoop,
@@ -116,11 +116,40 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         }
     }
 
+    pub async fn reset_control_mode(&mut self, control_mode: ControlMode) {
+        self.control_mode = control_mode;
+
+        match self.control_mode {
+            ControlMode::OpenLoop => {
+                self.speed_control.reset();
+                self.position_control.reset();
+                self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
+                self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
+            },
+            ControlMode::Speed => {
+                self.speed_control.reset();
+                self.update_speed_config().await;
+                self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
+            },
+            ControlMode::Position => {
+                self.position_control.reset();
+                self.update_pos_config().await;
+                self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
+            },
+            ControlMode::Stop => {
+                self.move_motor(0);
+                self.update_pos_config().await;
+                self.update_speed_config().await;
+                self.motion_profile = None;
+            },
+        }
+    }
+
     pub async fn run_motor_task(&mut self) {
         /*
             Available Mode
             1. Stop
-            2. SpeedControl -> Step Only
+            2. SpeedControl     -> Step Only
             3. PositionControl  -> Step
             4. PositionControl  -> Trapezoidal
         */
@@ -150,41 +179,14 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     };
 
                     if self.control_mode != new_control_mode {
-                        self.control_mode = new_control_mode;
-
-                        match self.control_mode {
-                            ControlMode::OpenLoop => {
-                                self.speed_control.reset();
-                                self.position_control.reset();
-                                self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
-                                self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
-                            },
-                            ControlMode::Speed => {
-                                self.speed_control.reset();
-                                self.update_speed_config().await;
-                                self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
-                            },
-                            ControlMode::Position => {
-                                self.position_control.reset();
-                                self.update_pos_config().await;
-                                self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
-                            },
-                            ControlMode::Stop => {
-                                self.move_motor(0);
-                                self.update_pos_config().await;
-                                self.update_speed_config().await;
-                                self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
-                                self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control      
-                                self.motion_profile = None;
-                            },
-                        }
+                        self.reset_control_mode(new_control_mode).await;
                     }
-                    
+
                     if let MotorCommand::PositionControl(shape) = current_active_cmd {
-                        if let Shape::Trapezoidal(target, vel, acc) = shape {
+                        if let Shape::Trapezoidal(final_pos, vel, acc) = shape {
                             let start_pos = self.motor.get_current_pos();
                             start_time = Instant::now();
-                            self.motion_profile = Some(TrapezoidProfile::new(start_pos as f32, target, vel, acc));
+                            self.motion_profile = Some(TrapezoidProfile::new(start_pos as f32, final_pos, vel, acc));
                         }
                     }
                 }
@@ -208,8 +210,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                         },
                         Shape::Trapezoidal(_, _, _) => {
                             if let Some(ref profile) = self.motion_profile {
-                                let elapsed = (start_time.elapsed().as_millis() as f32) / 1000.0;
-                                profile.position(elapsed) as i32
+                                let elapsed_ms = start_time.elapsed().as_millis();
+                                let elapsed_s = (elapsed_ms as f32) / 1_000.0;
+                                profile.position(elapsed_s) as i32
                             } 
                             else {
                                 self.motor.get_current_pos() 
@@ -229,6 +232,8 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
                     self.move_motor(sig);
                 },
                 MotorCommand::Stop => {
+                    self.motor.set_commanded_pos(self.motor.get_current_pos());
+                    self.motor.set_commanded_speed(self.motor.get_current_speed());
                     self.move_motor(0);
                 }
             }
