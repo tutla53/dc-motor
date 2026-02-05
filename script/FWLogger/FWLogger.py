@@ -60,101 +60,84 @@ class FWLogger:
         try:
             count = 0
             while self.logging and count < limit:
-                x = self.p.log_queue.get()
-                print(x)
+                try:
+                    data = self.p.log_queue.get_nowait()
+                    self.logged_data.append(data)
+                    count += 1
+
+                    if count >= limit:
+                        break
+
+                except queue.Empty:
+                    time.sleep(0.001)
+                    continue
         except Exception as e:
             print(f"Logger error: {e}")
 
-    def run(self, time_sampling=10, mask=15, limit=1_000_000):
+    def run(self, mask, time_sampling, limit=1_000_000):
         try:
-            # self.p.log_queue.clear()
-            # self.mask = mask
-            # time.sleep(0.1)
+            self.logged_data = []
+            self.p.stop_logger()
+            self.p.clear_log_queue()
+            self.p.ser.reset_input_buffer()
+            self.mask = mask
+
             with self.p.lock:
                 self.p.start_logger(time_sampling)
             self.logging = True
             self.logger_thread = SThread(self.__MainLogger, True, limit)
+            print(f"Starting Logger")
         except Exception as e:
             print(f"Failed to start logger: {e}")
 
     def stop(self):
+        print("Stopping Logger")
         self.logging = False
+
         with self.p.lock:
             self.p.stop_logger()
+        self.p.clear_log_queue()
 
-        print(self.p.log_queue.qsize())
-        self.p.log_queue = queue.Queue(maxsize=0)
-        print(self.p.log_queue.qsize())
-    
-    def get_n_col(self, mask: int):
-        count = 0
-        while mask > 0:
-            count = count + mask%2
-            mask = mask >> 1
-        
-        return count+1
+        if hasattr(self, 'logger_thread'):
+            self.logger_thread.stop()
 
-    def print_logged_data(self):
-        print("\nLogged data:")
-        for line in self.logged_data:
-            value = line.decode('utf-8', errors='replace').strip()
-            try:
-                integer_list = [int(x.strip()) for x in value.split(' ')]
-                n_col = self.get_n_col(self.mask)
-            
-                idx = 1
-                for i in range(0, integer_list[0]):
-                    output = ""
-                    for j in range(0, n_col):
-                        output = output + str(integer_list[idx]) + " "
-                        idx += 1
-                    print(output)
-            except:
-                continue
+        tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+        self.save_to_csv("LOG/"+tag+".csv")
     
     def save_to_csv(self, filename):
+        if not self.logged_data:
+            print("Save failed: No data was collected.")
+            return
+        
         try:
             # Generate column headers based on mask
-            log_mask = [0]
-            columns = ['Timestamp']
+            selected_data = []
+            columns = ["Timestamp(ms)"]
+
             for bit in range(N_ENUM):
                 flag = 1 << bit
                 if self.mask & flag:
-                    log_mask.append(bit)
+                    selected_data.append(bit)
                     columns.append(self.mask_names[bit])
             
             with open(filename, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(columns)
                 
-                n_col = self.get_n_col(self.mask)  # Total columns per entry
-                
                 for data_line in self.logged_data:
+                    row = [data_line[0]] # Include Timestamp
+
+                    for idx in selected_data:
+
+                        scale = SCALE_OFFSET_MOTOR[idx][0]
+                        offset = SCALE_OFFSET_MOTOR[idx][0]
+
+                        processed_value = (data_line[idx+1] * scale) + offset
+                        row.append(processed_value)
+                    
                     try:
-                        decoded = data_line.decode('utf-8', errors='replace').strip().split(" ")
-                        if decoded[0] == "event":
-                            continue
-                        decoded = decoded[1:]
-                        integer_list = list(map(int, decoded))
-                        count = integer_list[0] if integer_list else 0
-                        idx = 1
-                        
-                        for _ in range(count):
-                            if idx + n_col > len(integer_list):
-                                break  # Prevent index errors
-                            
-                            entry_data = integer_list[idx : idx+n_col]
-                            timestamp = entry_data[0]
-
-                            for i in range(1, len(entry_data)):
-                                entry_data[i] = entry_data[i]*SCALE_OFFSET_MOTOR[log_mask[i]][0] + SCALE_OFFSET_MOTOR[log_mask[i]][1]
-
-                            data_values = entry_data[1:]
-                            
-                            # Create row with timestamp followed by data values
-                            writer.writerow([timestamp] + data_values)
-                            idx += n_col
-
+                        writer.writerow(row)
+                    
                     except Exception as e:
                         print(f"Skipping malformed line: {e}")
                         continue

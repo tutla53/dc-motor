@@ -15,29 +15,14 @@ p = Board.Pico(yaml_path)
 m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
 logger = Logger.FWLogger(p)
 
-def speed_test(speed_rpm, time_sampling = 10):
-    logger.run(time_sampling=time_sampling, mask=10)
+def speed_test(speed_rpm, time_sampling = 10, timeout= 1):
+    logger.run(mask=10, time_sampling=time_sampling)
+    
+    time.sleep(0.5)
     m0.move_motor_speed(speed_rpm)
-    wait_move_done()
-    time.sleep(1)
+    m0.wait_move_done(timeout=timeout)
     logger.stop()
     p.stop_motor(0)
-
-def wait_move_done(timeout=15):
-    start = time.perf_counter()
-    elapsed = 0
-    p.event_queue.clear()
-    
-    while elapsed < timeout:
-        if len(p.event_queue) > 0:
-            p.event_queue.pop()
-            print(f"Move Done, Elapsed: {elapsed:.2f} s")
-            return True
-        time.sleep(0.1)
-        elapsed = time.perf_counter() - start
-
-    print("Timeout waiting for move done.")
-    return False
 
 def pos_trapezoid_test(position_rotation, speed, acc, time_sampling = 10):
     current_pos = m0.get_motor_pos()['pos_rotation']
@@ -45,8 +30,9 @@ def pos_trapezoid_test(position_rotation, speed, acc, time_sampling = 10):
     print("Current Pos: ", current_pos)
     print(f"Duration (est): {duration:.2f}s")
     
-    logger.run(time_sampling=time_sampling)
+    logger.run(mask=5,time_sampling=time_sampling)
     
+    time.sleep(0.5)
     m0.move_motor_pos_trapezoid(position_rotation, speed, acc)
     # wait_move_done(duration+10)
     time.sleep(5)
@@ -58,16 +44,19 @@ def pos_step_test(position_rotation, duration=3, time_sampling = 10):
     current_pos = m0.get_motor_pos()['pos_rotation']
     print("Current Pos: ", current_pos)
     
-    logger.run(time_sampling=time_sampling)
+    logger.run(mask = 5, time_sampling=time_sampling)
     
+    time.sleep(0.5)
     m0.move_motor_pos_step(position_rotation)
     # wait_move_done(duration+10)
-    # time.sleep(5)
+    time.sleep(duration)
     p.stop_motor(0)
     logger.stop()
 
 def open_loop_test(pwm, duration=3, time_sampling = 10):
-    logger.run(time_sampling=time_sampling)
+    logger.run(mask = 18, time_sampling=time_sampling)
+    
+    time.sleep(0.5)
     m0.move_motor_open_loop(pwm)
     time.sleep(duration)
     logger.stop()

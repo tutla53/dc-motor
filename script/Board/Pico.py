@@ -172,7 +172,7 @@ class Pico:
                 self.defaultCOM = self.newinput
                 self.connect(self.newinput)
     
-    def send_cmd(self, payload, op, expect_ret, timeout=0.5):
+    def send_cmd(self, payload, op, expect_ret, timeout=2):
         if expect_ret:
             self.shared_responses[op] = None
             
@@ -185,7 +185,6 @@ class Pico:
         start = time.time()
         while self.shared_responses.get(op) is None:
             if time.time() - start > timeout:
-                # Instead of hanging, we return None so the UI/Main loop stays alive
                 print(f"Timeout: OP {op} took too long.")
                 return None
             time.sleep(0.001)
@@ -231,7 +230,14 @@ class Pico:
             self.logger_thread = SThread(self.__EventListener, True, limit)
         except Exception as e:
             print(f"Failed to start listener: {e}")
-
+    
+    def clear_log_queue(self):
+        while not self.log_queue.empty():
+            try:
+                self.log_queue.get_nowait()
+            except queue.Empty:
+                break
+    
     def print_queue(self):
         print("Event:", self.event_queue)
         print("Error:", self.error_queue)
