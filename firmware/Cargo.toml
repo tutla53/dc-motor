@@ -30,9 +30,11 @@ static_cell = "2.1.1"
 portable-atomic = { version = "1.13.0", features = ["critical-section"] }
 
 [profile.release]
-debug = 2
-lto = true
-opt-level = 'z'
+opt-level = "s"      # "s" optimizes for size while keeping speed; use "z" for smallest binary
+lto = "fat"          # Link Time Optimization is crucial for removing unused HAL code
+codegen-units = 1    # Allow the compiler to see the whole project for better optimization
+panic = "abort"      # Embedded apps shouldn't "unwind" on panic
+strip = true         # Removes symbol tables to save Flash space
 
 [profile.dev]
 debug = 2
