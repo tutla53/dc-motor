@@ -6,6 +6,7 @@ import threading
 import queue
 import time
 import struct
+from Tool.visualize import *
 
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
@@ -210,7 +211,7 @@ class Pico:
                             ev_code, m_id = struct.unpack('<BB', self.ser.read(2))
                             name = self.enums['EventCodes'].get(ev_code, "UNKNOWN")
                             self.event_queue.append({name: m_id})
-                            print(f"[EVENT] Motor {m_id}: {name}")
+                            printg(f"[EVENT] Motor {m_id}: {name}")
 
                         elif header == self.headers.get('COMMAND'):
                             op_byte = self.ser.read(1)
