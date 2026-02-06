@@ -30,6 +30,7 @@ use static_cell::StaticCell;
 
 use embassy_executor::Executor;
 use embassy_executor::InterruptExecutor;
+use embassy_executor::Spawner;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 use embassy_usb::class::cdc_acm::State;
 use embassy_rp::multicore::Stack;
@@ -58,8 +59,8 @@ unsafe fn SWI_IRQ_1() {
     unsafe { EXECUTOR_HIGH.on_interrupt() }
 }
 
-#[cortex_m_rt::entry]
-fn main() -> ! {
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {
     let ph = embassy_rp::init(Default::default());
     let p =  split_resources!(ph);
     let usb_driver = Driver::new(ph.USB, Irqs);
