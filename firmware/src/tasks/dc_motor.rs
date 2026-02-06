@@ -59,9 +59,9 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         Self {
             pwm_cw,
             pwm_ccw,
-            speed_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us as i32),
+            speed_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us),
             position_control: PIDcontrol::new_position_pid(motor.max_speed_cps as i32),
-            speed_for_position_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us as i32),
+            speed_for_position_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us),
             control_mode: ControlMode::Stop,
             motion_profile: None, 
             move_done: false,
@@ -102,18 +102,16 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.speed_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
     }
 
-    pub fn move_motor(&mut self, mut pwm: i32) {
-        let threshold = self.motor.max_pwm_output_us as i32;
+    pub fn move_motor(&mut self, pwm_input: i32) {
+        
+        let pwm = pwm_input.clamp(-self.motor.max_pwm_output_us, self.motor.max_pwm_output_us);
+        self.motor.set_commanded_pwm(pwm);
 
         if pwm > 0 {
-            if pwm > threshold { pwm = threshold; }
-            self.motor.set_commanded_pwm(pwm);
             self.pwm_cw.write(CoreDuration::from_micros(pwm.abs() as u64));
             self.pwm_ccw.write(CoreDuration::from_micros(0));
         }
         else {
-            if pwm < -threshold { pwm = -threshold; }
-            self.motor.set_commanded_pwm(pwm);
             self.pwm_cw.write(CoreDuration::from_micros(0));
             self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
         }

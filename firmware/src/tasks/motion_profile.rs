@@ -27,9 +27,9 @@ enum ProfileType {
 
 impl TrapezoidProfile {
     pub fn new(initial_position: f32, target_position: f32, v_max: f32, a_max: f32) -> Self {
-        let displacement = target_position - initial_position;
-        let mut direction = 1.0;
-        if displacement < 0.0 { direction = -1.0; }
+        let displacement: f32  = target_position - initial_position;
+        let direction: f32 = if displacement >= 0.0 {1.0} else {-1.0};
+
         let displacement_abs = displacement.abs();
         let v_max_abs = v_max.abs();
         let a_max_abs = a_max.abs();

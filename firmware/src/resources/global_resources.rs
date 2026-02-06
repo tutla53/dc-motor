@@ -92,7 +92,7 @@ pub struct MotorHandler {
     pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     pub refresh_interval_us: u64,
-    pub max_pwm_output_us: u64,
+    pub max_pwm_output_us: i32,
     pub max_speed_cps: i32,
     pub id: u8, 
 }
