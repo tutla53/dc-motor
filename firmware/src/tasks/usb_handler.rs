@@ -31,72 +31,123 @@ impl<'a> CommandHandler<'a> {
             cursor: 0,
          }
     }
-
-    pub fn read_u8(&mut self) -> u8 {
-        let val = self.data[self.cursor];
-        self.cursor += 1;
-        val
-    }
-
-    pub fn read_i32(&mut self) -> i32 {
-        let val = i32::from_le_bytes(self.data[self.cursor..self.cursor + 4].try_into().unwrap_or([0; 4]));
-        self.cursor += 4;
-        val
-    }
-
-    pub fn read_f32(&mut self) -> f32 {
-        let val = f32::from_le_bytes(self.data[self.cursor..self.cursor + 4].try_into().unwrap_or([0; 4]));
-        self.cursor += 4;
-        val
-    }
-
-    pub fn read_u64(&mut self) -> u64 {
-        let val = u64::from_le_bytes(self.data[self.cursor..self.cursor + 8].try_into().unwrap_or([0; 8]));
-        self.cursor += 8;
-        val
-    }
-
-    fn select_motor(&self, id: u8) -> Option<&'static MotorHandler> {
-        if id == MOTOR_0.id {
-            return Some(&MOTOR_0);
-        }
-        else {
-            log::info!("selected_motor is not available");
-            return None 
-        }
-    }
-
+    
     fn has_remaining(&self, needed: usize) -> bool {
         self.cursor + needed <= self.data.len()
     }
 
+    pub fn read_u8(&mut self) -> Option<u8> {
+        let size = 1;
+
+        if !self.has_remaining(size) {
+            log::error!("Malformed packet: expected {} bytes", size);
+            return None;
+        }
+        
+        let val = self.data[self.cursor];
+        self.cursor += size;
+        Some(val)
+    }
+
+    pub fn read_i32(&mut self) -> Option<i32> {
+        let size = 4;
+
+        if !self.has_remaining(size) {
+            log::error!("Malformed packet: expected {} bytes", size);
+            return None; 
+        }
+
+        let val = i32::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
+        self.cursor += size;
+        Some(val)
+    }
+
+    pub fn read_f32(&mut self) -> Option<f32> {
+        let size = 4;
+
+        if !self.has_remaining(size) {
+            log::error!("Malformed packet: expected {} bytes", size);
+            return None; 
+        }
+
+        let val = f32::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
+        self.cursor += size;
+
+        if val.is_finite() {
+            Some(val)
+        } else {
+            log::warn!("Received non-finite f32 (NaN/Inf). Defaulting to 0.0");
+            None
+        }
+    }
+
+    pub fn read_u64(&mut self) -> Option<u64> {
+        let size = 8;
+        
+        if !self.has_remaining(size) {
+            log::error!("Malformed packet: expected {} bytes", size);
+            return None; 
+        }
+
+        let val = u64::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
+        self.cursor += size;
+        Some(val)
+    }
+
+    fn select_motor(&self, motor_id: Option<u8>) -> Option<&'static MotorHandler> {
+        match motor_id {
+            Some(id) => {
+                if id == MOTOR_0.id {
+                    Some(&MOTOR_0)
+                }
+                else {
+                    log::error!("Motor {} not found", id);
+                    None
+                }
+            },
+            None => {
+                log::error!("Command not found");
+                None
+            }
+        }
+
+    }
+
     pub async fn process_command(&mut self) {
         if self.data.len() < 2 { return; }
-
-        let header = self.read_u8();
+        
+        let header = match self.read_u8() {
+            Some(value) => {value},
+            None => return,
+        };
 
         if header != COMMAND_HEADER {
             return; 
         }
 
-        let op_code = self.read_u8();
+        let op_code = match self.read_u8() {
+            Some(value) => {value},
+            None => return,
+        };
 
         match op_code {
             1 => {
                 /* start_logger
                     time_sampling (u64) = 8
                 */
-                if self.has_remaining(8) {
-                    let time_sampling_ms = self.read_u64();
+                let time_sampling_ms =  match self.read_u64(){
+                    Some(val) => val,
+                    None => return,
+                };
                     
-                    if time_sampling_ms == 0 {
-                        // TODO: Add Error Code (PANIC! divided by zero case)
-                        return;
-                    }
-
-                    LOGGER.set_logging_time_sampling(time_sampling_ms);
-                    LOGGER.set_logging_state(true);
+                if time_sampling_ms == 0 {
+                    // TODO: Add Error Code (PANIC! divided by zero case)
+                    return;
                 }
+                
+                LOGGER.set_logging_time_sampling(time_sampling_ms);
+                LOGGER.set_logging_state(true);
+
             },
             2 => { 
                 /* stop_logger */              
@@ -105,15 +156,11 @@ impl<'a> CommandHandler<'a> {
             },
 
             3..=13 => {
-                if !self.has_remaining(1) { return; }
                 let motor_id = self.read_u8();
                 
                 let motor = match self.select_motor(motor_id) {
-                    Some(motor) => {motor},
-                    None => {
-                        log::error!("Motor {} not found", motor_id);
-                        return;
-                    },
+                    Some(motor) => motor,
+                    None => return,
                 };
 
                 match op_code {
@@ -121,23 +168,27 @@ impl<'a> CommandHandler<'a> {
                         /* move_motor_speed
                             speed (i32) = 4
                         */
-                        if self.has_remaining(4) {
-                            let speed = self.read_i32();
-                            motor.set_motor_command(
-                                MotorCommand::SpeedControl(speed)
-                            );
+                        let speed = match self.read_i32(){
+                            Some(val) => val,
+                            None => return,
                         };
+
+                        motor.set_motor_command(
+                            MotorCommand::SpeedControl(speed)
+                        );
                     },
                     4 => {
                         /* move_motor_abs_pos
                             pos (i32) = 4
                         */
-                        if self.has_remaining(4) {
-                            let pos = self.read_i32();
-                            motor.set_motor_command(
-                                    MotorCommand::PositionControl(Shape::Step(pos))
-                            );
-                        } 
+                        let pos = match self.read_i32(){
+                            Some(val) => val,
+                            None => return,
+                        };
+
+                        motor.set_motor_command(
+                            MotorCommand::PositionControl(Shape::Step(pos))
+                        );
                     },
                     5 => {
                         /* stop_motor */
@@ -152,16 +203,14 @@ impl<'a> CommandHandler<'a> {
                             ki_speed (f32) = 4
                             kd_speed (f32) = 4
                         */
-                        if self.has_remaining(24) {
+
+                        if let (Some(kp), Some(ki), Some(kd), Some(kp_speed), Some(ki_speed), Some(kd_speed)) = (
+                            self.read_f32(), self.read_f32(), self.read_f32(),
+                            self.read_f32(), self.read_f32(), self.read_f32()
+                        ) {
                             let config = PosPIDConfig {
-                                kp: self.read_f32(),
-                                ki: self.read_f32(),
-                                kd: self.read_f32(),
-                                kp_speed: self.read_f32(),
-                                ki_speed: self.read_f32(),
-                                kd_speed: self.read_f32(),            
+                                kp, ki, kd, kp_speed, ki_speed, kd_speed,
                             };
-                            
                             motor.set_pos_pid(config).await;
                         }
                     },
@@ -178,7 +227,7 @@ impl<'a> CommandHandler<'a> {
                         buffer.push_bytes(&pid.kp_speed.to_le_bytes());
                         buffer.push_bytes(&pid.ki_speed.to_le_bytes());
                         buffer.push_bytes(&pid.kd_speed.to_le_bytes());
-                        let _ = CMD_CHANNEL.try_send(buffer); 
+                        CMD_CHANNEL.send(buffer).await; 
                     },
                     8 => {
                         /* set_motor_speed_pid_param
@@ -186,11 +235,11 @@ impl<'a> CommandHandler<'a> {
                             ki (f32) = 4
                             kd (f32) = 4
                         */
-                        if self.has_remaining(12) {
+                        if let (Some(kp), Some(ki), Some(kd)) = (
+                            self.read_f32(), self.read_f32(), self.read_f32(),
+                        ) {
                             let config = PIDConfig {
-                                kp: self.read_f32(),
-                                ki: self.read_f32(),
-                                kd: self.read_f32(),
+                                kp, ki, kd,
                             };
                             motor.set_speed_pid(config).await;
                         }
@@ -204,7 +253,7 @@ impl<'a> CommandHandler<'a> {
                             buffer.push_bytes(&pid.kp.to_le_bytes());
                             buffer.push_bytes(&pid.ki.to_le_bytes());
                             buffer.push_bytes(&pid.kd.to_le_bytes());
-                            let _ = CMD_CHANNEL.try_send(buffer);                         
+                            CMD_CHANNEL.send(buffer).await;                         
                     },
                     10 => {
                         /* move_motor_abs_pos_trapezoid
@@ -212,10 +261,10 @@ impl<'a> CommandHandler<'a> {
                             velocity (f32) = 4
                             acceleration (f32) = 4
                         */
-                        if self.has_remaining(12) {
-                            let target = self.read_f32();
-                            let velocity = self.read_f32();
-                            let acceleration = self.read_f32();
+
+                        if let (Some(target), Some(velocity), Some(acceleration)) = (
+                            self.read_f32(), self.read_f32(), self.read_f32(),
+                        ) {
                             motor.set_motor_command(
                                 MotorCommand::PositionControl(
                                     Shape::Trapezoidal(target, velocity, acceleration)
@@ -231,7 +280,7 @@ impl<'a> CommandHandler<'a> {
                         buffer.push_bytes(&[COMMAND_HEADER]);
                         buffer.push_bytes(&[op_code]);
                         buffer.push_bytes(&motor_pos.to_le_bytes());
-                        let _ = CMD_CHANNEL.try_send(buffer);
+                        CMD_CHANNEL.send(buffer).await;
                     },
                     12 => {
                         /* get_motor_speed */
@@ -241,23 +290,23 @@ impl<'a> CommandHandler<'a> {
                         buffer.push_bytes(&[COMMAND_HEADER]);
                         buffer.push_bytes(&[op_code]);
                         buffer.push_bytes(&motor_speed.to_le_bytes());
-                        let _ = CMD_CHANNEL.try_send(buffer);
+                        CMD_CHANNEL.send(buffer).await;
                     },
                     13 => {
                         /* move_motor_open_loop
                             pwm (i32) = 4
                         */
-                        if self.has_remaining(4) {
-                            let pwm = self.read_i32();
-                            motor.set_motor_command(
-                                MotorCommand::OpenLoop(pwm)
-                            );
-                        }
+                        let pwm = match self.read_i32(){
+                            Some(val) => val,
+                            None => return,
+                        };
+
+                        motor.set_motor_command(MotorCommand::OpenLoop(pwm));
                     },
-                    _ => { let _ = log::info!("ERR: Unknown Cmd\n"); },
+                    _ => { log::info!("ERR: Unknown Cmd\n"); },
                 }
             },
-            _ => { let _ = log::info!("ERR: Unknown Cmd\n"); },
+            _ => { log::info!("ERR: Unknown Cmd\n"); },
         }
     }
 }
