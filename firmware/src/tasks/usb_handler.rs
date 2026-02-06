@@ -13,6 +13,7 @@ use crate::resources::global_resources::LOGGER;
 use crate::resources::global_resources::Packet;
 use crate::resources::global_resources::CMD_CHANNEL;
 use crate::resources::global_resources::COMMAND_HEADER;
+use crate::resources::global_resources::FromLeBytes;
 
 // Library
 use defmt_rtt as _;
@@ -31,119 +32,50 @@ impl<'a> CommandHandler<'a> {
             cursor: 0,
          }
     }
-    
-    fn has_remaining(&self, needed: usize) -> bool {
-        self.cursor + needed <= self.data.len()
-    }
 
-    pub fn read_u8(&mut self) -> Option<u8> {
-        let size = 1;
-
-        if !self.has_remaining(size) {
-            log::error!("Malformed packet: expected {} bytes", size);
-            return None;
-        }
+    pub fn read <T:FromLeBytes> (&mut self) -> Option<T> {
+        let size = T::SIZE;
+        let bytes = self.data.get(self.cursor..self.cursor + size)?;
+        let val = T::from_le_bytes(bytes)?;
         
-        let val = self.data[self.cursor];
-        self.cursor += size;
-        Some(val)
-    }
-
-    pub fn read_i32(&mut self) -> Option<i32> {
-        let size = 4;
-
-        if !self.has_remaining(size) {
-            log::error!("Malformed packet: expected {} bytes", size);
-            return None; 
-        }
-
-        let val = i32::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
         self.cursor += size;
         Some(val)
     }
 
     pub fn read_f32(&mut self) -> Option<f32> {
-        let size = 4;
-
-        if !self.has_remaining(size) {
-            log::error!("Malformed packet: expected {} bytes", size);
-            return None; 
-        }
-
-        let val = f32::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
-        self.cursor += size;
-
+        let val: f32 = self.read()?;
         if val.is_finite() {
             Some(val)
         } else {
-            log::warn!("Received non-finite f32 (NaN/Inf). Defaulting to 0.0");
+            log::warn!("Non-finite float ignored");
             None
         }
     }
 
-    pub fn read_u64(&mut self) -> Option<u64> {
-        let size = 8;
-        
-        if !self.has_remaining(size) {
-            log::error!("Malformed packet: expected {} bytes", size);
-            return None; 
-        }
-
-        let val = u64::from_le_bytes(self.data[self.cursor..self.cursor + size].try_into().unwrap());
-        self.cursor += size;
-        Some(val)
-    }
-
     fn select_motor(&self, motor_id: Option<u8>) -> Option<&'static MotorHandler> {
         match motor_id {
-            Some(id) => {
-                if id == MOTOR_0.id {
-                    Some(&MOTOR_0)
-                }
-                else {
-                    log::error!("Motor {} not found", id);
-                    None
-                }
-            },
-            None => {
+            Some(id) if id== MOTOR_0.id => { Some(&MOTOR_0) },
+            Some(_) | None => {
                 log::error!("Command not found");
                 None
             }
         }
-
     }
 
     pub async fn process_command(&mut self) {
-        if self.data.len() < 2 { return; }
-        
-        let header = match self.read_u8() {
-            Some(value) => {value},
-            None => return,
-        };
-
-        if header != COMMAND_HEADER {
-            return; 
-        }
-
-        let op_code = match self.read_u8() {
-            Some(value) => {value},
-            None => return,
-        };
+        let Some(header): Option<u8> = self.read() else { return };
+        if header != COMMAND_HEADER { return; }
+        let Some(op_code): Option<u8> = self.read() else { return };
 
         match op_code {
             1 => {
                 /* start_logger
                     time_sampling (u64) = 8
                 */
-                let time_sampling_ms =  match self.read_u64(){
+                let time_sampling_ms: u64 =  match self.read() {
+                    None | Some(0) => return, // TODO: Add Error Code (PANIC! divided by zero case)
                     Some(val) => val,
-                    None => return,
                 };
-                    
-                if time_sampling_ms == 0 {
-                    // TODO: Add Error Code (PANIC! divided by zero case)
-                    return;
-                }
                 
                 LOGGER.set_logging_time_sampling(time_sampling_ms);
                 LOGGER.set_logging_state(true);
@@ -156,7 +88,7 @@ impl<'a> CommandHandler<'a> {
             },
 
             3..=13 => {
-                let motor_id = self.read_u8();
+                let motor_id: Option<u8> = self.read();
                 
                 let motor = match self.select_motor(motor_id) {
                     Some(motor) => motor,
@@ -168,10 +100,7 @@ impl<'a> CommandHandler<'a> {
                         /* move_motor_speed
                             speed (i32) = 4
                         */
-                        let speed = match self.read_i32(){
-                            Some(val) => val,
-                            None => return,
-                        };
+                        let Some(speed): Option<i32> = self.read() else { return };
 
                         motor.set_motor_command(
                             MotorCommand::SpeedControl(speed)
@@ -181,10 +110,7 @@ impl<'a> CommandHandler<'a> {
                         /* move_motor_abs_pos
                             pos (i32) = 4
                         */
-                        let pos = match self.read_i32(){
-                            Some(val) => val,
-                            None => return,
-                        };
+                        let Some(pos): Option<i32> = self.read() else { return };
 
                         motor.set_motor_command(
                             MotorCommand::PositionControl(Shape::Step(pos))
@@ -219,14 +145,15 @@ impl<'a> CommandHandler<'a> {
                         let pid = motor.get_pos_pid().await;
 
                         let mut buffer = Packet::new();            
-                        buffer.push_bytes(&[COMMAND_HEADER]);
-                        buffer.push_bytes(&[op_code]);
-                        buffer.push_bytes(&pid.kp.to_le_bytes());
-                        buffer.push_bytes(&pid.ki.to_le_bytes());
-                        buffer.push_bytes(&pid.kd.to_le_bytes());
-                        buffer.push_bytes(&pid.kp_speed.to_le_bytes());
-                        buffer.push_bytes(&pid.ki_speed.to_le_bytes());
-                        buffer.push_bytes(&pid.kd_speed.to_le_bytes());
+                        buffer.push(COMMAND_HEADER)
+                            .push(op_code)
+                            .push(pid.kp)
+                            .push(pid.ki)
+                            .push(pid.kd)
+                            .push(pid.kp_speed)
+                            .push(pid.ki_speed)
+                            .push(pid.kd_speed);
+
                         CMD_CHANNEL.send(buffer).await; 
                     },
                     8 => {
@@ -248,11 +175,11 @@ impl<'a> CommandHandler<'a> {
                         /* get_motor_speed_pid_param */
                             let pid = motor.get_speed_pid().await;
                             let mut buffer = Packet::new();            
-                            buffer.push_bytes(&[COMMAND_HEADER]);
-                            buffer.push_bytes(&[op_code]);
-                            buffer.push_bytes(&pid.kp.to_le_bytes());
-                            buffer.push_bytes(&pid.ki.to_le_bytes());
-                            buffer.push_bytes(&pid.kd.to_le_bytes());
+                            buffer.push(COMMAND_HEADER)
+                                .push(op_code)
+                                .push(pid.kp)
+                                .push(pid.ki)
+                                .push(pid.kd);
                             CMD_CHANNEL.send(buffer).await;                         
                     },
                     10 => {
@@ -277,9 +204,9 @@ impl<'a> CommandHandler<'a> {
                         let motor_pos = motor.get_current_pos();
 
                         let mut buffer = Packet::new();            
-                        buffer.push_bytes(&[COMMAND_HEADER]);
-                        buffer.push_bytes(&[op_code]);
-                        buffer.push_bytes(&motor_pos.to_le_bytes());
+                        buffer.push(COMMAND_HEADER)
+                            .push(op_code)
+                            .push(motor_pos);
                         CMD_CHANNEL.send(buffer).await;
                     },
                     12 => {
@@ -287,19 +214,16 @@ impl<'a> CommandHandler<'a> {
                         let motor_speed = motor.get_current_speed();
 
                         let mut buffer = Packet::new();            
-                        buffer.push_bytes(&[COMMAND_HEADER]);
-                        buffer.push_bytes(&[op_code]);
-                        buffer.push_bytes(&motor_speed.to_le_bytes());
+                        buffer.push(COMMAND_HEADER)
+                            .push(op_code)
+                            .push(motor_speed);
                         CMD_CHANNEL.send(buffer).await;
                     },
                     13 => {
                         /* move_motor_open_loop
                             pwm (i32) = 4
                         */
-                        let pwm = match self.read_i32(){
-                            Some(val) => val,
-                            None => return,
-                        };
+                        let Some(pwm): Option<i32> = self.read() else { return };
 
                         motor.set_motor_command(MotorCommand::OpenLoop(pwm));
                     },

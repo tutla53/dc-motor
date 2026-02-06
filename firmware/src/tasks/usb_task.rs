@@ -112,7 +112,7 @@ pub async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'stat
                     }
                 }
                 Either::Second(packet) => {
-                    let _ = class.write_packet(&packet.data[..packet.len]).await;
+                    let _ = class.write_packet(packet.as_slice()).await;
                 }
             }
         }

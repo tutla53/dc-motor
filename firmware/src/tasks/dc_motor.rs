@@ -85,7 +85,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.pwm_ccw.write(CoreDuration::from_micros(0));
     }
 
-    async fn update_pos_config(&mut self) {
+    async fn update_pos_pid_config(&mut self) {
         let new_pos_pid = self.motor.get_pos_pid().await;
         
         self.position_control.reset();
@@ -95,7 +95,7 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
         self.speed_for_position_control.update_pid_param(new_pos_pid.kp_speed, new_pos_pid.ki_speed, new_pos_pid.kd_speed);
     }
 
-    async fn update_speed_config(&mut self) {
+    async fn update_speed_pi_config(&mut self) {
         let new_speed_pid = self.motor.get_speed_pid().await;
 
         self.speed_control.reset();
@@ -129,18 +129,18 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
             },
             ControlMode::Speed => {
                 self.speed_control.reset();
-                self.update_speed_config().await;
+                self.update_speed_pi_config().await;
                 self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
             },
             ControlMode::Position => {
                 self.position_control.reset();
-                self.update_pos_config().await;
+                self.update_pos_pid_config().await;
                 self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
             },
             ControlMode::Stop => {
                 self.move_motor(0);
-                self.update_pos_config().await;
-                self.update_speed_config().await;
+                self.update_pos_pid_config().await;
+                self.update_speed_pi_config().await;
                 self.motion_profile = None;
             },
         }

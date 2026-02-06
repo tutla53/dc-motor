@@ -108,6 +108,16 @@ pub struct LogData {
     pub values: [i32; 5],
 }
 
+/* --------------------------- Trait -------------------------- */
+pub trait FromLeBytes: Sized {
+    const SIZE: usize;
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self>;
+}
+
+pub trait ToLeBytes {
+    fn push_to_packet(self, packet: &mut Packet);
+}
+
 /* --------------------------- Struct Implementation -------------------------- */
 impl LoggerHandler {
     pub const fn new() -> Self {
@@ -222,13 +232,23 @@ impl MotorHandler {
 
 impl Packet {
     pub fn new() -> Self {
-        Self { data: [0u8; 64], len: 0 }
+        Self { data: [0u8; USB_BUFFER_SIZE], len: 0 }
     }
-    pub fn push_bytes(&mut self, bytes: &[u8]) {
+    
+    fn push_bytes(&mut self, bytes: &[u8]) {
         let remain = 64 - self.len;
         let to_copy = bytes.len().min(remain);
         self.data[self.len..self.len + to_copy].copy_from_slice(&bytes[..to_copy]);
         self.len += to_copy;
+    }
+    
+    pub fn push<T: ToLeBytes>(&mut self, value: T) -> &mut Self {
+        value.push_to_packet(self);
+        self
+    }
+    
+    pub fn as_slice(&self) -> &[u8] {
+        &self.data[..self.len]
     }
 }
 
@@ -244,5 +264,58 @@ impl LogData {
         out[14..18].copy_from_slice(&self.values[2].to_le_bytes());
         out[18..22].copy_from_slice(&self.values[3].to_le_bytes());
         out[22..26].copy_from_slice(&self.values[4].to_le_bytes());
+    }
+}
+
+/* --------------------------- Trait Implementation -------------------------- */
+impl FromLeBytes for u8 {
+    const SIZE: usize = 1;
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        bytes.first().copied()
+    }
+}
+
+impl FromLeBytes for i32 {
+    const SIZE: usize = 4;
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        bytes.try_into().ok().map(i32::from_le_bytes)
+    }
+}
+
+impl FromLeBytes for f32 {
+    const SIZE: usize = 4;
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        bytes.try_into().ok().map(f32::from_le_bytes)
+    }
+}
+
+impl FromLeBytes for u64 {
+    const SIZE: usize = 8;
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        bytes.try_into().ok().map(u64::from_le_bytes)
+    }
+}
+
+impl ToLeBytes for u8 {
+    fn push_to_packet(self, packet: &mut Packet) {
+        packet.push_bytes(&[self]);
+    }
+}
+
+impl ToLeBytes for i32 {
+    fn push_to_packet(self, packet: &mut Packet) {
+        packet.push_bytes(&self.to_le_bytes());
+    }
+}
+
+impl ToLeBytes for f32 {
+    fn push_to_packet(self, packet: &mut Packet) {
+        packet.push_bytes(&self.to_le_bytes());
+    }
+}
+
+impl ToLeBytes for u64 {
+    fn push_to_packet(self, packet: &mut Packet) {
+        packet.push_bytes(&self.to_le_bytes());
     }
 }
