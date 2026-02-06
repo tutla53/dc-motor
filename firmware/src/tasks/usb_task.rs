@@ -53,11 +53,13 @@ pub async fn usb_traffic_controller_task() {
         let mut p = Packet::new();
 
         match action {
-            Either3::First(packet) => {
-                let _ = USB_TX_CHANNEL.try_send(packet);
+            Either3::First(response) => {
+                // The command response must be sent
+                USB_TX_CHANNEL.send(response).await;
             }
 
             Either3::Second(event) => {
+                // The event must be sent
                 p.data[0] = EVENT_HEADER; // Event Header
                 
                 match event {
@@ -68,7 +70,7 @@ pub async fn usb_traffic_controller_task() {
                 }
 
                 p.len = 3;
-                let _ = USB_TX_CHANNEL.try_send(p);
+                USB_TX_CHANNEL.send(p).await;
             }
 
             Either3::Third(data_1) => {
