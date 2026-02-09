@@ -57,6 +57,7 @@ class Pico:
         self.enums = {}
         self.cmd_meta = {}         
         self.shared_responses = {}
+        self.response = False
         self.connect(com)
         self._load_commands_from_yaml(yaml_path)
         self.run()
@@ -173,13 +174,21 @@ class Pico:
                 self.defaultCOM = self.newinput
                 self.connect(self.newinput)
     
-    def send_cmd(self, payload, op, expect_ret, timeout=2):
+    def send_cmd(self, payload, op, expect_ret, timeout=0.5):
+        self.response = False
+
         if expect_ret:
             self.shared_responses[op] = None
             
         with self.lock:
             self.ser.write(payload)
             self.ser.flush()
+
+        start = time.time()
+        while self.response == False:
+            if time.time() - start > timeout:
+                return False
+            time.sleep(0.001)
 
         if not expect_ret: return True
 
@@ -214,14 +223,33 @@ class Pico:
                             printg(f"[EVENT] Motor {m_id}: {name}")
 
                         elif header == self.headers.get('COMMAND'):
-                            op_byte = self.ser.read(1)
-                            op = int.from_bytes(op_byte, 'little')
-                            
-                            if op in self.cmd_meta:
-                                size = self.cmd_meta[op]['size']
-                                self.shared_responses[op] = self.ser.read(size)
+                            err_byte = self.ser.read(1)
+                            error_code = int.from_bytes(err_byte, 'little')
+                            decoded_error = self.enums['ErrorCodes'].get(error_code, "UNKLNONW")
+
+                            if decoded_error == "NoError":
+                                self.response = True
+                                op_byte = self.ser.read(1)
+                                op_code = int.from_bytes(op_byte, 'little')
+
+                                if op_code in self.cmd_meta:
+                                    size = self.cmd_meta[op_code]['size']
+                                    self.shared_responses[op_code] = self.ser.read(size)
+                            else:
+                                if decoded_error != "InvalidHeaderCode":
+                                    op_byte = self.ser.read(1)
+                                    op_code = int.from_bytes(op_byte, 'little')
+
+                                    if op_code in self.cmd_meta:
+                                        self.shared_responses[op_code] = None
+
+                                printr(f"[ERROR]: ", decoded_error)
                         else:
-                            print(f"Unexpected Byte: {header.hex()} - Alignment may be lost!")
+                            err_byte = self.ser.read(1)
+                            error_code = int.from_bytes(err_byte, 'little')
+                            decoded_error = self.enums['ErrorCodes'].get(error_code, "UNKLNONW")
+                            printr(f"[ERROR]: ", decoded_error)
+                            printr(f"Unexpected Byte: {header.hex()} - Alignment may be lost!")
             
             time.sleep(0.0001)
 

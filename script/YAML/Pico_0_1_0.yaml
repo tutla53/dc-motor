@@ -12,9 +12,13 @@
       0: MOVE_MOTOR_DONE
   
     ErrorCodes:
-      0: UNKNOWN_COMMAND
-      1: INSUFFICIENT ARGUMENTS
-      2: MOTOR_IS_NOT_AVAILABLE
+      0: NoError
+      1: OpCodeNotFound
+      2: NonFiniteFloat
+      3: ReadByteError
+      4: InvalidMotorId
+      5: InvalidHeaderCode
+      6: InvalidTimeSampling
     
 #---------------------------------- COMMAND -----------------------------------#
 - command: start_logger

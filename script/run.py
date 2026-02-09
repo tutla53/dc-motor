@@ -1,3 +1,5 @@
+# Pico Script
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -19,6 +21,7 @@ def speed_test(speed_rpm, time_sampling = 10, timeout= 10):
     logger.run(mask=10, time_sampling=time_sampling)
     time.sleep(0.5)
     m0.move_motor_speed(speed_rpm)
+    time.sleep(1)
     p.stop_motor(0)
     logger.stop()
 
@@ -48,8 +51,8 @@ def open_loop_test(pwm, duration=3, time_sampling = 10):
     time.sleep(0.5)
     m0.move_motor_open_loop(pwm)
     time.sleep(duration)
-    logger.stop()
     p.stop_motor(0)
+    logger.stop()
 
 def encoder_check():
     while True:
