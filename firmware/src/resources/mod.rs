@@ -36,11 +36,8 @@ pub mod event_resources;
 pub mod usb_rx_resources;
 pub mod usb_tx_resources;
 
-pub use gpio_list::*;
 pub use motor_resources::*;
-pub use logger_resources::*;
 pub use event_resources::*;
-pub use usb_rx_resources::*;
 pub use usb_tx_resources::*;
 
 /* --------------------------- USB Header -------------------------- */
@@ -53,6 +50,7 @@ pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 256;
+pub const MOVING_AVERAGE_WINDOW: usize = 10;
 
 /* --------------------------- Channels-------------------------- */
 pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> = Channel::new();

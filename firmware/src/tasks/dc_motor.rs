@@ -5,11 +5,14 @@
 *  - Overall PPR = 48.4 PPR or 484 Pulse per 10 Rotation
 */
 
+use super::*;
+
 // Resources
-use crate::resources::Shape;
-use crate::resources::MotorHandler;
-use crate::resources::MotorCommand;
-use crate::resources::EventList;
+use crate::resources::motor_resources::Shape;
+use crate::resources::motor_resources::MotorHandler;
+use crate::resources::motor_resources::MotorCommand;
+use crate::resources::motor_resources::ControlMode;
+use crate::resources::event_resources::EventList;
 use crate::resources::EVENT_CHANNEL;
 use crate::resources::POS_TOLERANCE_COUNT;
 use crate::resources::SPEED_TOLERANCE_CPS;
@@ -19,26 +22,7 @@ use crate::resources::SETTLE_TICKS;
 use crate::control::PIDcontrol;
 use crate::control::TrapezoidProfile;
 
-// Library
-use core::time::Duration as CoreDuration;
-use defmt_rtt as _;
-use panic_probe as _;
-use embassy_rp::peripherals::PIO0;
-use embassy_rp::pio::Instance;
-use embassy_rp::pio_programs::pwm::PioPwm;
-use embassy_time::Ticker;
-use embassy_time::Instant;
-use embassy_time::Duration;
-
 /* --------------------------- Code -------------------------- */
-#[derive(PartialEq, Clone, Copy)]
-pub enum ControlMode {
-    Speed,
-    Position,
-    OpenLoop,
-    Stop,
-}
-
 pub struct DCMotor <'d, T: Instance, const SM1: usize, const SM2: usize> {
     pwm_cw: PioPwm<'d, T, SM1>,
     pwm_ccw: PioPwm<'d, T, SM2>,

@@ -2,18 +2,13 @@
 * Logger Task
 */
 
-// Resources
+use super::*;
+
 use crate::MOTOR_0;
 use crate::LOGGER;
-use crate::resources::LogData;
 
-// Library
-use defmt_rtt as _;
-use panic_probe as _;
-use embassy_time::Ticker;
-use embassy_time::Duration;
-use embassy_time::Instant;
-use embassy_time::Timer;
+// Resources
+use crate::resources::logger_resources::LogData;
 
 /* --------------------------- Code -------------------------- */
 #[embassy_executor::task]

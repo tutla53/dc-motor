@@ -2,6 +2,8 @@
 * USB Task
 */
 
+use super::*;
+
 // Resources
 use crate::LOGGER;
 use crate::resources::CMD_CHANNEL;
@@ -9,18 +11,9 @@ use crate::resources::EVENT_CHANNEL;
 use crate::resources::USB_TX_CHANNEL;
 use crate::resources::USB_BUFFER_SIZE;
 use crate::resources::EVENT_HEADER;
-use crate::resources::Packet;
-use crate::resources::EventList;
-use crate::resources::CommandHandler;
-
-// Library
-use embassy_usb::class::cdc_acm::CdcAcmClass;
-use embassy_rp::peripherals::USB;
-use embassy_rp::usb::Driver;
-use embassy_futures::select::select;
-use embassy_futures::select::select3;
-use embassy_futures::select::Either;
-use embassy_futures::select::Either3;
+use crate::resources::usb_rx_resources::CommandHandler;
+use crate::resources::usb_tx_resources::Packet;
+use crate::resources::event_resources::EventList;
 
 /*
     Prototype
