@@ -1,15 +1,8 @@
-//  Resource Allocation Module
-use embassy_rp::Peri;
+/*
+    Resource Allocation Module
+*/
 
-use {
-    assign_resources::assign_resources,
-    embassy_rp::{
-        bind_interrupts,
-        peripherals,
-        pio::InterruptHandler as PioInterruptHandler,
-        usb::InterruptHandler as UsbInterruptHandler,
-    },
-};
+use super::*;
 
 assign_resources! {
     motor_resources: MotorResources {
