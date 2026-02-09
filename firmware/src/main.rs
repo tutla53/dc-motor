@@ -4,13 +4,23 @@
 // Mod
 mod tasks;
 mod resources;
+mod control;
 
 // Resources
-use crate::resources::global_resources::MOTOR_0;
-use crate::resources::gpio_list::Irqs;
-use crate::resources::gpio_list::AssignedResources;
-use crate::resources::gpio_list::MotorResources;
-use crate::resources::gpio_list::EncoderResources;
+use crate::resources::Irqs;
+use crate::resources::AssignedResources;
+use crate::resources::MotorResources;
+use crate::resources::EncoderResources;
+use crate::resources::LoggerHandler;
+use crate::resources::MotorHandler;
+use crate::resources::USB_STATE;
+use crate::resources::CONFIG_DESC;
+use crate::resources::BOS_DESC;
+use crate::resources::CONTROL_BUF;
+use crate::resources::CORE1_STACK;
+use crate::resources::EXECUTOR1;
+use crate::resources::EXECUTOR0;
+use crate::resources::EXECUTOR_HIGH;
 
 // Tasks
 use crate::tasks::usb_task::usb_device_task;
@@ -26,14 +36,9 @@ use crate::tasks::encoder::encoder_task;
 // Library
 use defmt_rtt as _;
 use panic_probe as _;
-use static_cell::StaticCell;
 
-use embassy_executor::Executor;
-use embassy_executor::InterruptExecutor;
-use embassy_executor::Spawner;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 use embassy_usb::class::cdc_acm::State;
-use embassy_rp::multicore::Stack;
 use embassy_rp::multicore::spawn_core1;
 use embassy_rp::interrupt;
 use embassy_rp::usb::Driver;
@@ -42,22 +47,16 @@ use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
 use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
-
-/* --------------------------- Code -------------------------- */
-pub static USB_STATE: StaticCell<State> = StaticCell::new();
-pub static CONFIG_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-pub static BOS_DESC: StaticCell<[u8; 256]> = StaticCell::new();
-pub static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
-
-pub static mut CORE1_STACK: Stack<4096> = Stack::new();
-pub static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
-pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+use embassy_executor::Executor;
+use embassy_executor::Spawner;
 
 #[interrupt]
 unsafe fn SWI_IRQ_1() {
     unsafe { EXECUTOR_HIGH.on_interrupt() }
 }
+
+pub static MOTOR_0: MotorHandler = MotorHandler::new(0);
+pub static LOGGER: LoggerHandler = LoggerHandler::new();
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
