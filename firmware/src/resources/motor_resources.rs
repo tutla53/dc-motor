@@ -20,6 +20,14 @@ pub enum MotorCommand {
     Stop,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum ControlMode {
+    Speed,
+    Position,
+    OpenLoop,
+    Stop,
+}
+
 /* --------------------------- PID Config -------------------------- */
 #[derive(Clone, Copy)]
 pub struct PosPIDConfig {
