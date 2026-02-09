@@ -1,5 +1,5 @@
 /*
-    Encoder Task
+    PID Control Calculation
 */
 
 /* --------------------------- Code -------------------------- */
