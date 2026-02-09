@@ -7,12 +7,13 @@ mod resources;
 mod control;
 
 // Resources
-use crate::resources::Irqs;
-use crate::resources::AssignedResources;
-use crate::resources::MotorResources;
-use crate::resources::EncoderResources;
-use crate::resources::LoggerHandler;
-use crate::resources::MotorHandler;
+use crate::resources::gpio_list::Irqs;
+use crate::resources::gpio_list::AssignedResources;
+use crate::resources::gpio_list::MotorResources;
+use crate::resources::gpio_list::EncoderResources;
+use crate::resources::logger_resources::LoggerHandler;
+use crate::resources::motor_resources::MotorHandler;
+use crate::resources::MOVING_AVERAGE_WINDOW;
 use crate::resources::USB_STATE;
 use crate::resources::CONFIG_DESC;
 use crate::resources::BOS_DESC;
@@ -27,11 +28,15 @@ use crate::tasks::usb_task::usb_device_task;
 use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_traffic_controller_task;
 use crate::tasks::logger::firmware_logger_task;
-use crate::tasks::dc_motor::DCMotor;
 use crate::tasks::dc_motor::motor_task;
-use crate::tasks::encoder::RotaryEncoder;
-use crate::tasks::encoder::MovingAverage;
 use crate::tasks::encoder::encoder_task;
+
+//  Struct
+use crate::tasks::dc_motor::DCMotor;
+use crate::tasks::encoder::RotaryEncoder;
+
+// Control
+use crate::control::MovingAverage;
 
 // Library
 use defmt_rtt as _;
@@ -55,6 +60,7 @@ unsafe fn SWI_IRQ_1() {
     unsafe { EXECUTOR_HIGH.on_interrupt() }
 }
 
+//  Create Motor and Logger
 pub static MOTOR_0: MotorHandler = MotorHandler::new(0);
 pub static LOGGER: LoggerHandler = LoggerHandler::new();
 
@@ -110,7 +116,7 @@ async fn main(_spawner: Spawner) {
                     &pwm_prg
                 );
     let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &MOTOR_0);
-    let filter = MovingAverage::<10>::new();
+    let filter = MovingAverage::<MOVING_AVERAGE_WINDOW>::new();
     let encoder = RotaryEncoder::new(PioEncoder::new(
                         &mut common, 
                         sm0, 
