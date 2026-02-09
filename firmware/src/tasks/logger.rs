@@ -3,9 +3,9 @@
 */
 
 // Resources
-use crate::resources::global_resources::MOTOR_0;
-use crate::resources::global_resources::LOGGER;
-use crate::resources::global_resources::LogData;
+use crate::MOTOR_0;
+use crate::LOGGER;
+use crate::resources::LogData;
 
 // Library
 use defmt_rtt as _;

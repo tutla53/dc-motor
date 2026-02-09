@@ -3,15 +3,15 @@
 */
 
 // Resources
-use crate::resources::global_resources::LOGGER;
-use crate::resources::global_resources::CMD_CHANNEL;
-use crate::resources::global_resources::EVENT_CHANNEL;
-use crate::resources::global_resources::USB_TX_CHANNEL;
-use crate::resources::global_resources::Packet;
-use crate::resources::global_resources::USB_BUFFER_SIZE;
-use crate::resources::global_resources::EventList;
-use crate::resources::global_resources::EVENT_HEADER;
-use crate::tasks::usb_handler::CommandHandler;
+use crate::LOGGER;
+use crate::resources::CMD_CHANNEL;
+use crate::resources::EVENT_CHANNEL;
+use crate::resources::USB_TX_CHANNEL;
+use crate::resources::USB_BUFFER_SIZE;
+use crate::resources::EVENT_HEADER;
+use crate::resources::Packet;
+use crate::resources::EventList;
+use crate::resources::CommandHandler;
 
 // Library
 use embassy_usb::class::cdc_acm::CdcAcmClass;

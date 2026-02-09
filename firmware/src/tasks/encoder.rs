@@ -3,7 +3,7 @@
 */
 
 // Resources
-use crate::resources::global_resources::MotorHandler;
+use crate::resources::MotorHandler;
 
 // Library
 use defmt_rtt as _;

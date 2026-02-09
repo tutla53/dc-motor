@@ -6,18 +6,18 @@
 */
 
 // Resources
-use crate::resources::global_resources::Shape;
-use crate::resources::global_resources::MotorHandler;
-use crate::resources::global_resources::MotorCommand;
-use crate::resources::global_resources::EventList;
-use crate::resources::global_resources::EVENT_CHANNEL;
-use crate::resources::global_resources::POS_TOLERANCE_COUNT;
-use crate::resources::global_resources::SPEED_TOLERANCE_CPS;
-use crate::resources::global_resources::SETTLE_TICKS;
+use crate::resources::Shape;
+use crate::resources::MotorHandler;
+use crate::resources::MotorCommand;
+use crate::resources::EventList;
+use crate::resources::EVENT_CHANNEL;
+use crate::resources::POS_TOLERANCE_COUNT;
+use crate::resources::SPEED_TOLERANCE_CPS;
+use crate::resources::SETTLE_TICKS;
 
-// Tasks
-use crate::tasks::pid_control::PIDcontrol;
-use crate::tasks::motion_profile::TrapezoidProfile;
+// Control
+use crate::control::PIDcontrol;
+use crate::control::TrapezoidProfile;
 
 // Library
 use core::time::Duration as CoreDuration;
