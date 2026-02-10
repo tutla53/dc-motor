@@ -15,6 +15,7 @@ use embassy_futures::select::Either3;
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
 use embassy_rp::peripherals::PIO0;
+use embassy_rp::peripherals::PIO1;
 use embassy_rp::pio_programs::pwm::PioPwm;
 use embassy_rp::pio::Instance;
 use embassy_rp::pio_programs::rotary_encoder::Direction;

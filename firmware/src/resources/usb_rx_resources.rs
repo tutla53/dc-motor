@@ -88,6 +88,7 @@ impl<'a> CommandHandler<'a> {
     fn select_motor(&self, motor_id: Option<u8>) -> Option<&'static MotorHandler> {
         match motor_id {
             Some(id) if id== MOTOR_0.id => { Some(&MOTOR_0) },
+            Some(id) if id== MOTOR_1.id => { Some(&MOTOR_1) },
             Some(_) | None => {
                 None
             }

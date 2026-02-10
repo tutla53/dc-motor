@@ -9,6 +9,7 @@ use crate::resources::motor_resources::MotorHandler;
 
 // Control
 use crate::control::MovingAverage;
+use crate::resources::MOVING_AVERAGE_WINDOW;
 
 /* --------------------------- Code -------------------------- */
 pub struct RotaryEncoder <'d, T: Instance, const SM: usize, const N: usize> {
@@ -71,6 +72,11 @@ impl <'d, T: Instance, const SM: usize, const N: usize> RotaryEncoder <'d, T, SM
 }
 
 #[embassy_executor::task]
-pub async fn encoder_task(mut encoder: RotaryEncoder<'static, PIO0, 0, 10>) {
+pub async fn encoder0_task(mut encoder: RotaryEncoder<'static, PIO0, 0, MOVING_AVERAGE_WINDOW>) {
+    encoder.run_encoder_task().await;
+}
+
+#[embassy_executor::task]
+pub async fn encoder1_task(mut encoder: RotaryEncoder<'static, PIO1, 0, MOVING_AVERAGE_WINDOW>) {
     encoder.run_encoder_task().await;
 }

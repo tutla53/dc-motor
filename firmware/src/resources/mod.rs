@@ -4,6 +4,7 @@
 
 /* --------------------------- Library -------------------------- */
 use crate::MOTOR_0;
+use crate::MOTOR_1;
 use crate::LOGGER;
 
 use defmt_rtt as _;

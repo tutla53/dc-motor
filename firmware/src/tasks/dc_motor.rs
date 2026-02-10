@@ -251,6 +251,11 @@ impl <'d, T: Instance, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM1, 
 }
 
 #[embassy_executor::task]
-pub async fn motor_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
+pub async fn motor0_task(mut dc_motor: DCMotor<'static, PIO0, 1, 2>) {
+    dc_motor.run_motor_task().await;
+}
+
+#[embassy_executor::task]
+pub async fn motor1_task(mut dc_motor: DCMotor<'static, PIO1, 1, 2>) {
     dc_motor.run_motor_task().await;
 }
