@@ -72,20 +72,20 @@ impl DCMotorBuilder {
         filter: MovingAverage::<N>,
         pio: Pio<'d, T>,
         motor_handler: &'static MotorHandler,
-    ) -> (DCMotor<'d, T, 1, 2>, RotaryEncoder <'d, T, 0, N>) {
+    ) -> DCMotor<'d, T, 0, 1, 2> {
         let Pio { mut common, sm0, sm1, sm2, .. } = pio;
         // Build DC Motor
         let pwm_prg = PioPwmProgram::new(&mut common);
         let pwm_cw = PioPwm::new(&mut common, sm1, pwm_cw_pin, &pwm_prg);
         let pwm_ccw = PioPwm::new(&mut common, sm2, pwm_ccw_pin, &pwm_prg);
-        let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &motor_handler);
-
+        
         // Build Rotary Encoder
         let enc_prg = PioEncoderProgram::new(&mut common);
         let pio_encoder = PioEncoder::new(&mut common, sm0, encoder_pin_a, encoder_pin_b, &enc_prg);
-        let encoder = RotaryEncoder::new(pio_encoder, &motor_handler, filter);
     
-        (dc_motor, encoder)
+        let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, pio_encoder, &motor_handler);
+
+        dc_motor
     }
 }
 
@@ -129,7 +129,7 @@ async fn main(_spawner: Spawner) {
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     let usb_dev = builder.build();
 
-    let (motor0, encoder0) = DCMotorBuilder::build(
+    let motor0 = DCMotorBuilder::build(
         p.motor_0.Motor_PWM_CW_PIN, 
         p.motor_0.Motor_PWM_CCW_PIN,
         p.motor_0.Encoder_PIN_A,
@@ -139,7 +139,7 @@ async fn main(_spawner: Spawner) {
         &MOTOR_0,
     );
 
-    let (motor1, encoder1) = DCMotorBuilder::build(
+    let motor1 = DCMotorBuilder::build(
         p.motor_1.Motor_PWM_CW_PIN, 
         p.motor_1.Motor_PWM_CCW_PIN,
         p.motor_1.Encoder_PIN_A,
@@ -156,9 +156,7 @@ async fn main(_spawner: Spawner) {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
                 spawner.must_spawn(motor0_task(motor0)); 
-                spawner.must_spawn(encoder0_task(encoder0));
-                // spawner.must_spawn(motor1_task(motor1));
-                // spawner.must_spawn(encoder1_task(encoder1)); 
+                spawner.must_spawn(motor1_task(motor1));
             });
         },
     );   
