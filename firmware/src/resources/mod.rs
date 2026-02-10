@@ -30,10 +30,10 @@ use embassy_executor::InterruptExecutor;
 use embassy_usb::class::cdc_acm::State;
 
 /* --------------------------- Declare Modules -------------------------- */
-pub mod gpio_list;
-pub mod motor_resources;
-pub mod logger_resources;
 pub mod event_resources;
+pub mod gpio_list;
+pub mod logger_resources;
+pub mod motor_resources;
 pub mod usb_rx_resources;
 pub mod usb_tx_resources;
 
@@ -85,7 +85,6 @@ pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 256;
-pub const MOVING_AVERAGE_WINDOW: usize = 10;
 
 /* --------------------------- Channels-------------------------- */
 pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> = Channel::new();

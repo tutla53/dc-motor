@@ -24,10 +24,8 @@ use embassy_time::Timer;
 use embassy_time::Ticker;
 use embassy_time::Instant;
 use embassy_time::Duration;
-use embassy_time::with_timeout;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 
 pub mod logger;
 pub mod dc_motor;
-pub mod encoder;
 pub mod usb_task;

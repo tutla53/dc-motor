@@ -13,7 +13,6 @@ use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
-use crate::resources::MOVING_AVERAGE_WINDOW;
 use crate::resources::USB_STATE;
 use crate::resources::CONFIG_DESC;
 use crate::resources::BOS_DESC;
@@ -29,16 +28,10 @@ use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_traffic_controller_task;
 use crate::tasks::logger::firmware_logger_task;
 use crate::tasks::dc_motor::motor0_task;
-use crate::tasks::encoder::encoder0_task;
 use crate::tasks::dc_motor::motor1_task;
-use crate::tasks::encoder::encoder1_task;
 
 //  Struct
 use crate::tasks::dc_motor::DCMotor;
-use crate::tasks::encoder::RotaryEncoder;
-
-// Control
-use crate::control::MovingAverage;
 
 // Library
 use defmt_rtt as _;
@@ -64,12 +57,11 @@ struct DCMotorBuilder { }
 
 impl DCMotorBuilder {
 
-    fn build<'d, const N:usize, T:Instance, P0:PioPin, P1:PioPin, P2:PioPin, P3:PioPin> (
+    fn build<'d, T:Instance, P0:PioPin, P1:PioPin, P2:PioPin, P3:PioPin> (
         pwm_cw_pin: Peri<'d, P0>, 
         pwm_ccw_pin: Peri<'d, P1>, 
         encoder_pin_a: Peri<'d, P2>, 
         encoder_pin_b: Peri<'d, P3>,
-        filter: MovingAverage::<N>,
         pio: Pio<'d, T>,
         motor_handler: &'static MotorHandler,
     ) -> DCMotor<'d, T, 0, 1, 2> {
@@ -134,7 +126,6 @@ async fn main(_spawner: Spawner) {
         p.motor_0.Motor_PWM_CCW_PIN,
         p.motor_0.Encoder_PIN_A,
         p.motor_0.Encoder_PIN_B,
-        MovingAverage::<MOVING_AVERAGE_WINDOW>::new(),
         Pio::new(p.motor_0.PIO, Irqs),
         &MOTOR_0,
     );
@@ -144,7 +135,6 @@ async fn main(_spawner: Spawner) {
         p.motor_1.Motor_PWM_CCW_PIN,
         p.motor_1.Encoder_PIN_A,
         p.motor_1.Encoder_PIN_B,
-        MovingAverage::<MOVING_AVERAGE_WINDOW>::new(),
         Pio::new(p.motor_1.PIO, Irqs),
         &MOTOR_1,
     );

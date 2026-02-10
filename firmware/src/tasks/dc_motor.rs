@@ -170,7 +170,7 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
                 Either::Second(_) => {
                     let delta_pos = current_pos - last_pos_for_speed;
                     let raw_speed = (delta_pos as f32) / dt;
-                    let alpha = 0.08; 
+                    let alpha = 0.08; // TODO: set this with command OP CODE 14 
                     self.filtered_speed = (alpha * raw_speed) + ((1.0 - alpha) * self.filtered_speed);
 
                     self.motor.set_current_speed(self.filtered_speed as i32);
