@@ -44,16 +44,53 @@ use panic_probe as _;
 
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 use embassy_usb::class::cdc_acm::State;
+use embassy_rp::Peri;
 use embassy_rp::multicore::spawn_core1;
 use embassy_rp::interrupt;
 use embassy_rp::usb::Driver;
 use embassy_rp::pio::Pio;
+use embassy_rp::pio::PioPin;
+use embassy_rp::pio::Instance;
+use embassy_rp::pio::Common;
+use embassy_rp::pio::StateMachine;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
 use embassy_rp::pio_programs::pwm::PioPwmProgram;
 use embassy_rp::pio_programs::pwm::PioPwm;
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
+
+struct DCMotorBuilder { }
+
+impl DCMotorBuilder {
+
+    fn build<'d, const SM0: usize, const SM1: usize, const SM2: usize, const N:usize, T:Instance, P0:PioPin, P1:PioPin, P2:PioPin, P3:PioPin> (
+        pwm_cw_pin: Peri<'d, P0>, 
+        pwm_ccw_pin: Peri<'d, P1>, 
+        encoder_pin_a: Peri<'d, P2>, 
+        encoder_pin_b: Peri<'d, P3>,
+        filter: MovingAverage::<N>,
+        motor_handler: &'static MotorHandler, 
+        common: &mut Common<'d, T>, 
+        sm0: StateMachine<'d, T, SM0>,
+        sm1: StateMachine<'d, T, SM1>,
+        sm2: StateMachine<'d, T, SM2>,
+
+    ) -> (DCMotor<'d, T, SM1, SM2>, RotaryEncoder <'d, T, SM0, N>) {
+        // Build DC Motor
+        let pwm_prg = PioPwmProgram::new(common);
+        let pwm_cw = PioPwm::new(common, sm1, pwm_cw_pin, &pwm_prg);
+        let pwm_ccw = PioPwm::new(common, sm2, pwm_ccw_pin, &pwm_prg);
+        let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &motor_handler);
+
+        // Build Rotary Encoder
+        let enc_prg = PioEncoderProgram::new(common);
+        let pio_encoder = PioEncoder::new(common, sm0, encoder_pin_a, encoder_pin_b, &enc_prg);
+        let encoder = RotaryEncoder::new(pio_encoder, &motor_handler, filter);
+    
+        (dc_motor, encoder)
+    }
+}
 
 #[interrupt]
 unsafe fn SWI_IRQ_1() {
@@ -68,12 +105,14 @@ pub static LOGGER: LoggerHandler = LoggerHandler::new();
 async fn main(_spawner: Spawner) {
     let ph = embassy_rp::init(Default::default());
     let p =  split_resources!(ph);
+
+    // USB Initialization
     let usb_driver = Driver::new(ph.USB, Irqs);
 
-    let config = {
+    let usb_config = {
         let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
         config.manufacturer = Some("Embassy");
-        config.product = Some("USB-serial example");
+        config.product = Some("USB_DC_MOTOR");
         config.serial_number = Some("12345678");
         config.max_power = 100;
         config.max_packet_size_0 = 64;
@@ -83,7 +122,7 @@ async fn main(_spawner: Spawner) {
     let mut builder = {
         let builder = embassy_usb::Builder::new(
             usb_driver,
-            config,
+            usb_config,
             CONFIG_DESC.init([0; 256]),
             BOS_DESC.init([0; 256]),
             &mut [],
@@ -93,40 +132,21 @@ async fn main(_spawner: Spawner) {
     };
 
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
-    
     let usb_dev = builder.build();
 
     let Pio {
         mut common, sm0, sm1, sm2, ..
     } = Pio::new(ph.PIO0, Irqs);
 
-    let enc_prg = PioEncoderProgram::new(&mut common);
-    let pwm_prg = PioPwmProgram::new(&mut common);
-    
-    let pwm_cw = PioPwm::new(
-                    &mut common, 
-                    sm1, 
-                    p.motor_resources.Motor0_PWM_CW_PIN, 
-                    &pwm_prg
-                );
-    let pwm_ccw = PioPwm::new(
-                    &mut common, 
-                    sm2, 
-                    p.motor_resources.Motor0_PWM_CCW_PIN, 
-                    &pwm_prg
-                );
-    let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, &MOTOR_0);
-    let filter = MovingAverage::<MOVING_AVERAGE_WINDOW>::new();
-    let encoder = RotaryEncoder::new(PioEncoder::new(
-                        &mut common, 
-                        sm0, 
-                        p.encoder_resources.Encoder0_PIN_A, 
-                        p.encoder_resources.Encoder0_PIN_B, 
-                        &enc_prg,
-                    ),
-                    &MOTOR_0,
-                    filter,
-                );
+    let (dc_motor, encoder) = DCMotorBuilder::build(
+        p.motor_resources.Motor0_PWM_CW_PIN, 
+        p.motor_resources.Motor0_PWM_CCW_PIN,
+        p.encoder_resources.Encoder0_PIN_A,
+        p.encoder_resources.Encoder0_PIN_B,
+        MovingAverage::<MOVING_AVERAGE_WINDOW>::new(),
+        &MOTOR_0,
+        &mut common, sm0, sm1, sm2
+    );
     
     spawn_core1(
         ph.CORE1,

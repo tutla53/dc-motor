@@ -143,7 +143,7 @@ class Pico:
         if port is None:
             acm_ports = [
                  port.device for port in serial.tools.list_ports.comports() 
-                 if port.description.startswith("USB-serial example")]
+                 if port.description.startswith("USB_DC_MOTOR")]
             
             if not acm_ports:
                 raise OSError("No /dev/ttyACM* ports found. Connect a device.")

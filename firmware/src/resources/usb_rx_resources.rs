@@ -117,7 +117,9 @@ impl<'a> CommandHandler<'a> {
         };
 
         match op_enum {
-            OpCode::None => {}
+            OpCode::None => {
+                return;
+            },
             OpCode::StartLogger => {
                 /* start_logger
                     time_sampling (u64) = 8
