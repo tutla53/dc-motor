@@ -7,12 +7,14 @@ mod resources;
 mod control;
 
 // Resources
+// use crate::create_motors;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
+use crate::resources:: N_MOTOR;
 use crate::resources::USB_STATE;
 use crate::resources::CONFIG_DESC;
 use crate::resources::BOS_DESC;
@@ -87,8 +89,7 @@ unsafe fn SWI_IRQ_1() {
 }
 
 //  Create Motor and Logger
-pub static MOTOR_0: MotorHandler = MotorHandler::new(0);
-pub static MOTOR_1: MotorHandler = MotorHandler::new(1);
+pub static MOTOR: [MotorHandler; N_MOTOR] = create_motors!(0, 1);
 pub static LOGGER: LoggerHandler = LoggerHandler::new();
 
 #[embassy_executor::main]
@@ -127,7 +128,7 @@ async fn main(_spawner: Spawner) {
         p.motor_0.Encoder_PIN_A,
         p.motor_0.Encoder_PIN_B,
         Pio::new(p.motor_0.PIO, Irqs),
-        &MOTOR_0,
+        &MOTOR[0],
     );
 
     let motor1 = DCMotorBuilder::build(
@@ -136,7 +137,7 @@ async fn main(_spawner: Spawner) {
         p.motor_1.Encoder_PIN_A,
         p.motor_1.Encoder_PIN_B,
         Pio::new(p.motor_1.PIO, Irqs),
-        &MOTOR_1,
+        &MOTOR[1],
     );
     
     spawn_core1(

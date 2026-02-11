@@ -7,52 +7,81 @@ import time
 import math
 
 import Board.Pico as Board
-import FWLogger.FWLogger as Logger
 import BasicFunction.Motor as Motor
 import Config.Motor0
+import Config.Motor1
 from Tool.visualize import *
 
-yaml_path = "YAML/Pico_0_1_0.yaml"
+yaml_path = "YAML/Pico_0_1_1.yaml"
 p = Board.Pico(yaml_path)
 m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
-logger = Logger.FWLogger(p)
+m1 = Motor.MoveMotor(device = p, configfile = Config.Motor1)
 
-def speed_test(speed_rpm, time_sampling = 10, timeout= 10):
-    logger.run(mask=10, time_sampling=time_sampling)
-    time.sleep(0.5)
-    m0.move_motor_speed(speed_rpm)
-    time.sleep(1)
-    p.stop_motor(0)
-    logger.stop()
-
-def pos_trapezoid_test(position_rotation, speed, acc, time_sampling = 10):
-    logger.run(mask=5,time_sampling=time_sampling)
-    time.sleep(0.5)
-    m0.move_motor_pos_trapezoid(position_rotation, speed, acc)
-    p.stop_motor(0)
-    logger.stop()
-
-def pos_step_test(position_rotation, duration=3, time_sampling = 10):
+def speed_test(motor_id, speed_rpm, time_sampling = 10, timeout= 10):
+    if motor_id == 0:
+        m = m0
+    elif motor_id == 1:
+        m = m1
+    else:
+        printr("Invalid Motor ID")
+        return
     
-    current_pos = m0.get_motor_pos()['pos_rotation']
+    m.start_log(mask=10, time_sampling=time_sampling)
+    time.sleep(0.5)
+    m.move_motor_speed(speed_rpm)
+    time.sleep(1)
+    m.stop_motor()
+    m.stop_log()
+
+def pos_trapezoid_test(motor_id, position_rotation, speed, acc, time_sampling = 10):
+    if motor_id == 0:
+        m = m0
+    elif motor_id == 1:
+        m = m1
+    else:
+        printr("Invalid Motor ID")
+        return
+    
+    m.start_log(mask=5,time_sampling=time_sampling)
+    time.sleep(0.5)
+    m.move_motor_pos_trapezoid(position_rotation, speed, acc)
+    m.stop_motor()
+    m.stop_log()
+
+def pos_step_test(motor_id, position_rotation, duration=3, time_sampling = 10):
+    if motor_id == 0:
+        m = m0
+    elif motor_id == 1:
+        m = m1
+    else:
+        printr("Invalid Motor ID")
+        return
+
+    current_pos = m.get_motor_pos()['pos_rotation']
     print("Current Pos: ", current_pos)
     
-    logger.run(mask = 5, time_sampling=time_sampling)
-    
+    m.start_log(mask = 5, time_sampling=time_sampling)
     time.sleep(0.5)
-    m0.move_motor_pos_step(position_rotation)
+    m.move_motor_pos_step(position_rotation)
     time.sleep(duration)
-    p.stop_motor(0)
-    logger.stop()
+    m.stop_motor()
+    m.stop_log()
 
-def open_loop_test(pwm, duration=3, time_sampling = 10):
-    logger.run(mask = 18, time_sampling=time_sampling)
+def open_loop_test(motor_id, pwm, duration=3, time_sampling = 10):
+    if motor_id == 0:
+        m = m0
+    elif motor_id == 1:
+        m = m1
+    else:
+        printr("Invalid Motor ID")
+        return
     
+    m.start_log(mask = 18, time_sampling=time_sampling)
     time.sleep(0.5)
-    m0.move_motor_open_loop(pwm)
+    m.move_motor_open_loop(pwm)
     time.sleep(duration)
-    p.stop_motor(0)
-    logger.stop()
+    m.stop_motor()
+    m.stop_log()
 
 def encoder_check():
     while True:

@@ -3,13 +3,13 @@
 */
 
 /* --------------------------- Library -------------------------- */
-use crate::MOTOR_0;
-use crate::MOTOR_1;
+use crate::MOTOR;
 use crate::LOGGER;
 
 use defmt_rtt as _;
 use panic_probe as _;
 use assign_resources::assign_resources;
+use core::sync::atomic::AtomicU8;
 use core::sync::atomic::AtomicI32;
 use core::sync::atomic::AtomicU32;
 use core::sync::atomic::AtomicBool;
@@ -36,6 +36,7 @@ pub mod logger_resources;
 pub mod motor_resources;
 pub mod usb_rx_resources;
 pub mod usb_tx_resources;
+pub mod macros;
 
 pub use motor_resources::*;
 pub use event_resources::*;
@@ -85,6 +86,7 @@ pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 256;
+pub const N_MOTOR: usize = 2;
 
 /* --------------------------- Channels-------------------------- */
 pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> = Channel::new();

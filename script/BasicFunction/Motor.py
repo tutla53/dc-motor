@@ -1,5 +1,7 @@
 import time
 import math
+import FWLogger.FWLogger as Logger
+
 from Tool.visualize import *
 
 class MoveMotor:
@@ -7,6 +9,7 @@ class MoveMotor:
         self.dev = device
         self.config = configfile
         self.motor_id = configfile.motor_id
+        self.logger = Logger.FWLogger(device)
 
     def __wait_move_done(self, timeout=180):
         start = time.perf_counter()
@@ -15,14 +18,24 @@ class MoveMotor:
         
         while elapsed < timeout:
             if len(self.dev.event_queue) > 0:
-                self.dev.event_queue.pop()
-                printg(f"Move Done, Elapsed: {elapsed:.2f} s")
-                return True
+                event = self.dev.event_queue.pop()
+                event_str = "MOVE_MOTOR_DONE"
+                print(event)
+                if event_str in event:
+                    if event[event_str] == self.motor_id:
+                        printg(f"Move Done, Elapsed: {elapsed:.2f} s")
+                        return True
             time.sleep(0.1)
             elapsed = time.perf_counter() - start
 
         printr("[TIMEOUT] waiting for move done.")
         return False
+    
+    def start_log(self, mask, time_sampling,):
+        self.logger.run(motor_id = self.motor_id, mask=mask, time_sampling=time_sampling)
+    
+    def stop_log(self):
+        self.logger.stop(self.motor_id)
     
     def move_motor_speed(self, speed_rpm):
         # Move Motor Speed in RPM
@@ -58,7 +71,7 @@ class MoveMotor:
         # Move Motor Speed Open Loop
         self.dev.move_motor_open_loop(self.motor_id, pwm)
 
-    def stop(self):
+    def stop_motor(self):
         # Stop the Motor
         self.dev.stop_motor(self.motor_id)
     

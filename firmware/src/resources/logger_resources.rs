@@ -30,6 +30,7 @@ impl LogData {
 pub struct LoggerHandler {
     logger_status: AtomicBool,
     logger_time_sampling_ms: AtomicU32,
+    motor_id: AtomicU8,
     pub log_tx_buffer: Channel<CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
 }
 
@@ -38,6 +39,7 @@ impl LoggerHandler {
         Self {
             logger_status: AtomicBool::new(false),
             logger_time_sampling_ms: AtomicU32::new(10),
+            motor_id: AtomicU8::new(255), 
             log_tx_buffer: Channel::new(),
         }
     }
@@ -56,5 +58,16 @@ impl LoggerHandler {
     
     pub fn get_logging_time_sampling(&self) -> u64 {
         return self.logger_time_sampling_ms.load(Ordering::Relaxed) as u64;
+    }
+
+    pub fn set_motor_id(&self, motor_id: u8) {
+       self.motor_id.store(motor_id, Ordering::Relaxed);
+    }
+    
+    pub fn get_motor_id(&self) -> Option<usize> {
+        match self.motor_id.load(Ordering::Relaxed) {
+            255 => None,
+            id => Some(id as usize),
+        }
     }
 }

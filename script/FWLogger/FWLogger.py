@@ -74,28 +74,28 @@ class FWLogger:
         except Exception as e:
             print(f"Logger error: {e}")
 
-    def run(self, mask, time_sampling, limit=1_000_000):
+    def run(self, motor_id, mask, time_sampling, limit=1_000_000):
         try:
             self.logged_data = []
-            self.p.stop_logger()
+            self.p.stop_logger(motor_id)
             self.p.clear_log_queue()
             self.p.ser.reset_input_buffer()
             self.mask = mask
 
             with self.p.lock:
-                self.p.start_logger(time_sampling)
+                self.p.start_logger(motor_id, time_sampling)
             self.logging = True
             self.logger_thread = SThread(self.__MainLogger, True, limit)
             print(f"Starting Logger")
         except Exception as e:
             print(f"Failed to start logger: {e}")
 
-    def stop(self):
+    def stop(self, motor_id):
         print("Stopping Logger")
         self.logging = False
 
         with self.p.lock:
-            self.p.stop_logger()
+            self.p.stop_logger(motor_id)
         self.p.clear_log_queue()
 
         if hasattr(self, 'logger_thread'):

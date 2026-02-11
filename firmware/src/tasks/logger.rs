@@ -4,7 +4,7 @@
 
 use super::*;
 
-use crate::MOTOR_0;
+use crate::MOTOR;
 use crate::LOGGER;
 
 // Resources
@@ -19,25 +19,29 @@ pub async fn firmware_logger_task() {
 
     loop {
         if LOGGER.is_logging_active() {
-            let data = LogData {
-                seq: sequence,
-                dt: start.elapsed().as_millis() as u32,
-                values : [
-                    MOTOR_0.get_current_pos(),
-                    MOTOR_0.get_current_speed(),
-                    MOTOR_0.get_commanded_pos(),
-                    MOTOR_0.get_commanded_speed(),
-                    MOTOR_0.get_commanded_pwm(),
-                ],
-            };
+            if let Some(id) = LOGGER.get_motor_id() {
+                let data = LogData {
+                    seq: sequence,
+                    dt: start.elapsed().as_millis() as u32,
+                    values : [
+                        MOTOR[id].get_current_pos(),
+                        MOTOR[id].get_current_speed(),
+                        MOTOR[id].get_commanded_pos(),
+                        MOTOR[id].get_commanded_speed(),
+                        MOTOR[id].get_commanded_pwm(),
+                    ],
+                };
 
-            let _ = LOGGER.log_tx_buffer.try_send(data);
-            sequence = sequence.wrapping_add(1);
+                let _ = LOGGER.log_tx_buffer.try_send(data);
+                sequence = sequence.wrapping_add(1);
+            }
+
             ticker.next().await;
         }
         else {
             Timer::after(Duration::from_millis(100)).await;
             start = Instant::now();
+
             let new_time_sampling = LOGGER.get_logging_time_sampling();
             ticker = Ticker::every(Duration::from_millis(new_time_sampling));
             LOGGER.log_tx_buffer.clear();
