@@ -17,6 +17,7 @@ use crate::resources::EVENT_CHANNEL;
 use crate::resources::POS_TOLERANCE_COUNT;
 use crate::resources::SPEED_TOLERANCE_CPS;
 use crate::resources::SETTLE_TICKS;
+use crate::resources::SPEED_FILTER_WINDOW;
 
 // Control
 use crate::control::PIDcontrol;
@@ -28,16 +29,20 @@ pub struct DCMotor <'d, T: Instance, const SM: usize> {
     pwm_ccw: PwmOutput<'d>,
     encoder: PioEncoder<'d, T, SM>,
     motor: &'static MotorHandler,
-    speed_control: PIDcontrol,
-    position_control: PIDcontrol,
-    speed_for_position_control: PIDcontrol, 
+    speed_control: PIDcontrol<I16F16>,
+    position_control: PIDcontrol<I32F32>,
+    speed_for_position_control: PIDcontrol<I16F16>, 
     control_mode: ControlMode,
     motion_profile: Option<TrapezoidProfile>,
     move_done: bool,
     command_just_received: bool,
-    final_target:i32,
+    final_target: I32F32,
     current_settle_ticks: u32,
-    filtered_speed: f32,
+    current_speed: I16F16,
+    current_pos: I32F32,
+    delta_buffer: [i32; SPEED_FILTER_WINDOW],
+    delta_idx: usize,
+    ticks_to_cps_rolling: I16F16,
 }
 
 impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
@@ -47,16 +52,20 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
             pwm_ccw,
             encoder,
             motor,            
-            speed_control: PIDcontrol::new_speed_pid(motor.max_pwm_ticks),
-            position_control: PIDcontrol::new_position_pid(motor.max_speed_cps),
-            speed_for_position_control: PIDcontrol::new_speed_pid(motor.max_pwm_ticks),
+            speed_control: PIDcontrol::new(motor.max_pwm_ticks),
+            position_control: PIDcontrol::new(motor.max_speed_cps),
+            speed_for_position_control: PIDcontrol::new(motor.max_pwm_ticks),
             control_mode: ControlMode::Stop,
             motion_profile: None, 
             move_done: false,
             command_just_received: false,
-            final_target: 0,
+            final_target: I32F32::from_num(0),
             current_settle_ticks: 0,
-            filtered_speed: 0.0,
+            current_speed: I16F16::from_num(0),
+            current_pos: I32F32::from_num(0),
+            delta_buffer: [0; SPEED_FILTER_WINDOW],
+            delta_idx: 0,
+            ticks_to_cps_rolling: I16F16::from_num(TICKS_TO_CPS)/I16F16::from_num(SPEED_FILTER_WINDOW),
         }
     }
 
@@ -70,7 +79,7 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
         self.speed_for_position_control.update_pid_param(new_pos_pid.kp_speed, new_pos_pid.ki_speed, new_pos_pid.kd_speed);
     }
 
-    async fn update_speed_pi_config(&mut self) {
+    async fn update_speed_pid_config(&mut self) {
         let new_speed_pid = self.motor.get_speed_pid().await;
 
         self.speed_control.reset();
@@ -104,7 +113,7 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
             },
             ControlMode::Speed => {
                 self.speed_control.reset();
-                self.update_speed_pi_config().await;
+                self.update_speed_pid_config().await;
                 self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
             },
             ControlMode::Position => {
@@ -115,7 +124,7 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
             ControlMode::Stop => {
                 self.move_motor(0);
                 self.update_pos_pid_config().await;
-                self.update_speed_pi_config().await;
+                self.update_speed_pid_config().await;
                 self.motion_profile = None;
             },
         }
@@ -148,6 +157,7 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
                         Direction::Clockwise => current_pos = current_pos.saturating_add(1),
                         Direction::CounterClockwise => current_pos = current_pos.saturating_sub(1),
                     }
+                    self.current_pos = I32F32::from_num(current_pos);
                     self.motor.set_current_pos(current_pos);
                     
                     continue; 
@@ -155,12 +165,14 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
 
                 Either::Second(_) => {
                     let delta_pos = current_pos - last_pos_for_speed;
-                    let raw_speed = (delta_pos as f32) * TICKS_TO_CPS;
-                    let alpha = 0.025; // TODO: set this with command OP CODE 14 
-                    self.filtered_speed = (alpha * raw_speed) + ((1.0 - alpha) * self.filtered_speed);
-
-                    self.motor.set_current_speed(self.filtered_speed as i32);
                     last_pos_for_speed = current_pos;
+
+                    self.delta_buffer[self.delta_idx] = delta_pos;
+                    self.delta_idx = (self.delta_idx + 1) & (SPEED_FILTER_WINDOW -1);
+                    let window_sum: i32 = self.delta_buffer.iter().sum();
+
+                    self.current_speed = I16F16::from_num(window_sum) * self.ticks_to_cps_rolling;
+                    self.motor.set_current_speed(self.current_speed.to_num::<i32>());
 
                     if let Some(motor_command) = self.motor.get_motor_command() {
 
@@ -184,10 +196,10 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
 
                             if let MotorCommand::PositionControl(shape) = current_active_cmd {
                                 if let Shape::Trapezoidal(final_pos, vel, acc) = shape {
-                                    let start_pos = self.motor.get_current_pos();
+                                    let start_pos = self.current_pos.to_num::<f32>();
                                     start_time = Instant::now();
                                     self.motion_profile = Some(
-                                        TrapezoidProfile::new(start_pos as f32, final_pos, vel, acc)
+                                        TrapezoidProfile::new(start_pos, final_pos, vel, acc)
                                     );
                                 }
                             }
@@ -200,37 +212,34 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
                         },
                         MotorCommand::SpeedControl(commanded_speed) => {
                             self.motor.set_commanded_speed(commanded_speed);
-                            let current_speed = self.motor.get_current_speed();
-                            let error = commanded_speed - current_speed;
-                            let sig = self.speed_control.compute(error as f32);
+                            let error = I16F16::from_num(commanded_speed) - self.current_speed;
+                            let sig = self.speed_control.compute(error);
                             self.move_motor(sig);
                         },
                         MotorCommand::PositionControl(input_shape) => {
                             let commanded_position = match input_shape {
                                 Shape::Step(position) => {
-                                    self.final_target = position;
+                                    self.final_target = I32F32::from_num(position);
                                     position
                                 },
                                 Shape::Trapezoidal(target, _, _) => {
                                     if let Some(ref profile) = self.motion_profile {
-                                        self.final_target = target as i32;
+                                        self.final_target = I32F32::from_num(target);
                                         let elapsed_ms = start_time.elapsed().as_millis();
                                         let elapsed_s = (elapsed_ms as f32) / 1_000.0;
                                         profile.position(elapsed_s) as i32
                                     } 
                                     else {
-                                        self.motor.get_current_pos() 
+                                        self.current_pos.to_num::<i32>() 
                                     }
                                 }
                             };
                             
                             self.motor.set_commanded_pos(commanded_position);
-                            let current_position = self.motor.get_current_pos();
-                            let current_speed = self.motor.get_current_speed();
 
                             // Move Done Check
-                            let at_target = (current_position - self.final_target).abs() <= POS_TOLERANCE_COUNT;
-                            let is_steady = current_speed.abs() <= SPEED_TOLERANCE_CPS;
+                            let at_target = (self.current_pos - self.final_target).abs() <= POS_TOLERANCE_COUNT;
+                            let is_steady = self.current_speed.abs() <= SPEED_TOLERANCE_CPS;
 
                             if at_target && is_steady && !self.command_just_received {
                                 self.current_settle_ticks += 1;
@@ -244,16 +253,16 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
                             }
 
                             // PID Computation
-                            let pos_error = commanded_position - current_position;
-                            let target_speed = self.position_control.compute(pos_error as f32);
+                            let pos_error = I32F32::from_num(commanded_position) - self.current_pos;
+                            let target_speed = self.position_control.compute(pos_error);
 
-                            let speed_error = target_speed - current_speed;
-                            let sig = self.speed_for_position_control.compute(speed_error as f32);
+                            let speed_error = I16F16::from_num(target_speed) - self.current_speed;
+                            let sig = self.speed_for_position_control.compute(speed_error);
                             self.move_motor(sig);
                         },
                         MotorCommand::Stop => {
-                            self.motor.set_commanded_pos(self.motor.get_current_pos());
-                            self.motor.set_commanded_speed(self.motor.get_current_speed());
+                            self.motor.set_commanded_pos(self.current_pos.to_num::<i32>() );
+                            self.motor.set_commanded_speed(self.current_speed.to_num::<i32>() );
                             self.move_motor(0);
                         }
                     }

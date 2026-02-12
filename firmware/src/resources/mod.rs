@@ -98,10 +98,11 @@ pub const POS_TOLERANCE_COUNT: i32 = 5;
 pub const SPEED_TOLERANCE_CPS: i32 = 2;
 pub const SETTLE_TICKS: u32 = 20;
 pub const PWM_PERIOD_TICKS: u16 = 4999;
-pub const MOTOR_MAX_PWM: i32 = 3800; // Calibrated Value
-pub const MOTOR_MAX_SPEED: i32 = 1100;
-pub const TIME_SAMPLING_US: u64 = 1000; // 1 ms or 1 kHz
+pub const MOTOR_MAX_PWM: i32 = 4999; // Calibrated Value
+pub const MOTOR_MAX_SPEED: i32 = 1400;
+pub const TIME_SAMPLING_US: u64 = 5000;
 pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32;
+pub const SPEED_FILTER_WINDOW: usize = 1 << 3; // Must be 2^n
 
 /* --------------------------- USB -------------------------- */
 pub static USB_STATE: StaticCell<State> = StaticCell::new();

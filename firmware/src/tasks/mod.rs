@@ -27,6 +27,9 @@ use embassy_time::Instant;
 use embassy_time::Duration;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 
+use fixed::types::I16F16;
+use fixed::types::I32F32;
+
 pub mod logger;
 pub mod dc_motor;
 pub mod usb_task;

@@ -2,72 +2,51 @@
     PID Control Calculation
 */
 
+use super::*;
+
 /* --------------------------- Code -------------------------- */
-pub struct PIDcontrol {
-    kp: f32,
-    ki: f32,
-    kd: f32,
-    integral: f32,
-    prev_error: f32,
+pub struct PIDcontrol<T: Fixed>  {
+    kp: T,
+    ki: T,
+    kd: T,
+    integral: T,
+    prev_error: T,
     max_threshold: i32,
 }
 
-impl PIDcontrol {
-    pub fn new_speed_pid(threshold: i32) -> Self {
+impl<T: Fixed> PIDcontrol<T>{
+    pub fn new(threshold: i32) -> Self {
         Self {
-            kp: 0.0,
-            ki: 0.0,
-            kd: 0.0,
-            integral: 0.0,
-            prev_error: 0.0,
-            max_threshold: threshold,
-        }
-    }
-
-    pub fn new_position_pid(threshold: i32) -> Self {
-        Self {
-            kp: 0.0,
-            ki: 0.0,
-            kd: 0.0,
-            integral: 0.0,
-            prev_error: 0.0,
+            kp: T::from_num(0),
+            ki: T::from_num(0),
+            kd: T::from_num(0),
+            integral: T::from_num(0),
+            prev_error: T::from_num(0),
             max_threshold: threshold,
         }
     }
 
     pub fn update_pid_param(&mut self, kp: f32, ki: f32, kd: f32) {
-        self.kp = kp;
-        self.ki = ki;
-        self.kd = kd;
+        self.kp = T::from_num(kp);
+        self.ki = T::from_num(ki);
+        self.kd = T::from_num(kd);
     }
 
     pub fn reset(&mut self) {
-        self.integral = 0.0;
-        self.prev_error = 0.0;
+        self.integral = T::from_num(0);
+        self.prev_error = T::from_num(0);
     }
 
-    pub fn limit_output(&mut self, sig: i32) -> i32 {
-        if sig > self.max_threshold {
-            self.integral -= self.prev_error;
-            return self.max_threshold;
-        }
-        
-        if sig < -1*self.max_threshold {
-            self.integral -= self.prev_error;
-            return -1*self.max_threshold;
-        }
-
-        return sig;
-    }
-
-    pub fn compute(&mut self, error: f32) -> i32 {
+    pub fn compute(&mut self, error: T) -> i32 {
         self.integral = self.integral + error;
         let derivative = error - self.prev_error;
         self.prev_error = error;
 
-        let sig_fixed = self.kp*error + self.ki*self.integral + self.kd*derivative;
-        let sig = self.limit_output(sig_fixed as i32);
+        let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
+        
+        if sig > self.max_threshold { self.integral -= self.prev_error; }
+        if sig < -1*self.max_threshold { self.integral -= self.prev_error; }
 
-        return sig;
+        sig.to_num::<i32>().clamp(-self.max_threshold, self.max_threshold)
     }
 }
