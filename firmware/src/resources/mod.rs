@@ -93,10 +93,15 @@ pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_S
 pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> = Channel::new();
 pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> = Channel::new();
 
-/* --------------------------- Motor Tolerance-------------------------- */
+/* --------------------------- Motor-------------------------- */
 pub const POS_TOLERANCE_COUNT: i32 = 5;
 pub const SPEED_TOLERANCE_CPS: i32 = 2;
 pub const SETTLE_TICKS: u32 = 20;
+pub const PWM_PERIOD_TICKS: u16 = 4999;
+pub const MOTOR_MAX_PWM: i32 = 3800; // Calibrated Value
+pub const MOTOR_MAX_SPEED: i32 = 1100;
+pub const TIME_SAMPLING_US: u64 = 1000; // 1 ms or 1 kHz
+pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32;
 
 /* --------------------------- USB -------------------------- */
 pub static USB_STATE: StaticCell<State> = StaticCell::new();

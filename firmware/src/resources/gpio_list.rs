@@ -10,16 +10,16 @@ assign_resources! {
         Motor_PWM_CCW_PIN: PIN_14,
         Encoder_PIN_A: PIN_6,
         Encoder_PIN_B: PIN_7,
-        PIO: PIO0,
+        SLICE: PWM_SLICE7,
     },
 
     // Still Dummy
     motor_1: Motor1Resources {
-        Motor_PWM_CW_PIN: PIN_2,
-        Motor_PWM_CCW_PIN: PIN_3,
+        Motor_PWM_CW_PIN: PIN_3,
+        Motor_PWM_CCW_PIN: PIN_2,
         Encoder_PIN_A: PIN_4,
         Encoder_PIN_B: PIN_5,
-        PIO: PIO1,
+        SLICE: PWM_SLICE1,
     },
 }
 

@@ -23,9 +23,11 @@ use crate::control::PIDcontrol;
 use crate::control::TrapezoidProfile;
 
 /* --------------------------- Code -------------------------- */
-pub struct DCMotor <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> {
-    pwm_cw: PioPwm<'d, T, SM1>,
-    pwm_ccw: PioPwm<'d, T, SM2>,
+pub struct DCMotor <'d, T: Instance, const SM: usize> {
+    pwm_cw: PwmOutput<'d>,
+    pwm_ccw: PwmOutput<'d>,
+    encoder: PioEncoder<'d, T, SM>,
+    motor: &'static MotorHandler,
     speed_control: PIDcontrol,
     position_control: PIDcontrol,
     speed_for_position_control: PIDcontrol, 
@@ -35,42 +37,27 @@ pub struct DCMotor <'d, T: Instance, const SM0: usize, const SM1: usize, const S
     command_just_received: bool,
     final_target:i32,
     current_settle_ticks: u32,
-    encoder: PioEncoder<'d, T, SM0>,
     filtered_speed: f32,
-    motor: &'static MotorHandler,
 }
 
-impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCMotor <'d, T, SM0, SM1, SM2> {
-    pub fn new(pwm_cw: PioPwm<'d, T, SM1>, pwm_ccw: PioPwm<'d, T, SM2>, encoder: PioEncoder<'d, T, SM0>, motor: &'static MotorHandler) -> Self {
+impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
+    pub fn new(pwm_cw: PwmOutput<'d>, pwm_ccw: PwmOutput<'d>, encoder: PioEncoder<'d, T, SM>, motor: &'static MotorHandler) -> Self {
         Self {
             pwm_cw,
             pwm_ccw,
-            speed_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us),
-            position_control: PIDcontrol::new_position_pid(motor.max_speed_cps as i32),
-            speed_for_position_control: PIDcontrol::new_speed_pid(motor.max_pwm_output_us),
+            encoder,
+            motor,            
+            speed_control: PIDcontrol::new_speed_pid(motor.max_pwm_ticks),
+            position_control: PIDcontrol::new_position_pid(motor.max_speed_cps),
+            speed_for_position_control: PIDcontrol::new_speed_pid(motor.max_pwm_ticks),
             control_mode: ControlMode::Stop,
             motion_profile: None, 
             move_done: false,
             command_just_received: false,
             final_target: 0,
             current_settle_ticks: 0,
-            encoder,
             filtered_speed: 0.0,
-            motor,
         }
-    }
-    
-    pub fn set_period(&mut self, period: u64) {
-        self.pwm_cw.set_period(CoreDuration::from_micros(period));
-        self.pwm_ccw.set_period(CoreDuration::from_micros(period));
-    }
-
-    pub fn enable(&mut self) {
-        self.set_period(self.motor.refresh_interval_us);
-        self.pwm_cw.start();
-        self.pwm_ccw.start();
-        self.pwm_cw.write(CoreDuration::from_micros(0));
-        self.pwm_ccw.write(CoreDuration::from_micros(0));
     }
 
     async fn update_pos_pid_config(&mut self) {
@@ -91,17 +78,17 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
     }
 
     pub fn move_motor(&mut self, pwm_input: i32) {
-        
-        let pwm = pwm_input.clamp(-self.motor.max_pwm_output_us, self.motor.max_pwm_output_us);
-        self.motor.set_commanded_pwm(pwm);
 
-        if pwm > 0 {
-            self.pwm_cw.write(CoreDuration::from_micros(pwm.abs() as u64));
-            self.pwm_ccw.write(CoreDuration::from_micros(0));
+        let pwm_value = pwm_input.clamp(-1 * self.motor.max_pwm_ticks, self.motor.max_pwm_ticks);
+        self.motor.set_commanded_pwm(pwm_value);
+
+        if pwm_value > 0 {
+            let _ = self.pwm_cw.set_duty_cycle(pwm_value.abs() as u16);
+            let _ = self.pwm_ccw.set_duty_cycle_fully_off();
         }
         else {
-            self.pwm_cw.write(CoreDuration::from_micros(0));
-            self.pwm_ccw.write(CoreDuration::from_micros(pwm.abs() as u64));
+            let _ = self.pwm_cw.set_duty_cycle_fully_off();
+            let _ = self.pwm_ccw.set_duty_cycle(pwm_value.abs() as u16);
         }
     }
 
@@ -143,8 +130,8 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
             4. PositionControl  -> Trapezoidal
         */
 
-        let mut ticker = Ticker::every(Duration::from_millis(5));
-        self.enable();
+        let mut ticker = Ticker::every(Duration::from_micros(TIME_SAMPLING_US));
+        // self.enable();
 
         let mut start_time = Instant::now();
         
@@ -153,7 +140,6 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
         self.control_mode = ControlMode::Stop;
         let mut current_pos = self.motor.get_current_pos(); 
         let mut last_pos_for_speed = current_pos;
-        let dt = 0.005; // 5ms
 
         loop {
             match select(self.encoder.read(), ticker.next()).await {
@@ -169,8 +155,8 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
 
                 Either::Second(_) => {
                     let delta_pos = current_pos - last_pos_for_speed;
-                    let raw_speed = (delta_pos as f32) / dt;
-                    let alpha = 0.08; // TODO: set this with command OP CODE 14 
+                    let raw_speed = (delta_pos as f32) * TICKS_TO_CPS;
+                    let alpha = 0.025; // TODO: set this with command OP CODE 14 
                     self.filtered_speed = (alpha * raw_speed) + ((1.0 - alpha) * self.filtered_speed);
 
                     self.motor.set_current_speed(self.filtered_speed as i32);
@@ -278,11 +264,11 @@ impl <'d, T: Instance, const SM0: usize, const SM1: usize, const SM2: usize> DCM
 }
 
 #[embassy_executor::task]
-pub async fn motor0_task(mut dc_motor: DCMotor<'static, PIO0, 0, 1, 2>) {
+pub async fn motor0_task(mut dc_motor: DCMotor<'static, PIO0, 0>) {
     dc_motor.run_motor_task().await;
 }
 
 #[embassy_executor::task]
-pub async fn motor1_task(mut dc_motor: DCMotor<'static, PIO1, 0, 1, 2>) {
+pub async fn motor1_task(mut dc_motor: DCMotor<'static, PIO0, 1>) {
     dc_motor.run_motor_task().await;
 }

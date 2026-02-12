@@ -56,8 +56,7 @@ pub struct MotorHandler {
     commanded_motor_speed: Channel<CriticalSectionRawMutex, MotorCommand, 16>,
     pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
-    pub refresh_interval_us: u64,
-    pub max_pwm_output_us: i32,
+    pub max_pwm_ticks: i32,
     pub max_speed_cps: i32,
     pub id: u8, 
 }
@@ -73,9 +72,8 @@ impl MotorHandler {
             commanded_motor_speed: Channel::new(),
             pos_pid: Mutex::new(PosPIDConfig{ kp: 10.0, ki: 0.0, kd: 2.0, kp_speed: 1.0, ki_speed: 0.025, kd_speed: 0.0}),
             speed_pid: Mutex::new(PIDConfig{ kp: 1.0, ki: 0.1, kd: 2.0}),
-            refresh_interval_us: 1000,
-            max_pwm_output_us: 1000,
-            max_speed_cps: 1130,
+            max_pwm_ticks: MOTOR_MAX_PWM,
+            max_speed_cps: MOTOR_MAX_SPEED,
             id: id,
         }
     }

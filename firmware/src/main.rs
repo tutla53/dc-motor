@@ -14,7 +14,8 @@ use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
-use crate::resources:: N_MOTOR;
+use crate::resources::N_MOTOR;
+use crate::resources::PWM_PERIOD_TICKS;
 use crate::resources::USB_STATE;
 use crate::resources::CONFIG_DESC;
 use crate::resources::BOS_DESC;
@@ -50,8 +51,13 @@ use embassy_rp::pio::PioPin;
 use embassy_rp::pio::Instance;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoderProgram;
-use embassy_rp::pio_programs::pwm::PioPwmProgram;
-use embassy_rp::pio_programs::pwm::PioPwm;
+use embassy_rp::pio::StateMachine;
+use embassy_rp::pio::Common;
+use embassy_rp::pwm::Pwm;
+use embassy_rp::pwm::ChannelAPin;
+use embassy_rp::pwm::ChannelBPin;
+use embassy_rp::pwm::Slice;
+use embassy_rp::pwm::Config as PwmConfig;
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
 
@@ -59,27 +65,36 @@ struct DCMotorBuilder { }
 
 impl DCMotorBuilder {
 
-    fn build<'d, T:Instance, P0:PioPin, P1:PioPin, P2:PioPin, P3:PioPin> (
+    fn build<'d, T:Instance, S:Slice, const SM: usize,  P0:ChannelBPin<S>, P1:ChannelAPin<S>, P2:PioPin, P3:PioPin> (
         pwm_cw_pin: Peri<'d, P0>, 
-        pwm_ccw_pin: Peri<'d, P1>, 
+        pwm_ccw_pin: Peri<'d, P1>,
+        pwm_slice:  Peri<'d, S>,
         encoder_pin_a: Peri<'d, P2>, 
         encoder_pin_b: Peri<'d, P3>,
-        pio: Pio<'d, T>,
+        common: &mut Common<'d, T>,
+        sm: StateMachine<'d, T, SM>,
         motor_handler: &'static MotorHandler,
-    ) -> DCMotor<'d, T, 0, 1, 2> {
-        let Pio { mut common, sm0, sm1, sm2, .. } = pio;
-        // Build DC Motor
-        let pwm_prg = PioPwmProgram::new(&mut common);
-        let pwm_cw = PioPwm::new(&mut common, sm1, pwm_cw_pin, &pwm_prg);
-        let pwm_ccw = PioPwm::new(&mut common, sm2, pwm_ccw_pin, &pwm_prg);
+    ) -> Option<DCMotor <'d, T, SM>> {
+
+        // Build PWM
+        let mut pwm_config = PwmConfig::default();
+        pwm_config.top = PWM_PERIOD_TICKS; // 25kHz frequency @ 125MHz clock
+        pwm_config.compare_a = 0;
+        pwm_config.compare_b = 0;
+        
+        let pwm = Pwm::new_output_ab(pwm_slice, pwm_ccw_pin, pwm_cw_pin, pwm_config);
+        let (pwm_a, pwm_b) = pwm.split();
+
+        let Some(pwm_ccw) = pwm_a else { return None };
+        let Some(pwm_cw) = pwm_b else { return None };
         
         // Build Rotary Encoder
-        let enc_prg = PioEncoderProgram::new(&mut common);
-        let pio_encoder = PioEncoder::new(&mut common, sm0, encoder_pin_a, encoder_pin_b, &enc_prg);
+        let enc_prg = PioEncoderProgram::new(common);
+        let pio_encoder = PioEncoder::new(common, sm, encoder_pin_a, encoder_pin_b, &enc_prg);
     
         let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, pio_encoder, &motor_handler);
 
-        dc_motor
+        Some(dc_motor)
     }
 }
 
@@ -122,23 +137,29 @@ async fn main(_spawner: Spawner) {
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     let usb_dev = builder.build();
 
-    let motor0 = DCMotorBuilder::build(
-        p.motor_0.Motor_PWM_CW_PIN, 
-        p.motor_0.Motor_PWM_CCW_PIN,
+    let Pio { mut common, sm0, sm1, .. } = Pio::new(ph.PIO0, Irqs);
+
+    let Some(motor0) = DCMotorBuilder::build(
+        p.motor_0.Motor_PWM_CW_PIN,
+        p.motor_0.Motor_PWM_CCW_PIN, 
+        p.motor_0.SLICE, 
         p.motor_0.Encoder_PIN_A,
         p.motor_0.Encoder_PIN_B,
-        Pio::new(p.motor_0.PIO, Irqs),
+        &mut common,
+        sm0,
         &MOTOR[0],
-    );
+    ) else { return };
 
-    let motor1 = DCMotorBuilder::build(
+    let Some(motor1) = DCMotorBuilder::build(
         p.motor_1.Motor_PWM_CW_PIN, 
         p.motor_1.Motor_PWM_CCW_PIN,
+        p.motor_1.SLICE,
         p.motor_1.Encoder_PIN_A,
         p.motor_1.Encoder_PIN_B,
-        Pio::new(p.motor_1.PIO, Irqs),
+        &mut common,
+        sm1,
         &MOTOR[1],
-    );
+    ) else { return };
     
     spawn_core1(
         ph.CORE1,
