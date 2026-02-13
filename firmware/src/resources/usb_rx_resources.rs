@@ -193,16 +193,14 @@ impl<'a> CommandHandler<'a> {
                     kp (f32) = 4
                     ki (f32) = 4
                     kd (f32) = 4
-                    kp_speed (f32) = 4
-                    ki_speed (f32) = 4
-                    kd_speed (f32) = 4
+                    i_limit (f32) = 4
                 */
 
-                if let (Some(kp), Some(ki), Some(kd)) = (
-                    self.read_f32(), self.read_f32(), self.read_f32(),
+                if let (Some(kp), Some(ki), Some(kd), Some(i_limit)) = (
+                    self.read_f32(), self.read_f32(), self.read_f32(), self.read_f32(),
                 ) {
                     let config = PIDConfig {
-                        kp, ki, kd,
+                        kp, ki, kd, i_limit,
                     };
                     motor.set_pos_pid(config).await;
                     self.send_error_code(Some(op_code), ErrorCode::NoError).await;
@@ -222,7 +220,8 @@ impl<'a> CommandHandler<'a> {
                     .push(op_code)
                     .push(pid.kp)
                     .push(pid.ki)
-                    .push(pid.kd);
+                    .push(pid.kd)
+                    .push(pid.i_limit);
 
                 CMD_CHANNEL.send(buffer).await; 
             },
@@ -231,13 +230,14 @@ impl<'a> CommandHandler<'a> {
                     kp (f32) = 4
                     ki (f32) = 4
                     kd (f32) = 4
+                    i_limit (f32) = 4
                 */
 
-                if let (Some(kp), Some(ki), Some(kd)) = (
-                    self.read_f32(), self.read_f32(), self.read_f32(),
+                if let (Some(kp), Some(ki), Some(kd), Some(i_limit)) = (
+                    self.read_f32(), self.read_f32(), self.read_f32(), self.read_f32(),
                 ) {
                     let config = PIDConfig {
-                        kp, ki, kd,
+                        kp, ki, kd, i_limit,
                     };
                     motor.set_speed_pid(config).await;           
                     self.send_error_code(Some(op_code), ErrorCode::NoError).await;
@@ -249,15 +249,17 @@ impl<'a> CommandHandler<'a> {
             },
             OpCode::GetMotorSpeedPidParam => {
                 /* get_motor_speed_pid_param */
-                    let pid = motor.get_speed_pid().await;
-                    let mut buffer = Packet::new();            
-                    buffer.push(self.header)
-                        .push(ErrorCode::NoError as u8)
-                        .push(op_code)
-                        .push(pid.kp)
-                        .push(pid.ki)
-                        .push(pid.kd);
-                    CMD_CHANNEL.send(buffer).await;                         
+                let pid = motor.get_speed_pid().await;
+                
+                let mut buffer = Packet::new();            
+                buffer.push(self.header)
+                    .push(ErrorCode::NoError as u8)
+                    .push(op_code)
+                    .push(pid.kp)
+                    .push(pid.ki)
+                    .push(pid.kd)
+                    .push(pid.i_limit);
+                CMD_CHANNEL.send(buffer).await;                         
             },
             OpCode::MoveMotorAbsPosTrapezoid => {
                 /* move_motor_abs_pos_trapezoid

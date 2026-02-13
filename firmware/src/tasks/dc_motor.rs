@@ -71,14 +71,14 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
         let new_pos_pid = self.motor.get_pos_pid().await;
         
         self.position_control.reset();
-        self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
+        self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd, new_pos_pid.i_limit);
     }
 
     async fn update_speed_pid_config(&mut self) {
         let new_speed_pid = self.motor.get_speed_pid().await;
 
         self.speed_control.reset();
-        self.speed_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd);
+        self.speed_control.update_pid_param(new_speed_pid.kp, new_speed_pid.ki, new_speed_pid.kd, new_speed_pid.i_limit);
     }
 
     pub fn move_motor(&mut self, pwm_input: i32) {

@@ -44,17 +44,17 @@ pub use usb_tx_resources::*;
 
 /* --------------------------- Motor PID Config-------------------------- */
 pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
-    kp: 10.0,
+    kp: 25.0,
     ki: 0.0,
     kd: 5.0,
-    // i_limit: 1500.0, // Max PWM contribution
+    i_limit: 1500.0,
 };
 
 pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
-    kp: 6.0,
-    ki: 0.5,
-    kd: 0.0,
-    // i_limit: 1000, // Max Speed (CPS) contribution
+    kp: 2.0,
+    ki: 0.8,
+    kd: 10.0,
+    i_limit: 4999.0,
 };
 
 /* --------------------------- USB -------------------------- */
