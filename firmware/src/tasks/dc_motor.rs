@@ -31,7 +31,6 @@ pub struct DCMotor <'d, T: Instance, const SM: usize> {
     motor: &'static MotorHandler,
     speed_control: PIDcontrol<I16F16>,
     position_control: PIDcontrol<I32F32>,
-    speed_for_position_control: PIDcontrol<I16F16>, 
     control_mode: ControlMode,
     motion_profile: Option<TrapezoidProfile>,
     move_done: bool,
@@ -52,9 +51,8 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
             pwm_ccw,
             encoder,
             motor,            
-            speed_control: PIDcontrol::new(motor.max_pwm_ticks),
-            position_control: PIDcontrol::new(motor.max_speed_cps),
-            speed_for_position_control: PIDcontrol::new(motor.max_pwm_ticks),
+            speed_control: PIDcontrol::new(DEFAULT_PID_SPEED_CONFIG, motor.max_pwm_ticks),
+            position_control: PIDcontrol::new(DEFAULT_PID_POS_CONFIG, motor.max_speed_cps),
             control_mode: ControlMode::Stop,
             motion_profile: None, 
             move_done: false,
@@ -74,9 +72,6 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
         
         self.position_control.reset();
         self.position_control.update_pid_param(new_pos_pid.kp, new_pos_pid.ki, new_pos_pid.kd);
-        
-        self.speed_for_position_control.reset();
-        self.speed_for_position_control.update_pid_param(new_pos_pid.kp_speed, new_pos_pid.ki_speed, new_pos_pid.kd_speed);
     }
 
     async fn update_speed_pid_config(&mut self) {
@@ -104,27 +99,25 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
     pub async fn reset_control_mode(&mut self, control_mode: ControlMode) {
         self.control_mode = control_mode;
 
+        // Reset Control Parameter
+        self.speed_control.reset();
+        self.position_control.reset();
+        self.update_speed_pid_config().await;
+        self.update_pos_pid_config().await;
+
         match self.control_mode {
             ControlMode::OpenLoop => {
-                self.speed_control.reset();
-                self.position_control.reset();
                 self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
                 self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
             },
             ControlMode::Speed => {
-                self.speed_control.reset();
-                self.update_speed_pid_config().await;
                 self.motor.set_commanded_pos(0); // Set Commanded to 0 means Not in Position Control
             },
             ControlMode::Position => {
-                self.position_control.reset();
-                self.update_pos_pid_config().await;
                 self.motor.set_commanded_speed(0); // Set Commanded to 0 means Not in Speed Control
             },
             ControlMode::Stop => {
                 self.move_motor(0);
-                self.update_pos_pid_config().await;
-                self.update_speed_pid_config().await;
                 self.motion_profile = None;
             },
         }
@@ -146,9 +139,14 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
         
         let mut current_active_cmd = MotorCommand::Stop;
         let mut last_command: Option<MotorCommand> = None;
-        self.control_mode = ControlMode::Stop;
         let mut current_pos = self.motor.get_current_pos(); 
         let mut last_pos_for_speed = current_pos;
+
+        self.control_mode = ControlMode::Stop;
+        self.speed_control.reset();
+        self.position_control.reset();
+        self.update_speed_pid_config().await;
+        self.update_pos_pid_config().await;
 
         loop {
             match select(self.encoder.read(), ticker.next()).await {
@@ -257,7 +255,7 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
                             let target_speed = self.position_control.compute(pos_error);
 
                             let speed_error = I16F16::from_num(target_speed) - self.current_speed;
-                            let sig = self.speed_for_position_control.compute(speed_error);
+                            let sig = self.speed_control.compute(speed_error);
                             self.move_motor(sig);
                         },
                         MotorCommand::Stop => {

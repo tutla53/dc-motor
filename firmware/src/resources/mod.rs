@@ -81,6 +81,20 @@ pub enum ErrorCode {
     InvalidTimeSampling = 6,
 }
 
+pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
+    kp: 10.0,
+    ki: 0.0,
+    kd: 5.0,
+    // i_limit: 1500.0, // Max PWM contribution
+};
+
+pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
+    kp: 6.0,
+    ki: 0.5,
+    kd: 0.0,
+    // i_limit: 1000, // Max Speed (CPS) contribution
+};
+
 /* --------------------------- Sizes -------------------------- */
 pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
@@ -98,8 +112,8 @@ pub const POS_TOLERANCE_COUNT: i32 = 5;
 pub const SPEED_TOLERANCE_CPS: i32 = 2;
 pub const SETTLE_TICKS: u32 = 20;
 pub const PWM_PERIOD_TICKS: u16 = 4999;
-pub const MOTOR_MAX_PWM: i32 = 4999; // Calibrated Value
-pub const MOTOR_MAX_SPEED: i32 = 1400;
+pub const MOTOR_MAX_PWM_TICKS: i32 = 4999; // Calibrated Value
+pub const MOTOR_MAX_SPEED_CPS: i32 = 1130; // 1400 RPM
 pub const TIME_SAMPLING_US: u64 = 5000;
 pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32;
 pub const SPEED_FILTER_WINDOW: usize = 1 << 3; // Must be 2^n

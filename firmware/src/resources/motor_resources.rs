@@ -30,16 +30,6 @@ pub enum ControlMode {
 
 /* --------------------------- PID Config -------------------------- */
 #[derive(Clone, Copy)]
-pub struct PosPIDConfig {
-    pub kp: f32,
-    pub ki: f32,
-    pub kd: f32,
-    pub kp_speed: f32,
-    pub ki_speed: f32,
-    pub kd_speed: f32,
-}
-
-#[derive(Clone, Copy)]
 pub struct PIDConfig {
     pub kp: f32,
     pub ki: f32,
@@ -54,7 +44,7 @@ pub struct MotorHandler {
     current_commanded_speed: AtomicI32,
     current_commanded_pwm: AtomicI32,
     commanded_motor_speed: Channel<CriticalSectionRawMutex, MotorCommand, 16>,
-    pos_pid: Mutex<CriticalSectionRawMutex, PosPIDConfig>,
+    pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     pub max_pwm_ticks: i32,
     pub max_speed_cps: i32,
@@ -70,10 +60,10 @@ impl MotorHandler {
             current_commanded_speed: AtomicI32::new(0),
             current_commanded_pwm: AtomicI32::new(0),
             commanded_motor_speed: Channel::new(),
-            pos_pid: Mutex::new(PosPIDConfig{ kp: 10.0, ki: 0.0, kd: 5.0, kp_speed: 5.0, ki_speed: 0.5, kd_speed: 0.0}),
-            speed_pid: Mutex::new(PIDConfig{ kp: 6.0, ki: 0.5, kd: 0.0}),
-            max_pwm_ticks: MOTOR_MAX_PWM,
-            max_speed_cps: MOTOR_MAX_SPEED,
+            pos_pid: Mutex::new(DEFAULT_PID_POS_CONFIG),
+            speed_pid: Mutex::new(DEFAULT_PID_SPEED_CONFIG),
+            max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
+            max_speed_cps: MOTOR_MAX_SPEED_CPS,
             id: id,
         }
     }
@@ -126,12 +116,12 @@ impl MotorHandler {
         return self.current_commanded_pwm.load(Ordering::Relaxed);
     }
 
-    pub async fn set_pos_pid(&self, config: PosPIDConfig) {
+    pub async fn set_pos_pid(&self, config: PIDConfig) {
         let mut current = self.pos_pid.lock().await;
         *current = config;
     }
 
-    pub async fn get_pos_pid(&self) -> PosPIDConfig {
+    pub async fn get_pos_pid(&self) -> PIDConfig {
         return *self.pos_pid.lock().await;
     }
 

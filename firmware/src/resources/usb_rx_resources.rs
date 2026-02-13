@@ -198,12 +198,11 @@ impl<'a> CommandHandler<'a> {
                     kd_speed (f32) = 4
                 */
 
-                if let (Some(kp), Some(ki), Some(kd), Some(kp_speed), Some(ki_speed), Some(kd_speed)) = (
+                if let (Some(kp), Some(ki), Some(kd)) = (
                     self.read_f32(), self.read_f32(), self.read_f32(),
-                    self.read_f32(), self.read_f32(), self.read_f32()
                 ) {
-                    let config = PosPIDConfig {
-                        kp, ki, kd, kp_speed, ki_speed, kd_speed,
+                    let config = PIDConfig {
+                        kp, ki, kd,
                     };
                     motor.set_pos_pid(config).await;
                     self.send_error_code(Some(op_code), ErrorCode::NoError).await;
@@ -223,10 +222,7 @@ impl<'a> CommandHandler<'a> {
                     .push(op_code)
                     .push(pid.kp)
                     .push(pid.ki)
-                    .push(pid.kd)
-                    .push(pid.kp_speed)
-                    .push(pid.ki_speed)
-                    .push(pid.kd_speed);
+                    .push(pid.kd);
 
                 CMD_CHANNEL.send(buffer).await; 
             },

@@ -8,6 +8,8 @@ use panic_probe as _;
 
 use crate::resources::TIME_SAMPLING_US;
 use crate::resources::TICKS_TO_CPS;
+use crate::resources::DEFAULT_PID_POS_CONFIG;
+use crate::resources::DEFAULT_PID_SPEED_CONFIG;
 
 use embassy_futures::select::select;
 use embassy_futures::select::select3;

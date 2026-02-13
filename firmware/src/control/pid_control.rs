@@ -15,11 +15,11 @@ pub struct PIDcontrol<T: Fixed>  {
 }
 
 impl<T: Fixed> PIDcontrol<T>{
-    pub fn new(threshold: i32) -> Self {
+    pub fn new(config: PIDConfig, threshold: i32) -> Self {
         Self {
-            kp: T::from_num(0),
-            ki: T::from_num(0),
-            kd: T::from_num(0),
+            kp: T::from_num(config.kp),
+            ki: T::from_num(config.ki),
+            kd: T::from_num(config.kd),
             integral: T::from_num(0),
             prev_error: T::from_num(0),
             max_threshold: threshold,
