@@ -32,9 +32,10 @@ pub const SPEED_TOLERANCE_CPS: i32 = 2;
 pub const SETTLE_TICKS: u32 = 20;
 
 /* --------------------------- Motor PWM and Control Config -------------------------- */
+pub const MOTOR_MAX_SPEED_CPS: i32 = 968; // Physical Limit 1200 RPM
 pub const PWM_PERIOD_TICKS: u16 = 4999; // 25kHz Period = (125_000_000 (Pico clock)/25_000(Frequency)) -1
 pub const MOTOR_MAX_PWM_TICKS: i32 = 4999; // Full Range
-pub const MOTOR_MAX_SPEED_CPS: i32 = 1130; // 1400 RPM
+pub const MOTOR_CONTROL_MAX_SPEED_CPS: i32 = 1130; // 1400 RPM for control limit
 pub const TIME_SAMPLING_US: u64 = 5000; // Control Loop Frequency
 pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32; // Calculating Speed from Ticks
 pub const SPEED_FILTER_WINDOW: usize = 1 << 3; // Must be 2^n

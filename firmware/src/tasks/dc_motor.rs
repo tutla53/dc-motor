@@ -195,9 +195,10 @@ impl <'d, T: Instance, const SM: usize> DCMotor <'d, T, SM> {
                             if let MotorCommand::PositionControl(shape) = current_active_cmd {
                                 if let Shape::Trapezoidal(final_pos, vel, acc) = shape {
                                     let start_pos = self.current_pos.to_num::<f32>();
+                                    let safe_vel = vel.min(MOTOR_MAX_SPEED_CPS as f32);
                                     start_time = Instant::now();
                                     self.motion_profile = Some(
-                                        TrapezoidProfile::new(start_pos, final_pos, vel, acc)
+                                        TrapezoidProfile::new(start_pos, final_pos, safe_vel, acc)
                                     );
                                 }
                             }

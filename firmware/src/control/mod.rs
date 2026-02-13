@@ -10,7 +10,6 @@ use libm::sqrtf;
 use fixed::traits::Fixed;
 use core::ops::Neg;
 
-
 pub mod pid_control;
 pub mod motion_profile;
 

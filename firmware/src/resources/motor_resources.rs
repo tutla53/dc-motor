@@ -64,7 +64,7 @@ impl MotorHandler {
             pos_pid: Mutex::new(DEFAULT_PID_POS_CONFIG),
             speed_pid: Mutex::new(DEFAULT_PID_SPEED_CONFIG),
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
-            max_speed_cps: MOTOR_MAX_SPEED_CPS,
+            max_speed_cps: MOTOR_CONTROL_MAX_SPEED_CPS,
             id: id,
         }
     }
