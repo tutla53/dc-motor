@@ -30,7 +30,7 @@ use embassy_executor::InterruptExecutor;
 use embassy_usb::class::cdc_acm::State;
 
 /* --------------------------- Declare Modules -------------------------- */
-pub mod event_resources;
+pub mod usb_resources;
 pub mod gpio_list;
 pub mod logger_resources;
 pub mod motor_resources;
@@ -39,48 +39,10 @@ pub mod usb_tx_resources;
 pub mod macros;
 
 pub use motor_resources::*;
-pub use event_resources::*;
+pub use usb_resources::*;
 pub use usb_tx_resources::*;
 
-/* --------------------------- USB Header -------------------------- */
-#[derive(PartialEq, Clone)]
-#[repr(u8)]
-pub enum OpCode {
-    None = 0,
-    StartLogger = 1,
-    StopLogger = 2,
-    MoveMotorSpeed = 3,
-    MoveMotorAbsPos = 4,
-    StopMotor = 5,
-    SetMotorPosPidParam = 6,
-    GetMotorPosPidParam = 7,
-    SetMotorSpeedPidParam = 8,
-    GetMotorSpeedPidParam = 9,
-    MoveMotorAbsPosTrapezoid = 10,
-    GetMotorPos = 11,
-    GetMotorSpeed = 12,
-    MoveMotorOpenLoop = 13,
-}
-
-#[derive(PartialEq)]
-#[repr(u8)]
-pub enum HEADER {
-    COMMAND = 0xFF,
-    EVENT = 0xFE,
-    LOGGER = 0xFD,
-}
-
-#[repr(u8)]
-pub enum ErrorCode {
-    NoError = 0,
-    OpCodeNotFound = 1,
-    NonFiniteFloat = 2,
-    ReadByteError = 3,
-    InvalidMotorId = 4,
-    InvalidHeaderCode = 5,
-    InvalidTimeSampling = 6,
-}
-
+/* --------------------------- Motor PID Config-------------------------- */
 pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
     kp: 10.0,
     ki: 0.0,
@@ -95,7 +57,7 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
     // i_limit: 1000, // Max Speed (CPS) contribution
 };
 
-/* --------------------------- Sizes -------------------------- */
+/* --------------------------- USB -------------------------- */
 pub const USB_BUFFER_SIZE:  usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;

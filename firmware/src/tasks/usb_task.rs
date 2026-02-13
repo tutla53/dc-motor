@@ -13,24 +13,15 @@ use crate::resources::USB_BUFFER_SIZE;
 use crate::resources::HEADER;
 use crate::resources::usb_rx_resources::CommandHandler;
 use crate::resources::usb_tx_resources::Packet;
-use crate::resources::event_resources::EventList;
+use crate::resources::usb_resources::EventList;
 
 /*
-    Prototype
-
-    Header
-    - Command Header 0xFF (255)
-    - Event Header 0xFE (254)
-    - Logger Header 0XFD (253)
-
-    Event Message Format
-    - [header opcode id]
-    - e.g [0xFE (Event) 0x00 (MotorMoveDone) 0x00 (motor_id)]
-
-    Command Message Format
-    - [header opcode [data]]
-    - e.g. [0xFF (Command) 0x08 (set_motor_speed_pid_param) [kp, ki, kd] (data)]
-
+    Input Command Pattern
+        [HEADER] [OP_CODE] [PARAMETERS]
+    Output Pattern
+        [HEADER] [ERROR_CODE] [OP_CODE] [DATA]
+    Event Pattern
+        [HEADER] [EVENT_CODE] [ID]
 */
 
 #[embassy_executor::task]

@@ -12,7 +12,7 @@ use crate::resources::motor_resources::Shape;
 use crate::resources::motor_resources::MotorHandler;
 use crate::resources::motor_resources::MotorCommand;
 use crate::resources::motor_resources::ControlMode;
-use crate::resources::event_resources::EventList;
+use crate::resources::usb_resources::EventList;
 use crate::resources::EVENT_CHANNEL;
 use crate::resources::POS_TOLERANCE_COUNT;
 use crate::resources::SPEED_TOLERANCE_CPS;
