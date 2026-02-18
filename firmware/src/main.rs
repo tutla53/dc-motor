@@ -16,6 +16,7 @@ use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
 use crate::resources::N_MOTOR;
 use crate::resources::PWM_PERIOD_TICKS;
+use crate::resources::SYSTEM_FREQ_HZ;
 use crate::resources::USB_STATE;
 use crate::resources::CONFIG_DESC;
 use crate::resources::BOS_DESC;
@@ -26,10 +27,10 @@ use crate::resources::EXECUTOR0;
 use crate::resources::EXECUTOR_HIGH;
 
 // Tasks
+use crate::tasks::logger::firmware_logger_task;
 use crate::tasks::usb_task::usb_device_task;
 use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_traffic_controller_task;
-use crate::tasks::logger::firmware_logger_task;
 use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
 
@@ -58,6 +59,8 @@ use embassy_rp::pwm::ChannelAPin;
 use embassy_rp::pwm::ChannelBPin;
 use embassy_rp::pwm::Slice;
 use embassy_rp::pwm::Config as PwmConfig;
+use embassy_rp::clocks::ClockConfig;
+use embassy_rp::config::Config;
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
 
@@ -109,7 +112,9 @@ pub static LOGGER: LoggerHandler = LoggerHandler::new();
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let ph = embassy_rp::init(Default::default());
+    let config = Config::new(ClockConfig::system_freq(SYSTEM_FREQ_HZ).unwrap());
+
+    let ph = embassy_rp::init(config);
     let p =  split_resources!(ph);
 
     // USB Initialization
