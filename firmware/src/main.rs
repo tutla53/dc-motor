@@ -14,6 +14,8 @@ use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
+use crate::resources::load_pid_config;
+use crate::resources::save_pid_config;
 use crate::resources::N_MOTOR;
 use crate::resources::PWM_PERIOD_TICKS;
 use crate::resources::SYSTEM_FREQ_HZ;
@@ -25,6 +27,11 @@ use crate::resources::CORE1_STACK;
 use crate::resources::EXECUTOR1;
 use crate::resources::EXECUTOR0;
 use crate::resources::EXECUTOR_HIGH;
+use crate::resources::PIDConfig;
+use crate::resources::FLASH_SIZE;
+use crate::resources::STORAGE_START;
+use crate::resources::STORAGE_END;
+use crate::resources::STORAGE;
 
 // Tasks
 use crate::tasks::logger::firmware_logger_task;
@@ -40,6 +47,9 @@ use crate::tasks::dc_motor::DCMotor;
 // Library
 use defmt_rtt as _;
 use panic_probe as _;
+use sequential_storage::map::MapStorage;
+use sequential_storage::map::MapConfig;
+use sequential_storage::cache::NoCache;
 
 use embassy_usb::class::cdc_acm::CdcAcmClass;
 use embassy_usb::class::cdc_acm::State;
@@ -61,6 +71,8 @@ use embassy_rp::pwm::Slice;
 use embassy_rp::pwm::Config as PwmConfig;
 use embassy_rp::clocks::ClockConfig;
 use embassy_rp::config::Config;
+use embassy_rp::flash::Async;
+use embassy_rp::flash::Flash;
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
 
@@ -117,6 +129,16 @@ async fn main(_spawner: Spawner) {
     let ph = embassy_rp::init(config);
     let p =  split_resources!(ph);
 
+    // FLash Storage
+    let flash = Flash::<_, Async, FLASH_SIZE>::new(ph.FLASH, ph.DMA_CH0);
+    let storage_config = const { MapConfig::new(STORAGE_START .. STORAGE_END) };
+    let storage = MapStorage::<u8, _, _>::new(flash, storage_config, NoCache::new());
+    
+    {
+        let mut guard = STORAGE.lock().await;
+        *guard = Some(storage);
+    }
+
     // USB Initialization
     let usb_driver = Driver::new(ph.USB, Irqs);
 
@@ -165,6 +187,33 @@ async fn main(_spawner: Spawner) {
         sm1,
         &MOTOR[1],
     ) else { return };
+
+    // Flash Try
+    /*
+        Prototype
+        42 => motor 0 speed
+        43 => motor 0 pos
+        44 => motor 1 speed
+        45 => motor 1 pos
+
+        TODO:
+        Address = MOTOR.id*10 + 1 --> Speed
+        Address = MOTOR.id*10 + 2 --> Position
+    */
+    let motor0_pid_speed:PIDConfig = load_pid_config(42).await;
+    let motor0_pid_pos:PIDConfig = load_pid_config(43).await;
+    let motor1_pid_speed:PIDConfig = load_pid_config(44).await;
+    let motor1_pid_pos:PIDConfig = load_pid_config(45).await;
+    
+    save_pid_config(42, &motor0_pid_speed).await;
+    save_pid_config(43, &motor0_pid_pos).await;
+    save_pid_config(44, &motor1_pid_speed).await;
+    save_pid_config(45, &motor1_pid_pos).await;
+
+    MOTOR[0].set_speed_pid(motor0_pid_speed).await;
+    MOTOR[0].set_pos_pid(motor0_pid_pos).await;
+    MOTOR[1].set_speed_pid(motor1_pid_speed).await;
+    MOTOR[1].set_pos_pid(motor1_pid_pos).await;
     
     spawn_core1(
         ph.CORE1,

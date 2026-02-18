@@ -9,30 +9,6 @@
 // Resources
 use super::*;
 
-impl TryFrom<u8> for OpCode {
-    type Error = ();
-
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
-        match v {
-            0 => Ok(OpCode::None),
-            1 => Ok(OpCode::StartLogger),
-            2 => Ok(OpCode::StopLogger),
-            3 => Ok(OpCode::MoveMotorSpeed),
-            4 => Ok(OpCode::MoveMotorAbsPos),
-            5 => Ok(OpCode::StopMotor),
-            6 => Ok(OpCode::SetMotorPosPidParam),
-            7 => Ok(OpCode::GetMotorPosPidParam),
-            8 => Ok(OpCode::SetMotorSpeedPidParam),
-            9 => Ok(OpCode::GetMotorSpeedPidParam),
-            10 => Ok(OpCode::MoveMotorAbsPosTrapezoid),
-            11 => Ok(OpCode::GetMotorPos),
-            12 => Ok(OpCode::GetMotorSpeed),
-            13 => Ok(OpCode::MoveMotorOpenLoop),
-            _ => Err(()),
-        }
-    }
-}
-
 /* --------------------------- Command Handler-------------------------- */
 pub struct CommandHandler<'a> {
     pub data: &'a [u8],
@@ -113,6 +89,35 @@ impl<'a> CommandHandler<'a> {
             self.send_error_code(Some(op_code), ErrorCode::OpCodeNotFound).await;
             return;
         };
+
+        if op_enum == OpCode::SaveConfiguration {
+            let motor0_pid_speed:PIDConfig = MOTOR[0].get_speed_pid().await;
+            let motor0_pid_pos:PIDConfig = MOTOR[0].get_pos_pid().await;
+            let motor1_pid_speed:PIDConfig = MOTOR[1].get_speed_pid().await;
+            let motor1_pid_pos:PIDConfig = MOTOR[1].get_pos_pid().await;
+
+            save_pid_config(42, &motor0_pid_speed).await;
+            save_pid_config(43, &motor0_pid_pos).await;
+            save_pid_config(44, &motor1_pid_speed).await;
+            save_pid_config(45, &motor1_pid_pos).await;
+
+            self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+            return;
+        }
+        else if op_enum == OpCode::SetToDefaultConfig {
+            MOTOR[0].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;
+            MOTOR[0].set_pos_pid(DEFAULT_PID_POS_CONFIG).await;
+            MOTOR[1].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;
+            MOTOR[1].set_pos_pid(DEFAULT_PID_POS_CONFIG).await;
+
+            save_pid_config(42, &DEFAULT_PID_SPEED_CONFIG).await;
+            save_pid_config(43, &DEFAULT_PID_POS_CONFIG).await;
+            save_pid_config(44, &DEFAULT_PID_SPEED_CONFIG).await;
+            save_pid_config(45, &DEFAULT_PID_POS_CONFIG).await;
+
+            self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+            return;
+        }
 
         let motor_id: Option<u8> = self.read();
         let Some(motor) = self.select_motor(motor_id) else {

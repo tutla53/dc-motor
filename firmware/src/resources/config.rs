@@ -23,7 +23,7 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
     kp: 2.0,
     ki: 0.8,
     kd: 10.0,
-    i_limit: 4999.0,
+    i_limit: MOTOR_MAX_PWM_TICKS as f32,
 };
 
 /* --------------------------- Motor Properties -------------------------- */
@@ -68,3 +68,9 @@ pub static mut CORE1_STACK: Stack<4096> = Stack::new();
 pub static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+
+/* --------------------------- FLASH STORAGE CONFIG -------------------------- */
+pub const FLASH_SIZE: usize = 2 * 1024 * 1024;  // 2MB
+pub const SECTOR_SIZE: u32 = 4096;              // 4KB
+pub const STORAGE_START: u32 = FLASH_SIZE as u32 - (4 * SECTOR_SIZE); 
+pub const STORAGE_END: u32 = FLASH_SIZE as u32;

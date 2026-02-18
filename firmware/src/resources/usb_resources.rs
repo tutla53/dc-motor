@@ -35,6 +35,35 @@ pub enum OpCode {
     GetMotorPos = 11,
     GetMotorSpeed = 12,
     MoveMotorOpenLoop = 13,
+    SaveConfiguration = 14,
+    SetToDefaultConfig = 15,
+}
+
+// DON'T FORGET TO EDIT HERE TOO
+impl TryFrom<u8> for OpCode {
+    type Error = ();
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(OpCode::None),
+            1 => Ok(OpCode::StartLogger),
+            2 => Ok(OpCode::StopLogger),
+            3 => Ok(OpCode::MoveMotorSpeed),
+            4 => Ok(OpCode::MoveMotorAbsPos),
+            5 => Ok(OpCode::StopMotor),
+            6 => Ok(OpCode::SetMotorPosPidParam),
+            7 => Ok(OpCode::GetMotorPosPidParam),
+            8 => Ok(OpCode::SetMotorSpeedPidParam),
+            9 => Ok(OpCode::GetMotorSpeedPidParam),
+            10 => Ok(OpCode::MoveMotorAbsPosTrapezoid),
+            11 => Ok(OpCode::GetMotorPos),
+            12 => Ok(OpCode::GetMotorSpeed),
+            13 => Ok(OpCode::MoveMotorOpenLoop),
+            14 => Ok(OpCode::SaveConfiguration),
+            15 => Ok(OpCode::SetToDefaultConfig),
+            _ => Err(()),
+        }
+    }
 }
 
 /* --------------------------- Error Code -------------------------- */

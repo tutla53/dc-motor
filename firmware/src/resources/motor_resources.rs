@@ -29,7 +29,7 @@ pub enum ControlMode {
 }
 
 /* --------------------------- PID Config -------------------------- */
-#[derive(Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct PIDConfig {
     pub kp: f32,
     pub ki: f32,
