@@ -20,7 +20,6 @@ class MoveMotor:
             if len(self.dev.event_queue) > 0:
                 event = self.dev.event_queue.pop()
                 event_str = "MOVE_MOTOR_DONE"
-                print(event)
                 if event_str in event:
                     if event[event_str] == self.motor_id:
                         printg(f"Move Done, Elapsed: {elapsed:.2f} s")
