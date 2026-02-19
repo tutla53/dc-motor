@@ -91,32 +91,41 @@ impl<'a> CommandHandler<'a> {
         };
 
         if op_enum == OpCode::SaveConfiguration {
-            // TODO: ADD LOOP TO REMOVE REPETITION
-            let motor0_pid_speed:PIDConfig = MOTOR[0].get_speed_pid().await;
-            let motor0_pid_pos:PIDConfig = MOTOR[0].get_pos_pid().await;
-            let motor1_pid_speed:PIDConfig = MOTOR[1].get_speed_pid().await;
-            let motor1_pid_pos:PIDConfig = MOTOR[1].get_pos_pid().await;
+            
+            for id in 0..N_MOTOR {
+                let current_speed_pid:PIDConfig = MOTOR[id].get_speed_pid().await;
+                let current_pos_pid:PIDConfig = MOTOR[id].get_pos_pid().await;
 
-            save_pid_config(42, &motor0_pid_speed).await;
-            save_pid_config(43, &motor0_pid_pos).await;
-            save_pid_config(44, &motor1_pid_speed).await;
-            save_pid_config(45, &motor1_pid_pos).await;
+                let saved_speed = save_config(id as u8, ConfigType::SpeedPID, &current_speed_pid).await;
+                let saved_pos = save_config(id as u8, ConfigType::PositionPID, &current_pos_pid).await;
+
+                if let (Err(()), Err(())) = (saved_speed, saved_pos) {
+                    self.send_error_code(Some(op_code), ErrorCode::FlashStorageError).await;
+                    return;
+                }
+            }
 
             self.send_error_code(Some(op_code), ErrorCode::NoError).await;
             return;
         }
 
         else if op_enum == OpCode::SetToDefaultConfig {
-            // TODO: ADD LOOP TO REMOVE REPETITION
-            MOTOR[0].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;
-            MOTOR[0].set_pos_pid(DEFAULT_PID_POS_CONFIG).await;
-            MOTOR[1].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;
-            MOTOR[1].set_pos_pid(DEFAULT_PID_POS_CONFIG).await;
 
-            save_pid_config(42, &DEFAULT_PID_SPEED_CONFIG).await;
-            save_pid_config(43, &DEFAULT_PID_POS_CONFIG).await;
-            save_pid_config(44, &DEFAULT_PID_SPEED_CONFIG).await;
-            save_pid_config(45, &DEFAULT_PID_POS_CONFIG).await;
+            for id in 0..N_MOTOR {
+                let default_speed_pid = MOTOR[id].default_speed_pid;
+                let default_pos_pid = MOTOR[id].default_pos_pid;
+
+                MOTOR[id].set_speed_pid(default_speed_pid).await;
+                MOTOR[id].set_pos_pid(default_pos_pid).await;
+
+                let saved_speed = save_config(id as u8, ConfigType::SpeedPID, &default_speed_pid).await;
+                let saved_pos = save_config(id as u8, ConfigType::PositionPID, &default_pos_pid).await;
+
+                if let (Err(()), Err(())) = (saved_speed, saved_pos) {
+                    self.send_error_code(Some(op_code), ErrorCode::FlashStorageError).await;
+                    return;
+                }
+            }
 
             self.send_error_code(Some(op_code), ErrorCode::NoError).await;
             return;

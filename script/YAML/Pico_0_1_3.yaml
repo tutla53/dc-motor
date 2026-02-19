@@ -19,6 +19,7 @@
       4: InvalidMotorId
       5: InvalidHeaderCode
       6: InvalidTimeSampling
+      7: FlashStorageError
     
 #---------------------------------- COMMAND -----------------------------------#
 - command: start_logger

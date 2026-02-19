@@ -51,6 +51,7 @@ pub enum ErrorCode {
     InvalidMotorId = 4,
     InvalidHeaderCode = 5,
     InvalidTimeSampling = 6,
+    FlashStorageError = 7,
 }
 
 /* --------------------------- Event List -------------------------- */

@@ -37,7 +37,6 @@ use embassy_executor::Executor;
 use embassy_executor::InterruptExecutor;
 use embassy_usb::class::cdc_acm::State;
 
-
 /* --------------------------- Declare Modules -------------------------- */
 #[macro_use]
 pub mod macros;
