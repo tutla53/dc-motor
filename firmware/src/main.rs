@@ -13,8 +13,8 @@ use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
-use crate::resources::load_pid_config;
-use crate::resources::save_pid_config;
+use crate::resources::load_config;
+use crate::resources::ConfigType;
 use crate::resources::N_MOTOR;
 use crate::resources::PWM_PERIOD_TICKS;
 use crate::resources::SYSTEM_FREQ_HZ;
@@ -26,13 +26,10 @@ use crate::resources::CORE1_STACK;
 use crate::resources::EXECUTOR1;
 use crate::resources::EXECUTOR0;
 use crate::resources::EXECUTOR_HIGH;
-use crate::resources::PIDConfig;
 use crate::resources::FLASH_SIZE;
 use crate::resources::STORAGE_START;
 use crate::resources::STORAGE_END;
 use crate::resources::STORAGE;
-use crate::resources::DEFAULT_PID_SPEED_CONFIG;
-use crate::resources::DEFAULT_PID_POS_CONFIG;
 
 // Tasks
 use crate::tasks::logger::firmware_logger_task;
@@ -41,6 +38,7 @@ use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_traffic_controller_task;
 use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
+use crate::tasks::heartbeat::heartbeat_task;
 
 //  Struct
 use crate::tasks::dc_motor::DCMotor;
@@ -74,14 +72,17 @@ use embassy_rp::clocks::ClockConfig;
 use embassy_rp::config::Config;
 use embassy_rp::flash::Async;
 use embassy_rp::flash::Flash;
+use embassy_rp::gpio::Output;
+use embassy_rp::gpio::Level;
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
+use embassy_time::Timer;
 
 struct DCMotorBuilder { }
 
 impl DCMotorBuilder {
 
-    fn build<'d, T:Instance, S:Slice, const SM: usize,  P0:ChannelBPin<S>, P1:ChannelAPin<S>, P2:PioPin, P3:PioPin> (
+    async fn build<'d, T:Instance, S:Slice, const SM: usize,  P0:ChannelBPin<S>, P1:ChannelAPin<S>, P2:PioPin, P3:PioPin> (
         pwm_cw_pin: Peri<'d, P0>, 
         pwm_ccw_pin: Peri<'d, P1>,
         pwm_slice:  Peri<'d, S>,
@@ -110,6 +111,15 @@ impl DCMotorBuilder {
     
         let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, pio_encoder, &motor_handler);
 
+        // Initialized Motor Config
+        let motor_id = motor_handler.id;
+        
+        let speed_pid = load_config(motor_id, ConfigType::SpeedPID, motor_handler.default_speed_pid).await;
+        motor_handler.set_speed_pid(speed_pid).await;
+
+        let pos_pid = load_config(motor_id, ConfigType::PositionPID, motor_handler.default_pos_pid).await;
+        motor_handler.set_pos_pid(pos_pid).await;
+
         Some(dc_motor)
     }
 }
@@ -130,6 +140,9 @@ async fn main(_spawner: Spawner) {
     let ph = embassy_rp::init(config);
     let p =  split_resources!(ph);
 
+    // On Board LED
+    let mut onboard_led = ph.PIN_25;
+    
     // FLash Storage
     let flash = Flash::<_, Async, FLASH_SIZE>::new(ph.FLASH, ph.DMA_CH0);
     let storage_config = const { MapConfig::new(STORAGE_START .. STORAGE_END) };
@@ -176,7 +189,14 @@ async fn main(_spawner: Spawner) {
         &mut common,
         sm0,
         &MOTOR[0],
-    ) else { return };
+    ).await 
+    else { 
+        {
+            let mut led = Output::new(onboard_led.reborrow(), Level::Low);
+            led.set_high();
+        }
+        return 
+    };
 
     let Some(motor1) = DCMotorBuilder::build(
         p.motor_1.Motor_PWM_CW_PIN, 
@@ -187,37 +207,24 @@ async fn main(_spawner: Spawner) {
         &mut common,
         sm1,
         &MOTOR[1],
-    ) else { return };
-
-    // Flash Try
-    /*
-        Prototype
-        42 => motor 0 speed
-        43 => motor 0 pos
-        44 => motor 1 speed
-        45 => motor 1 pos
-
-        TODO:
-        Address = MOTOR.id*10 + 1 --> Speed
-        Address = MOTOR.id*10 + 2 --> Position
-    */
-
-    // TODO: ADD LOOP TO REMOVE REPETITION
-    let motor0_pid_speed:PIDConfig = load_pid_config(42, DEFAULT_PID_SPEED_CONFIG).await;
-    let motor0_pid_pos:PIDConfig = load_pid_config(43, DEFAULT_PID_POS_CONFIG).await;
-    let motor1_pid_speed:PIDConfig = load_pid_config(44, DEFAULT_PID_SPEED_CONFIG).await;
-    let motor1_pid_pos:PIDConfig = load_pid_config(45, DEFAULT_PID_POS_CONFIG).await;
+    ).await 
+    else { 
+        {
+            let mut led = Output::new(onboard_led.reborrow(), Level::Low);
+            led.set_high();
+        }
+        return 
+    };
     
-    save_pid_config(42, &motor0_pid_speed).await;
-    save_pid_config(43, &motor0_pid_pos).await;
-    save_pid_config(44, &motor1_pid_speed).await;
-    save_pid_config(45, &motor1_pid_pos).await;
+    // Blink after Initialization
+    {
+        let mut led = Output::new(onboard_led.reborrow(), Level::Low);
+        for _ in 0..10 {
+            led.toggle();
+            Timer::after_millis(50).await;
+        }
+    }
 
-    MOTOR[0].set_speed_pid(motor0_pid_speed).await;
-    MOTOR[0].set_pos_pid(motor0_pid_pos).await;
-    MOTOR[1].set_speed_pid(motor1_pid_speed).await;
-    MOTOR[1].set_pos_pid(motor1_pid_pos).await;
-    
     spawn_core1(
         ph.CORE1,
         unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
@@ -236,5 +243,6 @@ async fn main(_spawner: Spawner) {
         spawner.must_spawn(usb_communication_task(class));
         spawner.must_spawn(usb_traffic_controller_task());
         spawner.must_spawn(firmware_logger_task());
+        spawner.must_spawn(heartbeat_task(onboard_led.into()));
     });
 }
