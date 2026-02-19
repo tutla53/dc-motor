@@ -7,7 +7,6 @@ mod resources;
 mod control;
 
 // Resources
-// use crate::create_motors;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::Motor0Resources;
@@ -32,6 +31,8 @@ use crate::resources::FLASH_SIZE;
 use crate::resources::STORAGE_START;
 use crate::resources::STORAGE_END;
 use crate::resources::STORAGE;
+use crate::resources::DEFAULT_PID_SPEED_CONFIG;
+use crate::resources::DEFAULT_PID_POS_CONFIG;
 
 // Tasks
 use crate::tasks::logger::firmware_logger_task;
@@ -200,10 +201,12 @@ async fn main(_spawner: Spawner) {
         Address = MOTOR.id*10 + 1 --> Speed
         Address = MOTOR.id*10 + 2 --> Position
     */
-    let motor0_pid_speed:PIDConfig = load_pid_config(42).await;
-    let motor0_pid_pos:PIDConfig = load_pid_config(43).await;
-    let motor1_pid_speed:PIDConfig = load_pid_config(44).await;
-    let motor1_pid_pos:PIDConfig = load_pid_config(45).await;
+
+    // TODO: ADD LOOP TO REMOVE REPETITION
+    let motor0_pid_speed:PIDConfig = load_pid_config(42, DEFAULT_PID_SPEED_CONFIG).await;
+    let motor0_pid_pos:PIDConfig = load_pid_config(43, DEFAULT_PID_POS_CONFIG).await;
+    let motor1_pid_speed:PIDConfig = load_pid_config(44, DEFAULT_PID_SPEED_CONFIG).await;
+    let motor1_pid_pos:PIDConfig = load_pid_config(45, DEFAULT_PID_POS_CONFIG).await;
     
     save_pid_config(42, &motor0_pid_speed).await;
     save_pid_config(43, &motor0_pid_pos).await;

@@ -91,6 +91,7 @@ impl<'a> CommandHandler<'a> {
         };
 
         if op_enum == OpCode::SaveConfiguration {
+            // TODO: ADD LOOP TO REMOVE REPETITION
             let motor0_pid_speed:PIDConfig = MOTOR[0].get_speed_pid().await;
             let motor0_pid_pos:PIDConfig = MOTOR[0].get_pos_pid().await;
             let motor1_pid_speed:PIDConfig = MOTOR[1].get_speed_pid().await;
@@ -104,7 +105,9 @@ impl<'a> CommandHandler<'a> {
             self.send_error_code(Some(op_code), ErrorCode::NoError).await;
             return;
         }
+
         else if op_enum == OpCode::SetToDefaultConfig {
+            // TODO: ADD LOOP TO REMOVE REPETITION
             MOTOR[0].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;
             MOTOR[0].set_pos_pid(DEFAULT_PID_POS_CONFIG).await;
             MOTOR[1].set_speed_pid(DEFAULT_PID_SPEED_CONFIG).await;

@@ -17,6 +17,7 @@ use core::sync::atomic::Ordering;
 use static_cell::StaticCell;
 use serde::Serialize;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use sequential_storage::map::MapStorage;
 use sequential_storage::cache::NoCache;
 
@@ -38,13 +39,15 @@ use embassy_usb::class::cdc_acm::State;
 
 
 /* --------------------------- Declare Modules -------------------------- */
+#[macro_use]
+pub mod macros;
+
 pub mod usb_resources;
 pub mod gpio_list;
 pub mod logger_resources;
 pub mod motor_resources;
 pub mod usb_rx_resources;
 pub mod usb_tx_resources;
-pub mod macros;
 pub mod config;
 pub mod flash_storage;
 
