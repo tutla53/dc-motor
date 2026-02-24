@@ -142,8 +142,8 @@ class Pico:
     def connect(self, port):
         if port is None:
             acm_ports = [
-                 port.device for port in serial.tools.list_ports.comports() 
-                 if port.description.startswith("USB_DC_MOTOR")]
+                port.device for port in serial.tools.list_ports.comports() 
+                if port.serial_number.startswith("12345678")]
             
             if not acm_ports:
                 raise OSError("No /dev/ttyACM* ports found. Connect a device.")
