@@ -70,7 +70,9 @@ pub static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 pub static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 
 /* --------------------------- FLASH STORAGE CONFIG -------------------------- */
-pub const FLASH_SIZE: usize = 2 * 1024 * 1024;  // 2MB
-pub const SECTOR_SIZE: u32 = 4096;              // 4KB
-pub const STORAGE_START: u32 = FLASH_SIZE as u32 - (4 * SECTOR_SIZE); 
-pub const STORAGE_END: u32 = FLASH_SIZE as u32;
+pub const FLASH_SIZE_BYTES: usize = 2 * 1024 * 1024;    // 2MB
+pub const STORAGE_SIZE_BYTES: usize = 16 * 1024;        // 16KB
+
+pub const FLASH_SIZE: usize = FLASH_SIZE_BYTES;
+pub const STORAGE_START: u32 = (FLASH_SIZE_BYTES - STORAGE_SIZE_BYTES) as u32;
+pub const STORAGE_END: u32 = FLASH_SIZE_BYTES as u32;
