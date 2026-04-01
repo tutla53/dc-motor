@@ -9,6 +9,6 @@ pub async fn heartbeat_task(led_pin: Peri<'static, AnyPin>) {
     let mut led = Output::new(led_pin, Level::Low);
     loop {
         led.toggle();
-        Timer::after_secs(1).await;
+        Timer::after_secs(5).await;
     }
 }
