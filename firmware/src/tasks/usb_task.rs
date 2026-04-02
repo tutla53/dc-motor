@@ -8,12 +8,12 @@ use super::*;
 use crate::LOGGER;
 use crate::resources::CMD_CHANNEL;
 use crate::resources::EVENT_CHANNEL;
-use crate::resources::USB_TX_CHANNEL;
-use crate::resources::USB_BUFFER_SIZE;
 use crate::resources::HEADER;
+use crate::resources::USB_BUFFER_SIZE;
+use crate::resources::USB_TX_CHANNEL;
+use crate::resources::usb_resources::EventList;
 use crate::resources::usb_rx_resources::CommandHandler;
 use crate::resources::usb_tx_resources::Packet;
-use crate::resources::usb_resources::EventList;
 
 /*
     Input Command Pattern
@@ -26,13 +26,13 @@ use crate::resources::usb_resources::EventList;
 
 #[embassy_executor::task]
 pub async fn usb_traffic_controller_task() {
-
     loop {
         let action = select3(
             CMD_CHANNEL.receive(),          // Priority 1
             EVENT_CHANNEL.receive(),        // Priority 2
             LOGGER.log_tx_buffer.receive(), // Priority 3
-        ).await;
+        )
+        .await;
 
         let mut p = Packet::new();
 
@@ -45,7 +45,7 @@ pub async fn usb_traffic_controller_task() {
             Either3::Second(event) => {
                 // The event must be sent
                 p.data[0] = HEADER::EVENT as u8; // Event Header
-                
+
                 match event {
                     EventList::MotorMoveDone(motor_id) => {
                         p.data[1] = 0x00;
@@ -80,21 +80,19 @@ pub async fn usb_communication_task(mut class: CdcAcmClass<'static, Driver<'stat
 
     loop {
         class.wait_connection().await;
-        
+
         loop {
             match select(class.read_packet(&mut rx_buf), subscriber.receive()).await {
-                Either::First(result) => {
-                    match result {
-                        Ok(len) => {
-                            let data = &rx_buf[..len];
-                            if !data.is_empty() {
-                                let mut handler = CommandHandler::new(data);
-                                handler.process_command().await;
-                            }
+                Either::First(result) => match result {
+                    Ok(len) => {
+                        let data = &rx_buf[..len];
+                        if !data.is_empty() {
+                            let mut handler = CommandHandler::new(data);
+                            handler.process_command().await;
                         }
-                        Err(_) => break,
                     }
-                }
+                    Err(_) => break,
+                },
                 Either::Second(packet) => {
                     let _ = class.write_packet(packet.as_slice()).await;
                 }

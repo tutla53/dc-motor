@@ -4,8 +4,8 @@
 
 use super::*;
 
-use crate::MOTOR;
 use crate::LOGGER;
+use crate::MOTOR;
 
 // Resources
 use crate::resources::logger_resources::LogData;
@@ -23,7 +23,7 @@ pub async fn firmware_logger_task() {
                 let data = LogData {
                     seq: sequence,
                     dt: start.elapsed().as_millis() as u32,
-                    values : [
+                    values: [
                         MOTOR[id].get_current_pos(),
                         MOTOR[id].get_current_speed(),
                         MOTOR[id].get_commanded_pos(),
@@ -37,8 +37,7 @@ pub async fn firmware_logger_task() {
             }
 
             ticker.next().await;
-        }
-        else {
+        } else {
             Timer::after(Duration::from_millis(100)).await;
             start = Instant::now();
 

@@ -4,7 +4,8 @@
 
 use super::*;
 
-pub type MyStorage = MapStorage<u8, Flash<'static, embassy_rp::peripherals::FLASH, Async, FLASH_SIZE>, NoCache>;
+pub type MyStorage =
+    MapStorage<u8, Flash<'static, embassy_rp::peripherals::FLASH, Async, FLASH_SIZE>, NoCache>;
 pub static STORAGE: Mutex<ThreadModeRawMutex, Option<MyStorage>> = Mutex::new(None);
 
 /* ------- List of Available Config which can be Saved on Flash Storage --------- */
@@ -20,9 +21,13 @@ fn get_flash_key(motor_id: u8, config: ConfigType) -> u8 {
     (motor_id << 4) | (config as u8)
 }
 
-pub async fn save_config<T:Serialize> (motor_id: u8, config_type: ConfigType, config: &T) -> Result<(), ()>{
+pub async fn save_config<T: Serialize>(
+    motor_id: u8,
+    config_type: ConfigType,
+    config: &T,
+) -> Result<(), ()> {
     let key = get_flash_key(motor_id, config_type);
-    
+
     let mut mutex_guard = STORAGE.lock().await;
     if let Some(storage) = mutex_guard.as_mut() {
         let mut serialization_buf = [0u8; 64];
@@ -33,22 +38,25 @@ pub async fn save_config<T:Serialize> (motor_id: u8, config_type: ConfigType, co
         match storage.store_item(&mut data_buffer, &key, &byte_data).await {
             Ok(()) => {
                 return Ok(());
-            },
+            }
             Err(_) => {
                 return Err(());
-            },
+            }
         }
     }
     Err(())
 }
 
-pub async fn load_config<T: DeserializeOwned + Serialize>(motor_id: u8, config_type: ConfigType, default: T) -> T {
+pub async fn load_config<T: DeserializeOwned + Serialize>(
+    motor_id: u8,
+    config_type: ConfigType,
+    default: T,
+) -> T {
     if let Ok(result) = fetch(motor_id, config_type).await {
-        return result;
-    }
-    else {
+        result
+    } else {
         let _ = save_config(motor_id, config_type, &default).await;
-        return default;
+        default
     }
 }
 
@@ -63,8 +71,7 @@ async fn fetch<T: DeserializeOwned>(motor_id: u8, config_type: ConfigType) -> Re
             Ok(Some(bytes)) => {
                 if let Ok(result) = postcard::from_bytes::<T>(bytes) {
                     return Ok(result);
-                }
-                else {
+                } else {
                     return Err(());
                 }
             }

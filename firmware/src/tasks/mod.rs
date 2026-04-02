@@ -1,4 +1,4 @@
-/* 
+/*
 * Tasks Hub
 */
 
@@ -6,38 +6,37 @@
 use defmt_rtt as _;
 use panic_probe as _;
 
-use crate::resources::TIME_SAMPLING_US;
-use crate::resources::TICKS_TO_CPS;
 use crate::resources::DEFAULT_PID_POS_CONFIG;
 use crate::resources::DEFAULT_PID_SPEED_CONFIG;
 use crate::resources::MOTOR_MAX_SPEED_CPS;
+use crate::resources::TICKS_TO_CPS;
+use crate::resources::TIME_SAMPLING_US;
 
-use embassy_futures::select::select;
-use embassy_futures::select::select3;
 use embassy_futures::select::Either;
 use embassy_futures::select::Either3;
+use embassy_futures::select::select;
+use embassy_futures::select::select3;
 use embassy_rp::Peri;
-use embassy_rp::peripherals::USB;
-use embassy_rp::usb::Driver;
+use embassy_rp::gpio::AnyPin;
+use embassy_rp::gpio::Level;
+use embassy_rp::gpio::Output;
 use embassy_rp::peripherals::PIO0;
+use embassy_rp::peripherals::USB;
 use embassy_rp::pio::Instance;
 use embassy_rp::pio_programs::rotary_encoder::Direction;
 use embassy_rp::pio_programs::rotary_encoder::PioEncoder;
 use embassy_rp::pwm::PwmOutput;
 use embassy_rp::pwm::SetDutyCycle;
-use embassy_rp::gpio::Output;
-use embassy_rp::gpio::Level;
-use embassy_rp::gpio::AnyPin;
-use embassy_time::Timer;
-use embassy_time::Ticker;
-use embassy_time::Instant;
+use embassy_rp::usb::Driver;
 use embassy_time::Duration;
+use embassy_time::Instant;
+use embassy_time::Ticker;
+use embassy_time::Timer;
 use embassy_usb::class::cdc_acm::CdcAcmClass;
-
 use fixed::types::I16F16;
 use fixed::types::I32F32;
 
-pub mod logger;
 pub mod dc_motor;
-pub mod usb_task;
 pub mod heartbeat;
+pub mod logger;
+pub mod usb_task;

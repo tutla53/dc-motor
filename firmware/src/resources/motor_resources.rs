@@ -2,7 +2,6 @@
     DC Motor Resources
 */
 
-
 use super::*;
 
 /* --------------------------- Motor Command -------------------------- */
@@ -51,7 +50,7 @@ pub struct MotorHandler {
     pub default_speed_pid: PIDConfig,
     pub max_pwm_ticks: i32,
     pub max_speed_cps: i32,
-    pub id: u8, 
+    pub id: u8,
 }
 
 impl MotorHandler {
@@ -69,7 +68,7 @@ impl MotorHandler {
             default_speed_pid: DEFAULT_PID_SPEED_CONFIG,
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
             max_speed_cps: MOTOR_CONTROL_MAX_SPEED_CPS,
-            id: id,
+            id,
         }
     }
 
@@ -78,31 +77,31 @@ impl MotorHandler {
     }
 
     pub fn get_current_pos(&self) -> i32 {
-        return self.current_pos.load(Ordering::Relaxed);
+        self.current_pos.load(Ordering::Relaxed)
     }
 
     pub fn set_current_speed(&self, speed: i32) {
-        self.current_speed.store(speed, Ordering::Relaxed);   
+        self.current_speed.store(speed, Ordering::Relaxed);
     }
 
     pub fn get_current_speed(&self) -> i32 {
-        return self.current_speed.load(Ordering::Relaxed);
+        self.current_speed.load(Ordering::Relaxed)
     }
-    
+
     pub fn set_commanded_pos(&self, pos: i32) {
         self.current_commanded_pos.store(pos, Ordering::Relaxed);
     }
 
     pub fn get_commanded_pos(&self) -> i32 {
-        return self.current_commanded_pos.load(Ordering::Relaxed);
+        self.current_commanded_pos.load(Ordering::Relaxed)
     }
 
     pub fn set_commanded_speed(&self, speed: i32) {
-        self.current_commanded_speed.store(speed, Ordering::Relaxed);  
+        self.current_commanded_speed.store(speed, Ordering::Relaxed);
     }
 
     pub fn get_commanded_speed(&self) -> i32 {
-        return self.current_commanded_speed.load(Ordering::Relaxed);
+        self.current_commanded_speed.load(Ordering::Relaxed)
     }
 
     pub fn set_motor_command(&self, speed: MotorCommand) {
@@ -110,15 +109,15 @@ impl MotorHandler {
     }
 
     pub fn get_motor_command(&self) -> Option<MotorCommand> {
-        return self.commanded_motor_speed.try_receive().ok();
+        self.commanded_motor_speed.try_receive().ok()
     }
 
     pub fn set_commanded_pwm(&self, pwm: i32) {
-        self.current_commanded_pwm.store(pwm, Ordering::Relaxed);   
+        self.current_commanded_pwm.store(pwm, Ordering::Relaxed);
     }
 
     pub fn get_commanded_pwm(&self) -> i32 {
-        return self.current_commanded_pwm.load(Ordering::Relaxed);
+        self.current_commanded_pwm.load(Ordering::Relaxed)
     }
 
     pub async fn set_pos_pid(&self, config: PIDConfig) {

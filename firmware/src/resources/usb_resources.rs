@@ -9,6 +9,8 @@
 */
 
 /* --------------------------- HEADER -------------------------- */
+
+#[allow(clippy::upper_case_acronyms)]
 #[derive(PartialEq)]
 #[repr(u8)]
 pub enum HEADER {

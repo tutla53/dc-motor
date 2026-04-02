@@ -13,9 +13,11 @@ pub struct LogData {
 
 impl LogData {
     pub fn pack_data(&self, out: &mut [u8]) {
-        if out.len() < 26 { return; }
+        if out.len() < 26 {
+            return;
+        }
 
-        out[0] = HEADER::LOGGER as u8;            
+        out[0] = HEADER::LOGGER as u8;
         out[1] = self.seq;
         out[2..6].copy_from_slice(&self.dt.to_le_bytes());
         out[6..10].copy_from_slice(&self.values[0].to_le_bytes());
@@ -39,7 +41,7 @@ impl LoggerHandler {
         Self {
             logger_status: AtomicBool::new(false),
             logger_time_sampling_ms: AtomicU32::new(10),
-            motor_id: AtomicU8::new(255), 
+            motor_id: AtomicU8::new(255),
             log_tx_buffer: Channel::new(),
         }
     }
@@ -47,23 +49,24 @@ impl LoggerHandler {
     pub fn set_logging_state(&self, state: bool) {
         self.logger_status.store(state, Ordering::Relaxed);
     }
-    
+
     pub fn is_logging_active(&self) -> bool {
-        return self.logger_status.load(Ordering::Relaxed);
+        self.logger_status.load(Ordering::Relaxed)
     }
-    
+
     pub fn set_logging_time_sampling(&self, time_sampling_ms: u64) {
-       self.logger_time_sampling_ms.store(time_sampling_ms as u32, Ordering::Relaxed);
+        self.logger_time_sampling_ms
+            .store(time_sampling_ms as u32, Ordering::Relaxed);
     }
-    
+
     pub fn get_logging_time_sampling(&self) -> u64 {
-        return self.logger_time_sampling_ms.load(Ordering::Relaxed) as u64;
+        self.logger_time_sampling_ms.load(Ordering::Relaxed) as u64
     }
 
     pub fn set_motor_id(&self, motor_id: u8) {
-       self.motor_id.store(motor_id, Ordering::Relaxed);
+        self.motor_id.store(motor_id, Ordering::Relaxed);
     }
-    
+
     pub fn get_motor_id(&self) -> Option<usize> {
         match self.motor_id.load(Ordering::Relaxed) {
             255 => None,

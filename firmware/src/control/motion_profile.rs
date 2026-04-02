@@ -24,15 +24,15 @@ enum ProfileType {
 
 impl TrapezoidProfile {
     pub fn new(initial_position: f32, target_position: f32, v_max: f32, a_max: f32) -> Self {
-        let displacement: f32  = target_position - initial_position;
-        let direction: f32 = if displacement >= 0.0 {1.0} else {-1.0};
+        let displacement: f32 = target_position - initial_position;
+        let direction: f32 = if displacement >= 0.0 { 1.0 } else { -1.0 };
 
         let displacement_abs = displacement.abs();
         let v_max_abs = v_max.abs();
         let a_max_abs = a_max.abs();
 
         let d_min = (v_max_abs * v_max_abs) / a_max_abs;
-        
+
         let (profile_type, t_acc, t_coast, t_total) = if displacement_abs >= d_min {
             // Trapezoidal profile
             let t_acc = v_max_abs / a_max_abs;
@@ -81,8 +81,9 @@ impl TrapezoidProfile {
             d_acc + self.v_max * (t - self.t_acc)
         } else {
             let t_dec = t - self.t_acc - self.t_coast;
-            let d_acc_coast = 0.5 * self.a_max * self.t_acc * self.t_acc + self.v_max * self.t_coast;
-            d_acc_coast + self.v_max * t_dec - 0.5 * self.a_max * t_dec *t_dec
+            let d_acc_coast =
+                0.5 * self.a_max * self.t_acc * self.t_acc + self.v_max * self.t_coast;
+            d_acc_coast + self.v_max * t_dec - 0.5 * self.a_max * t_dec * t_dec
         }
     }
 

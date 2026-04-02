@@ -5,7 +5,7 @@
 use super::*;
 
 /* --------------------------- Code -------------------------- */
-pub struct PIDcontrol<T: Fixed>  {
+pub struct PIDcontrol<T: Fixed> {
     kp: T,
     ki: T,
     kd: T,
@@ -15,7 +15,7 @@ pub struct PIDcontrol<T: Fixed>  {
     max_threshold: i32,
 }
 
-impl<T: Fixed+ Neg<Output = T>> PIDcontrol<T>{
+impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
     pub fn new(config: PIDConfig, threshold: i32) -> Self {
         Self {
             kp: T::from_num(config.kp),
@@ -43,12 +43,13 @@ impl<T: Fixed+ Neg<Output = T>> PIDcontrol<T>{
     pub fn compute(&mut self, error: T) -> i32 {
         let next_integral = self.integral.saturating_add(error);
         self.integral = next_integral.clamp(-self.i_limit, self.i_limit);
-        
+
         let derivative = error - self.prev_error;
         self.prev_error = error;
 
         let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
 
-        sig.to_num::<i32>().clamp(-self.max_threshold, self.max_threshold)
+        sig.to_num::<i32>()
+            .clamp(-self.max_threshold, self.max_threshold)
     }
 }
