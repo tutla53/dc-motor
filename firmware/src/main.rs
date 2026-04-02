@@ -9,7 +9,7 @@ mod tasks;
 use defmt_rtt as _;
 use panic_probe as _;
 
-// Resources
+// Crate
 use crate::resources::BOS_DESC;
 use crate::resources::CONFIG_DESC;
 use crate::resources::CONTROL_BUF;
@@ -41,6 +41,8 @@ use crate::tasks::logger::firmware_logger_task;
 use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_device_task;
 use crate::tasks::usb_task::usb_traffic_controller_task;
+
+// Library
 use embassy_executor::Executor;
 use embassy_executor::Spawner;
 use embassy_rp::Peri;

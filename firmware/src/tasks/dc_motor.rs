@@ -7,7 +7,8 @@
 
 use super::*;
 
-// Resources
+use crate::control::PIDcontrol;
+use crate::control::TrapezoidProfile;
 use crate::resources::EVENT_CHANNEL;
 use crate::resources::POS_TOLERANCE_COUNT;
 use crate::resources::SETTLE_TICKS;
@@ -18,10 +19,6 @@ use crate::resources::motor_resources::MotorCommand;
 use crate::resources::motor_resources::MotorHandler;
 use crate::resources::motor_resources::Shape;
 use crate::resources::usb_resources::EventList;
-
-// Control
-use crate::control::PIDcontrol;
-use crate::control::TrapezoidProfile;
 
 /* --------------------------- Code -------------------------- */
 pub struct DCMotor<'d, T: Instance, const SM: usize> {
