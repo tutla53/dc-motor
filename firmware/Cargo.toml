@@ -1,35 +1,8 @@
-[package]
-edition = "2024"
-name = "dc-motor"
-version = "0.1.0"
-license = "MIT OR Apache-2.0"
-authors = ["Tutla"]
-description = "DC Motor Control with Rotary Encoder"
-repository = "https://github.com/tutla53/dc-motor"
-
-[dependencies]
-embassy-sync = { version = "0.7.2", features = ["defmt"] }
-embassy-executor = { version = "0.9.1", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
-embassy-time = { version = "0.5.0", features = ["defmt", "defmt-timestamp-uptime"] }
-embassy-rp = { version = "0.9.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }
-embassy-usb ={ version = "0.5.1"}
-embassy-futures = { version = "0.1.2" }
-
-defmt = "1.0.1"
-defmt-rtt = "1.1.0"
-
-assign-resources = {version = "0.5.0"}
-cortex-m-rt = "0.7.5"
-panic-probe = { version = "0.3", features = ["print-defmt"] }
-log = "0.4"
-pio = "0.3.0"
-libm = "0.2.11"
-static_cell = "2.1.1"
-portable-atomic = { version = "1.13.0", features = ["critical-section"] }
-fixed = "1.30.0"
-sequential-storage = "7.1.0"
-serde = { version = "1.0.228", default-features = false, features = ["derive"] }
-postcard = { version = "1.0", features = ["embedded-io"] }
+[workspace]
+resolver = "2"
+members = [
+    "dc-motor-firmware",
+]
 
 [profile.release]
 opt-level = "s"      # "s" optimizes for size while keeping speed; use "z" for smallest binary
@@ -47,13 +20,10 @@ opt-level = 3
 [profile.release.package.embassy-executor]
 opt-level = "s"
 
-[profile.release.package.dc-motor]
+[profile.release.package.dc-motor-firmware]
 opt-level = "s"
 
 [profile.dev]
 debug = 2
 lto = true
 opt-level = "z"
-
-[package.metadata.cargo-machete]
-ignored = ["defmt", "defmt-rtt", "cortex-m-rt", "panic-probe"]
