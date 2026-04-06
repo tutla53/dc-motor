@@ -1,0 +1,14 @@
+[toolchain]
+# Use the latest stable version, or a specific one like "1.78.0"
+channel = "stable"
+
+# Automatically install the RP2040 (Cortex-M0+) target
+targets = ["thumbv6m-none-eabi"]
+
+# Useful components for embedded development
+components = [
+    "rust-src",           # Allows IDEs to jump into the source code of core/std
+    "llvm-tools-preview", # Required for some advanced binary analysis tools
+    "rustfmt",            # Keeps your code pretty
+    "clippy"              # The "annoying but helpful" code linter
+]
