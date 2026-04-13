@@ -1,0 +1,25 @@
+[package]
+name = "blink"
+version = "1.0.0"
+description = "DC Motor Control with Rotary Encoder"
+edition.workspace       = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[dependencies]
+# Cortex
+cortex-m-rt.workspace   = true
+
+# Embassy Library
+embassy-rp.workspace        = true
+embassy-executor.workspace  = true
+embassy-time.workspace      = true
+
+# Utility
+defmt.workspace         = true
+defmt-rtt.workspace     = true
+panic-probe.workspace   = true
+
+[package.metadata.cargo-machete]
+ignored = ["defmt", "defmt-rtt", "cortex-m-rt", "panic-probe"]

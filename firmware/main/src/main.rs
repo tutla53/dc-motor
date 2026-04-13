@@ -8,6 +8,7 @@ mod tasks;
 
 use defmt_rtt as _;
 use panic_probe as _;
+use portable_atomic as _;
 
 // Crate
 use crate::resources::BOS_DESC;

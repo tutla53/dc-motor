@@ -1,4 +1,3 @@
-
 MEMORY {
   /* Total Flash = 2048K
      Storage Reservation = 16K (4 sectors * 4K)

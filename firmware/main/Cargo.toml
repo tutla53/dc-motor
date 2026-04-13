@@ -8,8 +8,6 @@ authors.workspace       = true
 repository.workspace    = true
 
 [dependencies]
-common = { path = "../common" }
-
 # Cortex
 cortex-m-rt.workspace   = true
 
@@ -26,15 +24,14 @@ defmt.workspace         = true
 defmt-rtt.workspace     = true
 panic-probe.workspace   = true
 pio.workspace           = true
-log.workspace           = true
 
 # Assign Resources
 assign-resources.workspace  = true
+portable-atomic     = { workspace = true }
 
 # Project Library
 libm                = { version = "0.2.11" }
 static_cell         = { version = "2.1.1" }
-portable-atomic     = { version = "1.13.0", features = ["critical-section"] }
 fixed               = { version = "1.30.0" }
 sequential-storage  = { version = "7.1.0" }
 serde               = { version = "1.0.228", default-features = false, features = ["derive"] }
