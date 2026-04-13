@@ -1,8 +1,34 @@
 [workspace]
 resolver = "2"
-members = [
-    "dc-motor-firmware",
-]
+members = [ "main", "common"]
+
+[workspace.package]
+edition     = "2024"
+authors     = ["Tutla"]
+license     = "MIT OR Apache-2.0"
+repository  = "https://github.com/tutla53/dc-motor"
+
+[workspace.dependencies]
+# Cortex 
+cortex-m-rt = { version = "0.7.5" }
+
+# Embassy Library
+embassy-sync        = { version = "0.7.2", features = ["defmt"] }
+embassy-executor    = { version = "0.9.1", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
+embassy-time        = { version = "0.5.0", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-rp          = { version = "0.9.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }
+embassy-usb         = { version = "0.5.1" }
+embassy-futures     = { version = "0.1.2" }
+
+# Utility
+defmt       = { version = "1.0.1" }
+defmt-rtt   = { version = "1.1.0" }
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+pio         = { version = "0.3.0" }
+log         = { version = "0.4" }
+
+# Assign Resources
+assign-resources    = { version = "0.5.0" }
 
 [profile.release]
 opt-level = "s"      # "s" optimizes for size while keeping speed; use "z" for smallest binary
@@ -16,12 +42,6 @@ opt-level = 3
 
 [profile.release.package.fixed]
 opt-level = 3
-
-[profile.release.package.embassy-executor]
-opt-level = "s"
-
-[profile.release.package.dc-motor-firmware]
-opt-level = "s"
 
 [profile.dev]
 debug = 2

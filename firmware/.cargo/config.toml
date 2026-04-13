@@ -3,7 +3,8 @@
 runner = "elf2uf2-rs"
 
 rustflags = [
-    "-C", "linker=flip-link",   # Highly recommended for stack overflow protection
+    "-C", 
+    "linker=flip-link",   # Highly recommended for stack overflow protection
 ]
 
 [build]

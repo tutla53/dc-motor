@@ -1,0 +1,44 @@
+[package]
+name = "main"
+version = "1.0.0"
+description = "DC Motor Control with Rotary Encoder"
+edition.workspace       = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[dependencies]
+common = { path = "../common" }
+
+# Cortex
+cortex-m-rt.workspace   = true
+
+# Embassy Library
+embassy-rp.workspace        = true
+embassy-sync.workspace      = true
+embassy-executor.workspace  = true
+embassy-time.workspace      = true
+embassy-usb.workspace       = true
+embassy-futures.workspace   = true
+
+# Utility
+defmt.workspace         = true
+defmt-rtt.workspace     = true
+panic-probe.workspace   = true
+pio.workspace           = true
+log.workspace           = true
+
+# Assign Resources
+assign-resources.workspace  = true
+
+# Project Library
+libm                = { version = "0.2.11" }
+static_cell         = { version = "2.1.1" }
+portable-atomic     = { version = "1.13.0", features = ["critical-section"] }
+fixed               = { version = "1.30.0" }
+sequential-storage  = { version = "7.1.0" }
+serde               = { version = "1.0.228", default-features = false, features = ["derive"] }
+postcard            = { version = "1.0", features = ["embedded-io"] }
+
+[package.metadata.cargo-machete]
+ignored = ["defmt", "defmt-rtt", "cortex-m-rt", "panic-probe"]
