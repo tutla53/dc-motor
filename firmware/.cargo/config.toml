@@ -3,12 +3,12 @@
 runner = "elf2uf2-rs"
 
 rustflags = [
-    "-C", 
-    "linker=flip-link",   # Highly recommended for stack overflow protection
+    "-C",
+    "linker=flip-link", # Highly recommended for stack overflow protection
 ]
 
 [build]
-target = "thumbv6m-none-eabi"   # Cortex-M0 and Cortex-M0+
+target = "thumbv6m-none-eabi" # Cortex-M0 and Cortex-M0+
 
 [env]
 DEFMT_LOG = "debug"
