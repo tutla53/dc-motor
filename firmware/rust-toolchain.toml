@@ -11,4 +11,6 @@ components = [
     "llvm-tools-preview", # Required for some advanced binary analysis tools
     "rustfmt",            # Keeps your code pretty
     "clippy",             # The "annoying but helpful" code linter
+    "taplo",
+    "machete"
 ]

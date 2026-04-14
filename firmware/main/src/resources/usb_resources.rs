@@ -9,14 +9,12 @@
 */
 
 /* --------------------------- HEADER -------------------------- */
-
-#[allow(clippy::upper_case_acronyms)]
 #[derive(PartialEq)]
 #[repr(u8)]
-pub enum HEADER {
-    COMMAND = 0xFF,
-    EVENT = 0xFE,
-    LOGGER = 0xFD,
+pub enum UsbHeader {
+    Command = 0xFF,
+    Event = 0xFE,
+    Logger = 0xFD,
 }
 
 /* --------------------------- OP_CODE -------------------------- */

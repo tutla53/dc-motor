@@ -17,7 +17,7 @@ impl LogData {
             return;
         }
 
-        out[0] = HEADER::LOGGER as u8;
+        out[0] = UsbHeader::Logger as u8;
         out[1] = self.seq;
         out[2..6].copy_from_slice(&self.dt.to_le_bytes());
         out[6..10].copy_from_slice(&self.values[0].to_le_bytes());

@@ -8,9 +8,9 @@ use super::*;
 use crate::LOGGER;
 use crate::resources::CMD_CHANNEL;
 use crate::resources::EVENT_CHANNEL;
-use crate::resources::HEADER;
 use crate::resources::USB_BUFFER_SIZE;
 use crate::resources::USB_TX_CHANNEL;
+use crate::resources::UsbHeader;
 use crate::resources::usb_resources::EventList;
 use crate::resources::usb_rx_resources::CommandHandler;
 use crate::resources::usb_tx_resources::Packet;
@@ -44,7 +44,7 @@ pub async fn usb_traffic_controller_task() {
 
             Either3::Second(event) => {
                 // The event must be sent
-                p.data[0] = HEADER::EVENT as u8; // Event Header
+                p.data[0] = UsbHeader::Event as u8; // Event Header
 
                 match event {
                     EventList::MotorMoveDone(motor_id) => {

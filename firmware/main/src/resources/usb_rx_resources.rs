@@ -21,7 +21,7 @@ impl<'a> CommandHandler<'a> {
         Self {
             data,
             cursor: 0,
-            header: HEADER::COMMAND as u8,
+            header: UsbHeader::Command as u8,
         }
     }
 
