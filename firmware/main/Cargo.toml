@@ -1,11 +1,13 @@
 [package]
+description = "DC Motor Control with Rotary Encoder"
+name        = "main"
+version     = "1.0.0"
+
+# General
 authors.workspace    = true
-description          = "DC Motor Control with Rotary Encoder"
 edition.workspace    = true
 license.workspace    = true
-name                 = "main"
 repository.workspace = true
-version              = "1.0.0"
 
 [dependencies]
 # Cortex
@@ -27,7 +29,7 @@ pio.workspace         = true
 
 # Assign Resources
 assign-resources.workspace = true
-portable-atomic            = { workspace = true }
+portable-atomic.workspace  = true
 
 # Project Library
 fixed              = { version = "1.30.0" }

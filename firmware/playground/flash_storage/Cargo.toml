@@ -1,7 +1,7 @@
 [package]
 # Specific
-description = "Blink Example"
-name        = "blink"
+description = "Store Data on Flash Memory"
+name        = "flash_storage"
 version     = "1.0.0"
 
 # General
@@ -9,6 +9,7 @@ authors.workspace    = true
 edition.workspace    = true
 license.workspace    = true
 repository.workspace = true
+
 
 [dependencies]
 # Cortex
