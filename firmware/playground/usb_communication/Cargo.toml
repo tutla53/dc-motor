@@ -16,13 +16,19 @@ cortex-m-rt.workspace = true
 
 # Embassy Library
 embassy-executor.workspace = true
+embassy-futures.workspace  = true
 embassy-rp.workspace       = true
-embassy-time.workspace     = true
+embassy-sync.workspace     = true
+embassy-usb.workspace      = true
 
 # Utility
-defmt.workspace       = true
-defmt-rtt.workspace   = true
-panic-probe.workspace = true
+defmt.workspace           = true
+defmt-rtt.workspace       = true
+panic-probe.workspace     = true
+portable-atomic.workspace = true
+
+# Project Library
+static_cell = { version = "2.1.1" }
 
 [package.metadata.cargo-machete]
 ignored = ["defmt", "defmt-rtt", "cortex-m-rt", "panic-probe"]
