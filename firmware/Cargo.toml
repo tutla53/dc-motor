@@ -1,5 +1,13 @@
 [workspace]
-members  = ["main", "playground/*"]
+members  = [
+    "main", 
+    "playground/blink",
+    "playground/flash_storage",
+    "playground/multicore",
+    "playground/pid_control",
+    "playground/usb_communication",
+    "playground/usb_logger",
+]
 resolver = "2"
 
 [workspace.package]
