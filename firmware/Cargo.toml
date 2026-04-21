@@ -1,6 +1,6 @@
 [workspace]
-members  = [
-    "main", 
+members = [
+    "main",
     "playground/blink",
     "playground/flash_storage",
     "playground/multicore",
