@@ -136,10 +136,10 @@ async fn main(spawner: Spawner) {
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     let usb_dev = builder.build();
 
-    spawner.must_spawn(usb_device_task(usb_dev));
-    spawner.must_spawn(usb_communication_task(class));
-    spawner.must_spawn(usb_traffic_controller_task());
-    spawner.must_spawn(led_task(onboard_led.into()));
+    spawner.spawn(usb_device_task(usb_dev).expect("FAILED"));
+    spawner.spawn(usb_communication_task(class).expect("FAILED"));
+    spawner.spawn(usb_traffic_controller_task().expect("FAILED"));
+    spawner.spawn(led_task(onboard_led.into()).expect("FAILED"));
 }
 
 #[embassy_executor::task]

@@ -18,6 +18,7 @@ use embassy_executor::Executor;
 use embassy_executor::InterruptExecutor;
 use embassy_rp::Peri;
 use embassy_rp::bind_interrupts;
+use embassy_rp::dma::InterruptHandler as DmaInterruptHandler;
 use embassy_rp::flash::Async;
 use embassy_rp::flash::Flash;
 use embassy_rp::multicore::Stack;

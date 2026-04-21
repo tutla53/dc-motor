@@ -27,4 +27,5 @@ bind_interrupts!(pub struct Irqs {
     PIO0_IRQ_0 => PioInterruptHandler<peripherals::PIO0>;
     PIO1_IRQ_0 => PioInterruptHandler<peripherals::PIO1>;
     USBCTRL_IRQ => UsbInterruptHandler<peripherals::USB>;
+    DMA_IRQ_0 => DmaInterruptHandler<peripherals::DMA_CH0>;
 });

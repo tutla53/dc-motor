@@ -21,32 +21,33 @@ repository = "https://github.com/tutla53/dc-motor"
 cortex-m-rt = { version = "0.7.5" }
 
 # Embassy Library
-embassy-executor = { version = "0.9.1", features = [
-    "arch-cortex-m",
+embassy-executor = { version = "0.10.0", features = [
+    "platform-cortex-m",
     "executor-thread",
     "executor-interrupt",
     "defmt",
+    "scheduler-priority",
 ] }
 embassy-futures = { version = "0.1.2" }
-embassy-rp = { version = "0.9.0", features = [
+embassy-rp = { version = "0.10.0", features = [
     "defmt",
     "unstable-pac",
     "time-driver",
     "critical-section-impl",
     "rp2040",
 ] }
-embassy-sync = { version = "0.7.2", features = ["defmt"] }
+embassy-sync = { version = "0.8.0", features = ["defmt"] }
 embassy-time = { version = "0.5.0", features = [
     "defmt",
     "defmt-timestamp-uptime",
 ] }
-embassy-usb = { version = "0.5.1" }
+embassy-usb = { version = "0.6.0" }
 
 # Utility
 defmt       = { version = "1.0.1" }
 defmt-rtt   = { version = "1.1.0" }
 log         = { version = "0.4" }
-panic-probe = { version = "0.3", features = ["print-defmt"] }
+panic-probe = { version = "1.0.0", features = ["print-defmt"] }
 pio         = { version = "0.3.0" }
 
 # Assign Resources

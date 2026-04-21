@@ -173,7 +173,7 @@ async fn main(_spawner: Spawner) {
     let mut onboard_led = ph.PIN_25;
 
     // FLash Storage
-    let flash = Flash::<_, Async, FLASH_SIZE>::new(ph.FLASH, ph.DMA_CH0);
+    let flash = Flash::<_, Async, FLASH_SIZE>::new(ph.FLASH, ph.DMA_CH0, Irqs);
     let storage_config = const { MapConfig::new(STORAGE_START..STORAGE_END) };
     let storage = MapStorage::<u8, _, _>::new(flash, storage_config, NoCache::new());
 
@@ -271,18 +271,18 @@ async fn main(_spawner: Spawner) {
         move || {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
-                spawner.must_spawn(motor0_task(motor0));
-                spawner.must_spawn(motor1_task(motor1));
+                spawner.spawn(motor0_task(motor0).expect("FAILED"));
+                spawner.spawn(motor1_task(motor1).expect("FAILED"));
             });
         },
     );
 
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
-        spawner.must_spawn(usb_device_task(usb_dev));
-        spawner.must_spawn(usb_communication_task(class));
-        spawner.must_spawn(usb_traffic_controller_task());
-        spawner.must_spawn(firmware_logger_task());
-        spawner.must_spawn(heartbeat_task(onboard_led.into()));
+        spawner.spawn(usb_device_task(usb_dev).expect("FAILED"));
+        spawner.spawn(usb_communication_task(class).expect("FAILED"));
+        spawner.spawn(usb_traffic_controller_task().expect("FAILED"));
+        spawner.spawn(firmware_logger_task().expect("FAILED"));
+        spawner.spawn(heartbeat_task(onboard_led.into()).expect("FAILED"));
     });
 }
