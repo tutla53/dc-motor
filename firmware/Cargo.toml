@@ -1,9 +1,5 @@
 [workspace]
-members = [
-    "main",
-    "playground/flash_storage",
-    "playground/usb_communication",
-]
+members  = ["main", "playground/flash_storage", "playground/usb_communication"]
 resolver = "2"
 
 [workspace.package]

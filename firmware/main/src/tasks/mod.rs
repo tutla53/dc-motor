@@ -6,11 +6,32 @@
 use defmt_rtt as _;
 use panic_probe as _;
 
+use crate::LOGGER;
+use crate::MOTOR;
+use crate::control::PIDcontrol;
+use crate::control::TrapezoidProfile;
+use crate::resources::CMD_CHANNEL;
 use crate::resources::DEFAULT_PID_POS_CONFIG;
 use crate::resources::DEFAULT_PID_SPEED_CONFIG;
+use crate::resources::EVENT_CHANNEL;
 use crate::resources::MOTOR_MAX_SPEED_CPS;
+use crate::resources::POS_TOLERANCE_COUNT;
+use crate::resources::SETTLE_TICKS;
+use crate::resources::SPEED_FILTER_WINDOW;
+use crate::resources::SPEED_TOLERANCE_CPS;
 use crate::resources::TICKS_TO_CPS;
 use crate::resources::TIME_SAMPLING_US;
+use crate::resources::USB_BUFFER_SIZE;
+use crate::resources::USB_TX_CHANNEL;
+use crate::resources::UsbHeader;
+use crate::resources::logger_resources::LogData;
+use crate::resources::motor_resources::ControlMode;
+use crate::resources::motor_resources::MotorCommand;
+use crate::resources::motor_resources::MotorHandler;
+use crate::resources::motor_resources::Shape;
+use crate::resources::usb_resources::EventList;
+use crate::resources::usb_rx_resources::CommandHandler;
+use crate::resources::usb_tx_resources::Packet;
 
 use embassy_futures::select::Either;
 use embassy_futures::select::Either3;

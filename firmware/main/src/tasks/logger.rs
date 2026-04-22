@@ -4,12 +4,6 @@
 
 use super::*;
 
-use crate::LOGGER;
-use crate::MOTOR;
-
-// Resources
-use crate::resources::logger_resources::LogData;
-
 /* --------------------------- Code -------------------------- */
 #[embassy_executor::task]
 pub async fn firmware_logger_task() {

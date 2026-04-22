@@ -4,17 +4,6 @@
 
 use super::*;
 
-// Resources
-use crate::LOGGER;
-use crate::resources::CMD_CHANNEL;
-use crate::resources::EVENT_CHANNEL;
-use crate::resources::USB_BUFFER_SIZE;
-use crate::resources::USB_TX_CHANNEL;
-use crate::resources::UsbHeader;
-use crate::resources::usb_resources::EventList;
-use crate::resources::usb_rx_resources::CommandHandler;
-use crate::resources::usb_tx_resources::Packet;
-
 /*
     Input Command Pattern
         [HEADER] [OP_CODE] [PARAMETERS]
