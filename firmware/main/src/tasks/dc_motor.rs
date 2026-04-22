@@ -8,6 +8,14 @@
 use super::*;
 
 /* --------------------------- DC Motor Struct -------------------------- */
+pub struct MotorPin<'d, S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>, P2: PioPin, P3: PioPin> {
+    pub pwm_cw_pin: Peri<'d, P0>,
+    pub pwm_ccw_pin: Peri<'d, P1>,
+    pub pwm_slice: Peri<'d, S>,
+    pub encoder_pin_a: Peri<'d, P2>,
+    pub encoder_pin_b: Peri<'d, P3>,
+}
+
 pub struct DCMotor<'d, T: Instance, const SM: usize> {
     pwm_cw: PwmOutput<'d>,
     pwm_ccw: PwmOutput<'d>,
@@ -29,19 +37,46 @@ pub struct DCMotor<'d, T: Instance, const SM: usize> {
 }
 
 impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
-    pub fn new(
-        pwm_cw: PwmOutput<'d>,
-        pwm_ccw: PwmOutput<'d>,
-        encoder: PioEncoder<'d, T, SM>,
-        motor: &'static MotorHandler,
-    ) -> Self {
-        Self {
+    pub async fn build<S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>, P2: PioPin, P3: PioPin>(
+        motor_pin: MotorPin<'d, S, P0, P1, P2, P3>,
+        common: &mut Common<'d, T>,
+        sm: StateMachine<'d, T, SM>,
+        motor_handler: &'static MotorHandler,
+    ) -> Option<Self> {
+        // Build PWM
+        let mut pwm_config = PwmConfig::default();
+        pwm_config.top = PWM_PERIOD_TICKS; // 25kHz frequency @ 125MHz clock
+        pwm_config.compare_a = 0;
+        pwm_config.compare_b = 0;
+
+        let pwm = Pwm::new_output_ab(
+            motor_pin.pwm_slice,
+            motor_pin.pwm_ccw_pin,
+            motor_pin.pwm_cw_pin,
+            pwm_config,
+        );
+        let (pwm_a, pwm_b) = pwm.split();
+
+        let pwm_ccw = pwm_a?;
+        let pwm_cw = pwm_b?;
+
+        // Build Rotary Encoder
+        let enc_prg = PioEncoderProgram::new(common);
+        let pio_encoder = PioEncoder::new(
+            common,
+            sm,
+            motor_pin.encoder_pin_a,
+            motor_pin.encoder_pin_b,
+            &enc_prg,
+        );
+
+        let dc_motor = Self {
             pwm_cw,
             pwm_ccw,
-            encoder,
-            motor,
-            speed_control: PIDcontrol::new(DEFAULT_PID_SPEED_CONFIG, motor.max_pwm_ticks),
-            position_control: PIDcontrol::new(DEFAULT_PID_POS_CONFIG, motor.max_speed_cps),
+            encoder: pio_encoder,
+            motor: motor_handler,
+            speed_control: PIDcontrol::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks),
+            position_control: PIDcontrol::new(DEFAULT_PID_POS_CONFIG, motor_handler.max_speed_cps),
             control_mode: ControlMode::Stop,
             motion_profile: None,
             move_done: false,
@@ -54,7 +89,28 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
             delta_idx: 0,
             ticks_to_cps_rolling: I16F16::from_num(TICKS_TO_CPS)
                 / I16F16::from_num(SPEED_FILTER_WINDOW),
-        }
+        };
+
+        // Initialized Motor Config
+        let motor_id = motor_handler.id;
+
+        let speed_pid = load_config(
+            motor_id,
+            ConfigType::SpeedPID,
+            motor_handler.default_speed_pid,
+        )
+        .await;
+        motor_handler.set_speed_pid(speed_pid).await;
+
+        let pos_pid = load_config(
+            motor_id,
+            ConfigType::PositionPID,
+            motor_handler.default_pos_pid,
+        )
+        .await;
+        motor_handler.set_pos_pid(pos_pid).await;
+
+        Some(dc_motor)
     }
 
     async fn update_pos_pid_config(&mut self) {
@@ -271,85 +327,6 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
                 }
             }
         }
-    }
-}
-
-/* --------------------------- DC Motor Builder -------------------------- */
-pub struct MotorPin<'d, S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>, P2: PioPin, P3: PioPin> {
-    pub pwm_cw_pin: Peri<'d, P0>,
-    pub pwm_ccw_pin: Peri<'d, P1>,
-    pub pwm_slice: Peri<'d, S>,
-    pub encoder_pin_a: Peri<'d, P2>,
-    pub encoder_pin_b: Peri<'d, P3>,
-}
-
-pub struct DCMotorBuilder {}
-
-impl DCMotorBuilder {
-    pub async fn build<
-        'd,
-        T: Instance,
-        S: Slice,
-        const SM: usize,
-        P0: ChannelBPin<S>,
-        P1: ChannelAPin<S>,
-        P2: PioPin,
-        P3: PioPin,
-    >(
-        motor_pin: MotorPin<'d, S, P0, P1, P2, P3>,
-        common: &mut Common<'d, T>,
-        sm: StateMachine<'d, T, SM>,
-        motor_handler: &'static MotorHandler,
-    ) -> Option<DCMotor<'d, T, SM>> {
-        // Build PWM
-        let mut pwm_config = PwmConfig::default();
-        pwm_config.top = PWM_PERIOD_TICKS; // 25kHz frequency @ 125MHz clock
-        pwm_config.compare_a = 0;
-        pwm_config.compare_b = 0;
-
-        let pwm = Pwm::new_output_ab(
-            motor_pin.pwm_slice,
-            motor_pin.pwm_ccw_pin,
-            motor_pin.pwm_cw_pin,
-            pwm_config,
-        );
-        let (pwm_a, pwm_b) = pwm.split();
-
-        let pwm_ccw = pwm_a?;
-        let pwm_cw = pwm_b?;
-
-        // Build Rotary Encoder
-        let enc_prg = PioEncoderProgram::new(common);
-        let pio_encoder = PioEncoder::new(
-            common,
-            sm,
-            motor_pin.encoder_pin_a,
-            motor_pin.encoder_pin_b,
-            &enc_prg,
-        );
-
-        let dc_motor = DCMotor::new(pwm_cw, pwm_ccw, pio_encoder, motor_handler);
-
-        // Initialized Motor Config
-        let motor_id = motor_handler.id;
-
-        let speed_pid = load_config(
-            motor_id,
-            ConfigType::SpeedPID,
-            motor_handler.default_speed_pid,
-        )
-        .await;
-        motor_handler.set_speed_pid(speed_pid).await;
-
-        let pos_pid = load_config(
-            motor_id,
-            ConfigType::PositionPID,
-            motor_handler.default_pos_pid,
-        )
-        .await;
-        motor_handler.set_pos_pid(pos_pid).await;
-
-        Some(dc_motor)
     }
 }
 

@@ -31,7 +31,7 @@ use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
-use crate::tasks::dc_motor::DCMotorBuilder;
+use crate::tasks::dc_motor::DCMotor;
 use crate::tasks::dc_motor::MotorPin;
 use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
@@ -123,20 +123,16 @@ async fn main(_spawner: Spawner) {
         ..
     } = Pio::new(ph.PIO0, Irqs);
 
-    let Some(motor0) = DCMotorBuilder::build(
-        MotorPin {
-            pwm_cw_pin: p.motor_0.Motor_PWM_CW_PIN,
-            pwm_ccw_pin: p.motor_0.Motor_PWM_CCW_PIN,
-            pwm_slice: p.motor_0.SLICE,
-            encoder_pin_a: p.motor_0.Encoder_PIN_A,
-            encoder_pin_b: p.motor_0.Encoder_PIN_B,
-        },
-        &mut common,
-        sm0,
-        &MOTOR[0],
-    )
-    .await
-    else {
+    // Build Motor 0
+    let motor0_pin = MotorPin {
+        pwm_cw_pin: p.motor_0.Motor_PWM_CW_PIN,
+        pwm_ccw_pin: p.motor_0.Motor_PWM_CCW_PIN,
+        pwm_slice: p.motor_0.SLICE,
+        encoder_pin_a: p.motor_0.Encoder_PIN_A,
+        encoder_pin_b: p.motor_0.Encoder_PIN_B,
+    };
+
+    let Some(motor0) = DCMotor::build(motor0_pin, &mut common, sm0, &MOTOR[0]).await else {
         {
             let mut led = Output::new(onboard_led.reborrow(), Level::Low);
             led.set_high();
@@ -144,20 +140,16 @@ async fn main(_spawner: Spawner) {
         return;
     };
 
-    let Some(motor1) = DCMotorBuilder::build(
-        MotorPin {
-            pwm_cw_pin: p.motor_1.Motor_PWM_CW_PIN,
-            pwm_ccw_pin: p.motor_1.Motor_PWM_CCW_PIN,
-            pwm_slice: p.motor_1.SLICE,
-            encoder_pin_a: p.motor_1.Encoder_PIN_A,
-            encoder_pin_b: p.motor_1.Encoder_PIN_B,
-        },
-        &mut common,
-        sm1,
-        &MOTOR[1],
-    )
-    .await
-    else {
+    // Build Motor 1
+    let motor1_pin = MotorPin {
+        pwm_cw_pin: p.motor_1.Motor_PWM_CW_PIN,
+        pwm_ccw_pin: p.motor_1.Motor_PWM_CCW_PIN,
+        pwm_slice: p.motor_1.SLICE,
+        encoder_pin_a: p.motor_1.Encoder_PIN_A,
+        encoder_pin_b: p.motor_1.Encoder_PIN_B,
+    };
+
+    let Some(motor1) = DCMotor::build(motor1_pin, &mut common, sm1, &MOTOR[1]).await else {
         {
             let mut led = Output::new(onboard_led.reborrow(), Level::Low);
             led.set_high();
