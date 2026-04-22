@@ -34,7 +34,7 @@ class SThread:
         self.thread.join()
 
 class Pico:
-    TYPE_MAP = {
+    __TYPE_MAP = {
         'u8': ('B', 1),
         'u16': ('H', 2),
         'u32': ('I', 4),
@@ -44,23 +44,27 @@ class Pico:
     }
 
     def __init__(self, yaml_path="", com=None):
+        # Public
         self.ser = None
-        self.newinput = None
-        self.defaultCOM = None
-        self.baud_rate = 115200
         self.lock = threading.RLock()
         self.event_queue = []
         self.error_queue = []
         self.log_queue = queue.Queue(maxsize=0)
-        self.is_listener_on = False
-        self.headers = {}
-        self.enums = {}
-        self.cmd_meta = {}         
-        self.shared_responses = {}
-        self.response = False
-        self.connect(com)
-        self._load_commands_from_yaml(yaml_path)
-        self.run()
+
+        # Private
+        self.__newinput = None
+        self.__defaultCOM = None
+        self.__baud_rate = 115200
+        
+        self.__is_listener_on = False
+        self.__headers = {}
+        self.__enums = {}
+        self.__cmd_meta = {}         
+        self.__shared_responses = {}
+        self.__response = False
+        self.__connect(com)
+        self.__load_commands_from_yaml(yaml_path)
+        self.__run()
 
     def _generate_method(self, cmd):
         name = cmd['command']
@@ -71,21 +75,21 @@ class Pico:
         # 1. Build Packing Format (Outgoing)
         send_fmt = '<B' # Header: OpCode
         for t in args_dict.values():
-            send_fmt += self.TYPE_MAP[t][0]
+            send_fmt += self.__TYPE_MAP[t][0]
 
         # 2. Build Unpacking Format (Incoming Response)
         ret_fmt = '<'
         ret_size = 0
         for t in ret_dict.values():
-            char, size = self.TYPE_MAP[t]
+            char, size = self.__TYPE_MAP[t]
             ret_fmt += char
             ret_size += size
         
         # Save metadata for the EventListener to use
-        self.cmd_meta[op] = {'fmt': ret_fmt, 'size': ret_size, 'keys': list(ret_dict.keys())}
+        self.__cmd_meta[op] = {'fmt': ret_fmt, 'size': ret_size, 'keys': list(ret_dict.keys())}
 
         def method(self, *values, _op=op, _send_fmt=send_fmt, _has_ret=(ret_size > 0)):
-            header_byte = self.headers.get('COMMAND')
+            header_byte = self.__headers.get('COMMAND')
             
             if header_byte is None:
                 raise ValueError("COMMAND header not found in YAML config!")
@@ -96,27 +100,27 @@ class Pico:
 
         setattr(self, name, partial(method, self))
 
-    def _load_commands_from_yaml(self, yaml_path):
+    def __load_commands_from_yaml(self, yaml_path):
         with open(yaml_path, 'r') as f:
             Config = yaml.safe_load(f)
         
         for item in Config:
             if 'Headers' in item:
-                self.headers = {k: v.to_bytes(1, 'little') for k, v in item['Headers'].items()}
+                self.__headers = {k: v.to_bytes(1, 'little') for k, v in item['Headers'].items()}
             
             elif 'Enums' in item:
                 # The YAML parser creates a list for the dashes. 
                 # We convert that list into a single flat dictionary.
                 raw_enums = item['Enums']
-                self.enums = {}
+                self.__enums = {}
                 
                 if isinstance(raw_enums, list):
                     for entry in raw_enums:
                         if isinstance(entry, dict):
                             # This handles the nested 'EventCodes' and 'ErrorCodes'
-                            self.enums.update(entry)
+                            self.__enums.update(entry)
                 else:
-                    self.enums = raw_enums
+                    self.__enums = raw_enums
 
             elif 'command' in item:
                 self._generate_method(item)
@@ -139,7 +143,7 @@ class Pico:
         except Exception as e:
             print(f"Log Unpack Error: {e}")
     
-    def connect(self, port):
+    def __connect(self, port):
         if port is None:
             acm_ports = [
                 port.device for port in serial.tools.list_ports.comports() 
@@ -159,33 +163,33 @@ class Pico:
 
         try:
             with self.lock:
-                self.ser = serial.Serial(port, self.baud_rate, timeout=0.1, write_timeout=0.5)
+                self.ser = serial.Serial(port, self.__baud_rate, timeout=0.1, write_timeout=0.5)
                 time.sleep(1)
                 self.ser.reset_input_buffer()
                 print(f"Connected to {port}")
                 return True
         except:
-            self.newinput = None
+            self.__newinput = None
             stat = False
         finally:
-            if self.newinput == "":
+            if self.__newinput == "":
                 return False
             if not stat:
-                self.defaultCOM = self.newinput
-                self.connect(self.newinput)
+                self.__defaultCOM = self.__newinput
+                self.__connect(self.__newinput)
     
     def send_cmd(self, payload, op, expect_ret, timeout=0.5):
-        self.response = False
+        self.__response = False
 
         if expect_ret:
-            self.shared_responses[op] = None
+            self.__shared_responses[op] = None
             
         with self.lock:
             self.ser.write(payload)
             self.ser.flush()
 
         start = time.time()
-        while self.response == False:
+        while self.__response == False:
             if time.time() - start > timeout:
                 return False
             time.sleep(0.001)
@@ -193,69 +197,69 @@ class Pico:
         if not expect_ret: return True
 
         start = time.time()
-        while self.shared_responses.get(op) is None:
+        while self.__shared_responses.get(op) is None:
             if time.time() - start > timeout:
                 print(f"Timeout: OP {op} took too long.")
                 return None
             time.sleep(0.001)
 
         # Retrieve and clean up
-        raw_payload = self.shared_responses.pop(op)
-        meta = self.cmd_meta[op]
+        raw_payload = self.__shared_responses.pop(op)
+        meta = self.__cmd_meta[op]
         unpacked = struct.unpack(meta['fmt'], raw_payload)
         return dict(zip(meta['keys'], unpacked))
         
     def __EventListener(self, limit=1_000_000):
-        while self.is_listener_on:
+        while self.__is_listener_on:
             if self.ser.in_waiting > 0:
                 with self.lock:
                     if self.ser.in_waiting > 0:
                         header = self.ser.read(1)
                     
-                        if header == self.headers.get('LOGGER'):
+                        if header == self.__headers.get('LOGGER'):
                             data = self.ser.read(25)
                             self._process_log(data)
 
-                        elif header == self.headers.get('EVENT'):
+                        elif header == self.__headers.get('EVENT'):
                             ev_code, m_id = struct.unpack('<BB', self.ser.read(2))
-                            name = self.enums['EventCodes'].get(ev_code, "UNKNOWN")
+                            name = self.__enums['EventCodes'].get(ev_code, "UNKNOWN")
                             self.event_queue.append({name: m_id})
                             printg(f"[EVENT] Motor {m_id}: {name}")
 
-                        elif header == self.headers.get('COMMAND'):
+                        elif header == self.__headers.get('COMMAND'):
                             err_byte = self.ser.read(1)
                             error_code = int.from_bytes(err_byte, 'little')
-                            decoded_error = self.enums['ErrorCodes'].get(error_code, "UNKLNONW")
+                            decoded_error = self.__enums['ErrorCodes'].get(error_code, "UNKLNONW")
 
                             if decoded_error == "NoError":
-                                self.response = True
+                                self.__response = True
                                 op_byte = self.ser.read(1)
                                 op_code = int.from_bytes(op_byte, 'little')
 
-                                if op_code in self.cmd_meta:
-                                    size = self.cmd_meta[op_code]['size']
-                                    self.shared_responses[op_code] = self.ser.read(size)
+                                if op_code in self.__cmd_meta:
+                                    size = self.__cmd_meta[op_code]['size']
+                                    self.__shared_responses[op_code] = self.ser.read(size)
                             else:
                                 if decoded_error != "InvalidHeaderCode":
                                     op_byte = self.ser.read(1)
                                     op_code = int.from_bytes(op_byte, 'little')
 
-                                    if op_code in self.cmd_meta:
-                                        self.shared_responses[op_code] = None
+                                    if op_code in self.__cmd_meta:
+                                        self.__shared_responses[op_code] = None
 
                                 printr(f"[ERROR]: ", decoded_error)
                         else:
                             err_byte = self.ser.read(1)
                             error_code = int.from_bytes(err_byte, 'little')
-                            decoded_error = self.enums['ErrorCodes'].get(error_code, "UNKLNONW")
+                            decoded_error = self.__enums['ErrorCodes'].get(error_code, "UNKLNONW")
                             printr(f"[ERROR]: ", decoded_error)
                             printr(f"Unexpected Byte: {header.hex()} - Alignment may be lost!")
             
             time.sleep(0.0001)
 
-    def run(self, limit=1_000_000):
+    def __run(self, limit=1_000_000):
         try:
-            self.is_listener_on = True
+            self.__is_listener_on = True
             self.logger_thread = SThread(self.__EventListener, True, limit)
         except Exception as e:
             print(f"Failed to start listener: {e}")

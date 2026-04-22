@@ -11,8 +11,10 @@ import BasicFunction.Motor as Motor
 import Config.Motor0
 import Config.Motor1
 from Tool.visualize import *
+from base_url import *
 
-yaml_path = "YAML/Pico_0_1_3.yaml"
+yaml_path = base_url+"/YAML/Pico_0_1_3.yaml"
+
 p = Board.Pico(yaml_path)
 m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
 m1 = Motor.MoveMotor(device = p, configfile = Config.Motor1)

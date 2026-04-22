@@ -3,6 +3,8 @@ import time
 import csv
 import Config.Motor0 as config
 import queue
+import os
+from base_url import *
 
 # Logger Mask
 N_ENUM = 5
@@ -102,7 +104,14 @@ class FWLogger:
             self.logger_thread.stop()
 
         tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-        self.save_to_csv("LOG/"+tag+".csv")
+        
+        log_path = base_url+"/LOG/"
+        saved_log_path = log_path+tag+".csv"
+        
+        if not os.path.exists(log_path):
+            os.makedirs(log_path)
+
+        self.save_to_csv(saved_log_path)
     
     def save_to_csv(self, filename):
         if not self.logged_data:
