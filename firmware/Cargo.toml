@@ -48,7 +48,7 @@ pio         = { version = "0.3.0" }
 
 # Assign Resources
 assign-resources = { version = "0.5.0" }
-portable-atomic  = { version = "1.13.0", features = ["critical-section"] }
+portable-atomic  = { version = "1.13.1", features = ["critical-section"] }
 
 [profile.release]
 codegen-units = 1       # Allow the compiler to see the whole project for better optimization
