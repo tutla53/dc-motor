@@ -30,8 +30,8 @@ class MoveMotor:
         printr("[TIMEOUT] waiting for move done.")
         return False
     
-    def start_log(self, mask, time_sampling,):
-        self.logger.run(motor_id = self.motor_id, mask=mask, time_sampling=time_sampling)
+    def start_log(self, mask, time_sampling, tag = ""):
+        self.logger.run(motor_id = self.motor_id, mask=mask, time_sampling=time_sampling, tag=tag)
     
     def stop_log(self):
         self.logger.stop(self.motor_id)

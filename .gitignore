@@ -64,5 +64,6 @@ Mkfile.old
 dkms.conf
 .vscode
 **/LOG/**
+**/IMG/**
 **/__pycache__/**
 *.pyc

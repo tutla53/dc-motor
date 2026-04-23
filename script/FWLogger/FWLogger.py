@@ -57,6 +57,7 @@ class FWLogger:
         self.logged_data = []
         self.mask = 0
         self.mask_names = LOG_MASK
+        self.tag = ""
 
     def __MainLogger(self, limit=1_000_000):
         try:
@@ -76,13 +77,14 @@ class FWLogger:
         except Exception as e:
             print(f"Logger error: {e}")
 
-    def run(self, motor_id, mask, time_sampling, limit=1_000_000):
+    def run(self, motor_id, mask, time_sampling, tag="", limit=1_000_000):
         try:
             self.logged_data = []
             self.p.stop_logger(motor_id)
             self.p.clear_log_queue()
             self.p.ser.reset_input_buffer()
             self.mask = mask
+            self.tag = tag
 
             with self.p.lock:
                 self.p.start_logger(motor_id, time_sampling)
@@ -106,7 +108,11 @@ class FWLogger:
         tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
         
         log_path = base_url+"/LOG/"
-        saved_log_path = log_path+tag+".csv"
+        
+        if self.tag != "":
+            saved_log_path = log_path+self.tag+"_"+tag+".csv"
+        else:
+            saved_log_path = log_path+tag+".csv"
         
         if not os.path.exists(log_path):
             os.makedirs(log_path)
