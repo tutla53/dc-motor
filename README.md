@@ -3,12 +3,10 @@ DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-r
 
 ## Features
 The table below shows the firmware features:
-
-<div align="left">
 <table>
 	<tr> 
-		<th width = "175" align="center"> Features</th>
-		<th width = "500" align="center"> Details </th>
+		<th width = "250" align="center"> Features</th>
+		<th width = "600" align="center"> Details </th>
 	</tr>
 	<!-- PID Motor Control -->
   <tr> 
@@ -69,16 +67,18 @@ The table below shows the firmware features:
   </tr>
 
 </table>
-</div>
 
 ## Hardware
-### Specification
+<p align="center">
+    <br>
+    <img src="assets/motor_setup.jpg" width="500">
+</p>
 
-<div align="center">
+### Specification
 <table>
   <tr> 
     <th width = "125" align="center"> Components</th>
-    <th width = "200" align="center"> Specification </th>
+    <th width = "380" align="center"> Specification </th>
   </tr>
 
   <tr> 
@@ -102,12 +102,7 @@ The table below shows the firmware features:
   </tr>
 
 </table>
-</div>
 
-<p align="center">
-    <br>
-    <img src="assets/motor_setup.jpg" width="500">
-</p>
 
 ### GPIO Map
 
