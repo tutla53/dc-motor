@@ -137,6 +137,26 @@ We can see the GPIO pin list on the `firmware/main/src/resources/gpio_list.rs`
 
 ## Project Structure
 
+```python
+.
+├── assets
+├── firmware
+│   ├── main
+│   │   └── src
+│   │       ├── control
+│   │       ├── resources
+│   │       ├── tasks
+|	|		└── main.rs		# Primary RP2040 PID DC Motor Control
+│   └── playground			# Experimental project (USB, Flash Storage)
+└── script
+	├── BasicFunction
+	├── Board
+	├── Config
+	├── FWLogger
+	├── Tool
+	├── YAML			# YAML file folder to call the firmware API
+	└── run.py			# Python Script to Communicate with the Firmware
+```
 
 ## Getting Started
 
