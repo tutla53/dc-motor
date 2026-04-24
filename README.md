@@ -96,16 +96,44 @@ The table below shows the firmware features:
     <td> BTS7960 </td>
   </tr>
 
+</table>
+
+### GPIO Map
+We can see the GPIO pin list on the `firmware/main/src/resources/gpio_list.rs`
+
+<table>
   <tr> 
-    <td > Logic Shifter</td>
-    <td > Raspberry Pi Pico RP2040 </td>
+    <th width = "75" align="center"> Motor </th>
+    <th width = "380" align="center"> GPIO </th>
+  </tr>
+
+  <tr> 
+    <td style="vertical-align:top"> motor_0</td>
+    <td> 
+			<ul>
+			  <li> Motor_PWM_CW_PIN: PIN_15 </li>
+        <li> Motor_PWM_CCW_PIN: PIN_14 </li>
+        <li> Encoder_PIN_A: PIN_6 </li>
+        <li> Encoder_PIN_B: PIN_7 </li>
+        <li> SLICE: PWM_SLICE7 </li>
+			</ul>
+		</td>
+  </tr>
+
+  <tr> 
+    <td style="vertical-align:top"> motor_1</td>
+    <td> 
+			<ul>
+			  <li> Motor_PWM_CW_PIN: PIN_3 </li>
+        <li> Motor_PWM_CCW_PIN: PIN_2 </li>
+        <li> Encoder_PIN_A: PIN_4 </li>
+        <li> Encoder_PIN_B: PIN_5 </li>
+        <li> SLICE: PWM_SLICE1 </li>
+			</ul>		
+		</td>
   </tr>
 
 </table>
-
-
-### GPIO Map
-
 
 ## Project Structure
 
