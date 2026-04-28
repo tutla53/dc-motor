@@ -1,5 +1,5 @@
 # DC Motor PID Control
-DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with communication and storage feature. In this repo we use `Python` to communicate with the firmware API via serial communication. It's possible to scale up the project with another applications.
+DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `Python` to communicate with the firmware API via serial communication. It's possible to scale up the project with another applications.
 
 ## Features
 The table below shows the firmware features:
@@ -60,8 +60,8 @@ The table below shows the firmware features:
     <td style="vertical-align:top">Multicore</td>
     <td> 
 			<ul>
-				<li>CORE 0 &rarr; USB Communication + Logger + Flash Storage</li>
-				<li>CORE 1 &rarr; Motor Control (100 Hz sampling rate)</li>
+				<li><code>CORE0</code> &rarr; USB Communication + Logger + Flash Storage</li>
+				<li><code>CORE1</code> &rarr; Motor Control (100 Hz sampling rate)</li>
 			</ul>
 		</td>
   </tr>
@@ -101,39 +101,40 @@ The table below shows the firmware features:
 ### GPIO Map
 We can see the GPIO pin list on the `firmware/main/src/resources/gpio_list.rs`
 
-<table>
-  <tr> 
-    <th width = "75" align="center"> Motor </th>
-    <th width = "380" align="center"> GPIO </th>
-  </tr>
-
-  <tr> 
-    <td style="vertical-align:top"> motor_0</td>
-    <td> 
-			<ul>
-			  <li> Motor_PWM_CW_PIN: PIN_15 </li>
-        <li> Motor_PWM_CCW_PIN: PIN_14 </li>
-        <li> Encoder_PIN_A: PIN_6 </li>
-        <li> Encoder_PIN_B: PIN_7 </li>
-        <li> SLICE: PWM_SLICE7 </li>
-			</ul>
-		</td>
-  </tr>
-
-  <tr> 
-    <td style="vertical-align:top"> motor_1</td>
-    <td> 
-			<ul>
-			  <li> Motor_PWM_CW_PIN: PIN_3 </li>
-        <li> Motor_PWM_CCW_PIN: PIN_2 </li>
-        <li> Encoder_PIN_A: PIN_4 </li>
-        <li> Encoder_PIN_B: PIN_5 </li>
-        <li> SLICE: PWM_SLICE1 </li>
-			</ul>		
-		</td>
-  </tr>
-
+<table>	
+	<tr>
+	    <th width = "200" align="center"> Pin Name </th>
+	    <th width = "125" align="center"> Motor_0 Pin </th>
+		<th width = "125" align="center"> Motor_1 Pin </th>
+	</tr>
+	<tr>
+		<td>Motor_PWM_CW_PIN</td>
+		<td align="center"><code>GP15</code></td>
+		<td align="center"><code>GP3</code></td>
+	</tr>
+	<tr>
+		<td>Motor_PWM_CCW_PIN</td>
+		<td align="center"><code>GP14</code></td>
+		<td align="center"><code>GP2</code></td>
+	</tr>
+	<tr>
+		<td>Encoder_PIN_A</td>
+		<td align="center"><code>GP6</code></td>
+		<td align="center"><code>GP4</code></td>
+	</tr>
+	<tr>
+		<td>Encoder_PIN_B</td>
+		<td align="center"><code>GP7</code></td>
+		<td align="center"><code>GP5</code></td>
+	</tr>
+	<tr>
+		<td>PWM Slice</td>
+		<td align="center"><code>PWM_SLICE7</code></td>
+		<td align="center"><code>PWM_SLICE1</code></td>
+	</tr>
 </table>
+
+
 
 ## Project Structure
 
