@@ -158,29 +158,55 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 - To build the project you can go to this link for [build firmware](firmware/README.md)
 
 ### `script`
-- Python script to communicate with the RP2040 including the firmware logger by executing the `run.py`.
-- To run the python code you can type:
-```bash
-python -i script/run.py
-```
-- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
-  - `speed_test` &rarr; closed-loop speed control with step input
-  - `pos_trapezoid_test` &rarr; closed-loop position control with trapezoidal motion profile
-  - `pos_step_test` &rarr; closed-loop position control with step input
-  - `open_loop_test` &rarr; open-loop speed control with step PWM input
+#### Firmware API
 - The API to communicate with RP2040 is on `script/YAML/{your_file}.yaml`
 - The structure of the communication is follows this pattern:
-```
-Input Command Pattern
-	[HEADER] [OP_CODE] [PARAMETERS]
-Output Pattern
-	[HEADER] [ERROR_CODE] [OP_CODE] [DATA]
-Event Pattern
-	[HEADER] [EVENT_CODE] [ID]
-```
+  ```
+  Input Command Pattern
+    [HEADER] [OP_CODE] [PARAMETERS]
+  Output Pattern
+    [HEADER] [ERROR_CODE] [OP_CODE] [DATA]
+  Event Pattern
+    [HEADER] [EVENT_CODE] [ID]
+  ```
 - You can see the `YAML` file for more detail.
   
 :warning: Please make sure to match the YAML file with the actual firmware op_code, input, output, and data type.
+
+#### Python Script
+- Python script to communicate with the RP2040 including the firmware logger by executing the `run.py`.
+- To run the python code you can type:
+  ```bash
+  python -i script/run.py
+  ```
+- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
+<table>
+  <tr>
+    <th width="100" align="center"> Example</th>
+	<th width="300" align="center"> Description</th>
+	<th width="600" align="center"> Graph</th>
+  </tr>
+  <tr>
+    <td><code>open_loop_test</code></td>
+	<td><code>open-loop speed control with step PWM input</code></td>
+	<td><code><img src="assets/open-loop.jpg" width="500"></code></td>
+  </tr>
+  <tr>
+    <td><code>speed_test</code></td>
+	<td><code>closed-loop speed control with step input</code></td>
+	<td><code><img src="assets/speed-step.jpg" width="500"></code></td>
+  </tr>
+  <tr>
+    <td><code>pos_step_test</code></td>
+	<td><code>closed-loop position control with step input</code></td>
+	<td><code><img src="assets/position-step.jpg" width="500"></code></td>
+  </tr>
+  <tr>
+    <td><code>pos_trapezoid_test</code></td>
+	<td><code>closed-loop position control with trapezoidal motion profile</code></td>
+	<td><code><img src="assets/position-step.jpg" width="500"></code></td>
+  </tr>
+</table>
 
 
 
