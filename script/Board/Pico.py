@@ -52,8 +52,6 @@ class Pico:
         self.log_queue = queue.Queue(maxsize=0)
 
         # Private
-        self.__newinput = None
-        self.__defaultCOM = None
         self.__baud_rate = 115200
         
         self.__is_listener_on = False
@@ -158,8 +156,6 @@ class Pico:
         
         else:
             port = "/dev/ttyACM" + port
-        
-        stat = True
 
         try:
             with self.lock:
@@ -168,15 +164,8 @@ class Pico:
                 self.ser.reset_input_buffer()
                 print(f"Connected to {port}")
                 return True
-        except:
-            self.__newinput = None
-            stat = False
-        finally:
-            if self.__newinput == "":
-                return False
-            if not stat:
-                self.__defaultCOM = self.__newinput
-                self.__connect(self.__newinput)
+        except Exception as e:
+            print(e)
     
     def send_cmd(self, payload, op, expect_ret, timeout=0.5):
         self.__response = False
