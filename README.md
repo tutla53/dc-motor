@@ -182,29 +182,29 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 - On `run.py` you can create custom code to command the RP2040. We have created the example such as:
 <table>
   <tr>
-    <th width="100" align="center"> Example</th>
-	<th width="300" align="center"> Description</th>
+    <th width="80" align="center"> Example</th>
+	<th width="200" align="center"> Description</th>
 	<th width="600" align="center"> Graph</th>
   </tr>
   <tr>
     <td><code>open_loop_test</code></td>
-	<td><code>open-loop speed control with step PWM input</code></td>
-	<td><code><img src="assets/open-loop.jpg" width="500"></code></td>
+	<td>Open-loop speed control with step PWM input</td>
+	<td><img src="assets/open-loop.jpg"></td>
   </tr>
   <tr>
     <td><code>speed_test</code></td>
-	<td><code>closed-loop speed control with step input</code></td>
-	<td><code><img src="assets/speed-step.jpg" width="500"></code></td>
+	<td>Closed-loop speed control with step input</td>
+	<td><img src="assets/speed-step.jpg"></td>
   </tr>
   <tr>
     <td><code>pos_step_test</code></td>
-	<td><code>closed-loop position control with step input</code></td>
-	<td><code><img src="assets/position-step.jpg" width="500"></code></td>
+	<td>Closed-loop position control with step input</td>
+	<td><img src="assets/position-step.jpg"></td>
   </tr>
   <tr>
     <td><code>pos_trapezoid_test</code></td>
-	<td><code>closed-loop position control with trapezoidal motion profile</code></td>
-	<td><code><img src="assets/position-step.jpg" width="500"></code></td>
+	<td>Closed-loop position control with trapezoidal motion profile</td>
+	<td><img src="assets/position-trapezoidal.jpg"></td>
   </tr>
 </table>
 
