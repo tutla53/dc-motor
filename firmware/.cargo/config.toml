@@ -1,6 +1,5 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-# runner = "probe-rs run --chip RP2040"
-runner = "elf2uf2-rs"
+runner = "probe-rs run --chip RP2040"
 
 rustflags = [
     "-C",
@@ -12,3 +11,12 @@ target = "thumbv6m-none-eabi" # Cortex-M0 and Cortex-M0+
 
 [env]
 DEFMT_LOG = "debug"
+
+[alias]
+run-uf2 = [
+    "run",
+    "--config",
+    "target.'cfg(all(target_arch = \"arm\", target_os = \"none\"))'.runner=\"elf2uf2-rs\"",
+    "--release",
+    "--package",
+]
