@@ -158,28 +158,28 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 - To build the project you can go to this link for [build firmware](firmware/README.md)
 
 ### `script`
-#### Firmware API
-- The API to communicate with RP2040 is on `script/YAML/{your_file}.yaml`
-- The structure of the communication is follows this pattern:
-  ```
-  Input Command Pattern
-    [HEADER] [OP_CODE] [PARAMETERS]
-  Output Pattern
-    [HEADER] [ERROR_CODE] [OP_CODE] [DATA]
-  Event Pattern
-    [HEADER] [EVENT_CODE] [ID]
-  ```
-- You can see the `YAML` file for more detail.
+- #### Firmware API
+	- The API to communicate with RP2040 is on `script/YAML/{your_file}.yaml`
+	- The structure of the communication is follows this pattern:
+	  ```
+	  Input Command Pattern
+	    [HEADER] [OP_CODE] [PARAMETERS]
+	  Output Pattern
+	    [HEADER] [ERROR_CODE] [OP_CODE] [DATA]
+	  Event Pattern
+	    [HEADER] [EVENT_CODE] [ID]
+	  ```
+	- You can see the `YAML` file for more detail.
   
-:warning: Please make sure to match the YAML file with the actual firmware op_code, input, output, and data type.
+	- :warning: Please make sure to match the YAML file with the actual firmware op_code, input, output, and data type.
 
-#### Python Script
-- Python script to communicate with the RP2040 including the firmware logger by executing the `run.py`.
-- To run the python code you can type:
-  ```bash
-  python -i script/run.py
-  ```
-- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
+- #### Python Script
+	- Python script to communicate with the RP2040 including the firmware logger by executing the `run.py`.
+	- To run the python code you can type:
+	  ```bash
+	  python -i script/run.py
+	  ```
+	- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
 <table>
   <tr>
     <th width="80" align="center"> Example</th>
