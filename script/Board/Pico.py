@@ -60,9 +60,19 @@ class Pico:
         self.__cmd_meta = {}         
         self.__shared_responses = {}
         self.__response = False
-        self.__connect(com)
-        self.__load_commands_from_yaml(yaml_path)
-        self.__run()
+        self.yaml_version = ""
+        
+        printy("Running Raspberry Pico RP2040 script, please wait...")
+        status = self.__connect(com)
+        if status:
+            self.__load_commands_from_yaml(yaml_path)
+            self.__run()
+            print_log("INFO", "Connected to: ", end="")
+            printdg(self.ser.port)
+            print_log("INFO",  "YAML Version: ", end="")
+            printdb(self.yaml_version)
+        else:
+            exit()
 
     def _generate_method(self, cmd):
         name = cmd['command']
@@ -122,6 +132,8 @@ class Pico:
 
             elif 'command' in item:
                 self._generate_method(item)
+            elif "Version" in item:
+                self.yaml_version = item["Version"]
 
     def _execute_with_lock(self, func, *args, **kwargs):
         with self.lock:
@@ -150,9 +162,7 @@ class Pico:
             if not acm_ports:
                 raise OSError("No /dev/ttyACM* ports found. Connect a device.")
 
-            # Auto-select the first port (modify logic if multiple devices)
             port = acm_ports[0]
-            print(f"Selected port: {port}")
         
         else:
             port = "/dev/ttyACM" + port
@@ -162,10 +172,10 @@ class Pico:
                 self.ser = serial.Serial(port, self.__baud_rate, timeout=0.1, write_timeout=0.5)
                 time.sleep(1)
                 self.ser.reset_input_buffer()
-                print(f"Connected to {port}")
                 return True
         except Exception as e:
-            print(e)
+            printr("Serial Error:", e)
+            return False
     
     def send_cmd(self, payload, op, expect_ret, timeout=0.5):
         self.__response = False
