@@ -179,6 +179,11 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	  ```bash
 	  python -i script/run.py
 	  ```
+	- Or you can use `uv` python package manager for automatically handle the dependencies with this command:
+	  ```bash
+	  cd script
+      uv run python -i run.py
+	  ```   
 	- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
 <table>
   <tr>
