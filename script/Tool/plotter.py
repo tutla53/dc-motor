@@ -5,18 +5,21 @@ from Tool.visualize import *
 from base_url import *
 
 def save_image_by_tag(tag):
-    log_dir = base_url+"/LOG/"
-    all_log_files = os.listdir(log_dir)
-    
-    for file in all_log_files:
-        if tag in file:
-            save_image(log_dir+file)
+    if tag == "":
+        print_log("ERROR", "Invalid File Tag")
+        return False
+    else:
+        log_dir = base_url+"/LOG/"+tag+"/"
+        all_log_files = os.listdir(log_dir)
 
-def save_image(path="LOG/20250409103638.csv"):
-    if not os.path.exists(base_url+"/IMG/"):
-        os.makedirs(base_url+"/IMG/")
+        for file in all_log_files:
+            save_image(log_dir, file)
+
+def save_image(log_dir, filename):
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
             
-    data = pd.read_csv(path)
+    data = pd.read_csv(log_dir+filename)
     t = data["Timestamp(ms)"]/1000.0
     column_names = []
     tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
@@ -45,8 +48,14 @@ def save_image(path="LOG/20250409103638.csv"):
     plt.grid()
     
     try:
-        plt.savefig(base_url+"/IMG/graph_"+tag+".jpg", dpi = 300)
-        printg("[SAVED] - /IMG/graph_"+tag+".jpg")
+        image_name = "graph_"+tag+".jpg"
+        plt.savefig(log_dir+image_name, dpi = 300)
+        
+        _, sep, after = log_dir.partition("/LOG/")
+        result = sep + after
+        print_log("INFO", "Graph has been saved on: ", end="")
+        printg(result+image_name)
+        
     except Exception as e:
         printr(f"[ERROR] - {e}" )
     plt.close()

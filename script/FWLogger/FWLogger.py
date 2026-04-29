@@ -5,6 +5,7 @@ import Config.Motor0 as config
 import queue
 import os
 from base_url import *
+from Tool.visualize import *
 
 # Logger Mask
 N_ENUM = 5
@@ -57,7 +58,7 @@ class FWLogger:
         self.logged_data = []
         self.mask = 0
         self.mask_names = LOG_MASK
-        self.tag = ""
+        self.folder_tag = ""
 
     def __MainLogger(self, limit=1_000_000):
         try:
@@ -77,25 +78,25 @@ class FWLogger:
         except Exception as e:
             print(f"Logger error: {e}")
 
-    def run(self, motor_id, mask, time_sampling, tag="", limit=1_000_000):
+    def run(self, motor_id, mask, time_sampling, folder_tag="", limit=1_000_000):
         try:
             self.logged_data = []
             self.p.stop_logger(motor_id)
             self.p.clear_log_queue()
             self.p.ser.reset_input_buffer()
             self.mask = mask
-            self.tag = tag
+            self.folder_tag = folder_tag
 
             with self.p.lock:
                 self.p.start_logger(motor_id, time_sampling)
             self.logging = True
             self.logger_thread = SThread(self.__MainLogger, True, limit)
-            print(f"Starting Logger")
+            print_log("INFO", "Starting Firmware Logger")
         except Exception as e:
             print(f"Failed to start logger: {e}")
 
     def stop(self, motor_id):
-        print("Stopping Logger")
+        print_log("INFO", "Stopping Firmware Logger")
         self.logging = False
 
         with self.p.lock:
@@ -106,22 +107,29 @@ class FWLogger:
             self.logger_thread.stop()
 
         tag = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+        log_path = base_url+"/LOG/"+self.folder_tag+"/"
         
-        log_path = base_url+"/LOG/"
-        
-        if self.tag != "":
-            saved_log_path = log_path+self.tag+"_"+tag+".csv"
+        if self.folder_tag == "":
+            log_path = base_url+"/LOG/"+tag+"/"
         else:
-            saved_log_path = log_path+tag+".csv"
+            log_path = base_url+"/LOG/"+self.folder_tag+"/"
+            
+        saved_log_path = log_path+"log_"+tag+".csv"
         
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-        self.save_to_csv(saved_log_path)
+        stat = self.save_to_csv(saved_log_path)
+        
+        if stat: 
+            if self.folder_tag == "":
+                return tag
+            else:
+                return self.folder_tag
     
     def save_to_csv(self, filename):
         if not self.logged_data:
-            print("Save failed: No data was collected.")
+            print_log("INFO", "Save failed: No data was collected.")
             return
         
         try:
@@ -156,5 +164,13 @@ class FWLogger:
                     except Exception as e:
                         print(f"Skipping malformed line: {e}")
                         continue
+            
+            _, sep, after = filename.partition("/LOG/")
+            result = sep + after
+            
+            print_log("INFO", "Firmware Logger has been saved on: ", end="")
+            printg(result)
+            return True
         except Exception as e:
             print(f"Error saving to CSV: {e}")
+            return False

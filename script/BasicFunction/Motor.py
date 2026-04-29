@@ -30,41 +30,55 @@ class MoveMotor:
         printr("[TIMEOUT] waiting for move done.")
         return False
     
-    def start_log(self, mask, time_sampling, tag = ""):
-        self.logger.run(motor_id = self.motor_id, mask=mask, time_sampling=time_sampling, tag=tag)
+    def start_log(self, mask, time_sampling, folder_tag = ""):
+        self.logger.run(motor_id = self.motor_id, mask=mask, time_sampling=time_sampling, folder_tag=folder_tag)
     
     def stop_log(self):
-        self.logger.stop(self.motor_id)
+        stat = self.logger.stop(self.motor_id)
+        return stat
     
+    def print_motor_info(self, current_pos, duration, timeout):
+        print_log("MOVE MOTOR", "Initial Position: ", end = "")
+        printy(f"{current_pos:.2f}")
+        print_log("MOVE MOTOR", "Duration (est): ", end = "")
+        printy(f"{duration:.2f} s")
+        print_log("MOVE MOTOR", "Timeout: ", end = "")
+        printy(f"{timeout:.2f} s")
+        
     def move_motor_speed(self, speed_rpm):
         # Move Motor Speed in RPM
         speed = int ((speed_rpm * 48.4)/60)
         self.dev.move_motor_speed(self.motor_id, speed)
 
-    def move_motor_pos_step(self, position_rotation, wait_move = True):
+    def move_motor_pos_step(self, position_rotation, wait_move = True, print_motor_log = False):
         # Move Motor Position in Rotation with Step Profile
         current_pos = self.get_motor_pos()['pos_rotation']
-        printy(f"Current Pos: {current_pos:.2f}")
+        duration = self.calculate_motion_time(position_rotation-current_pos, self.config.MAX_SPEED_RPM, 100_000)
+        timeout = duration+30
+        
+        if print_motor_log:
+            self.print_motor_info(current_pos, duration, timeout)
 
         position = int(position_rotation * 48.4)
         self.dev.move_motor_abs_pos(self.motor_id, position)
         if wait_move:
-            self.__wait_move_done()
+            self.__wait_move_done(timeout)
 
-    def move_motor_pos_trapezoid(self, position_rotation, speed_rpm, acc_rpm, wait_move = True):
+    def move_motor_pos_trapezoid(self, position_rotation, speed_rpm, acc_rpm, wait_move = True, print_motor_log = False):
         # Move Motor Position in Rotation with Trapezoidal Profile
         current_pos = self.get_motor_pos()['pos_rotation']
         duration = self.calculate_motion_time(position_rotation-current_pos, speed_rpm, acc_rpm)
-
-        printy(f"Current Pos: {current_pos:.2f}")
-        printy(f"Duration (est): {duration:.2f} s")
-
+        timeout = duration+30
+        
+        if print_motor_log:
+            self.print_motor_info(current_pos, duration, timeout)
+        
         position = int(position_rotation * 48.4)
         speed = int ((speed_rpm * 48.4)/60)
         acc = int ((acc_rpm * 48.4)/60)
         self.dev.move_motor_abs_pos_trapezoid(self.motor_id, position, speed, acc)
         if wait_move:
-            self.__wait_move_done(duration+30)
+            self.__wait_move_done(timeout)
 
     def move_motor_open_loop(self, pwm):
         # Move Motor Speed Open Loop
