@@ -22,7 +22,8 @@ class MoveMotor:
                 event_str = "MOVE_MOTOR_DONE"
                 if event_str in event:
                     if event[event_str] == self.motor_id:
-                        printg(f"Move Done, Elapsed: {elapsed:.2f} s")
+                        print_log("MOVE DONE", f"Move Done, Elapsed: ", end = "")
+                        printg(f"{elapsed:.2f} s")
                         return True
             time.sleep(0.1)
             elapsed = time.perf_counter() - start
@@ -37,12 +38,12 @@ class MoveMotor:
         stat = self.logger.stop(self.motor_id)
         return stat
     
-    def print_motor_info(self, current_pos, duration, timeout):
-        print_log("MOVE MOTOR", "Initial Position: ", end = "")
+    def print_motor_info(self, id, current_pos, duration, timeout):
+        print_log(f"MOVE MOTOR: {id}", "Initial Position: ", end = "")
         printy(f"{current_pos:.2f}")
-        print_log("MOVE MOTOR", "Duration (est): ", end = "")
+        print_log(f"MOVE MOTOR: {id}", "Duration (est): ", end = "")
         printy(f"{duration:.2f} s")
-        print_log("MOVE MOTOR", "Timeout: ", end = "")
+        print_log(f"MOVE MOTOR: {id}", "Timeout: ", end = "")
         printy(f"{timeout:.2f} s")
         
     def move_motor_speed(self, speed_rpm):
@@ -57,7 +58,7 @@ class MoveMotor:
         timeout = duration+30
         
         if print_motor_log:
-            self.print_motor_info(current_pos, duration, timeout)
+            self.print_motor_info(self.motor_id, current_pos, duration, timeout)
 
         position = int(position_rotation * 48.4)
         self.dev.move_motor_abs_pos(self.motor_id, position)
@@ -71,7 +72,7 @@ class MoveMotor:
         timeout = duration+30
         
         if print_motor_log:
-            self.print_motor_info(current_pos, duration, timeout)
+            self.print_motor_info(self.motor_id, current_pos, duration, timeout)
         
         position = int(position_rotation * 48.4)
         speed = int ((speed_rpm * 48.4)/60)
