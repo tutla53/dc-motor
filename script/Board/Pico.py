@@ -209,52 +209,77 @@ class Pico:
         return dict(zip(meta['keys'], unpacked))
         
     def __EventListener(self, limit=1_000_000):
+        local_buffer = bytearray()
+        
         while self.__is_listener_on:
             if self.ser.in_waiting > 0:
                 with self.lock:
                     if self.ser.in_waiting > 0:
-                        header = self.ser.read(1)
-                    
-                        if header == self.__headers.get('LOGGER'):
-                            data = self.ser.read(25)
-                            self._process_log(data)
+                        local_buffer.extend(self.ser.read(self.ser.in_waiting))
 
-                        elif header == self.__headers.get('EVENT'):
-                            ev_code, m_id = struct.unpack('<BB', self.ser.read(2))
-                            name = self.__enums['EventCodes'].get(ev_code, "UNKNOWN")
-                            self.event_queue.append({name: m_id})
-                            printg(f"[EVENT] Motor {m_id}: {name}")
+            while len(local_buffer) > 0:
+                header = local_buffer[0:1]
+                
+                if header == self.__headers.get('LOGGER'):
+                    if len(local_buffer) >= 26:
+                        payload = local_buffer[1:26]
+                        self._process_log(payload)
+                        del local_buffer[:26]
+                    else:
+                        break
 
-                        elif header == self.__headers.get('COMMAND'):
-                            err_byte = self.ser.read(1)
-                            error_code = int.from_bytes(err_byte, 'little')
-                            decoded_error = self.__enums['ErrorCodes'].get(error_code, "UNKLNONW")
+                elif header == self.__headers.get('EVENT'):
+                    if len(local_buffer) >= 3:
+                        ev_code, m_id = struct.unpack('<BB', local_buffer[1:3])
+                        name = self.__enums['EventCodes'].get(ev_code, "UNKNOWN")
+                        self.event_queue.append({name: m_id})
+                        printg(f"[EVENT] Motor {m_id}: {name}")
+                        del local_buffer[:3]
+                    else:
+                        break
 
-                            if decoded_error == "NoError":
-                                self.__response = True
-                                op_byte = self.ser.read(1)
-                                op_code = int.from_bytes(op_byte, 'little')
+                elif header == self.__headers.get('COMMAND'):
+                    if len(local_buffer) >= 2:
+                        error_code = int(local_buffer[1])
+                        decoded_error = self.__enums['ErrorCodes'].get(error_code, "UNKLNONW")
 
-                                if op_code in self.__cmd_meta:
-                                    size = self.__cmd_meta[op_code]['size']
-                                    self.__shared_responses[op_code] = self.ser.read(size)
+                        if decoded_error == "NoError":
+                            if len(local_buffer) >=3 :
+                                op_code = int(local_buffer[2])
+                                meta = self.__cmd_meta.get(op_code)
+                                payload_size = meta['size'] if meta else 0
+                                total_packet_size = 3 + payload_size
+                                
+                                if len(local_buffer) >= total_packet_size:
+                                    with self.lock:
+                                        self.__response = True
+                                        if payload_size > 0:
+                                            self.__shared_responses[op_code] = local_buffer[3:total_packet_size]
+                                    del local_buffer[:total_packet_size]
+                                else:
+                                    break
                             else:
-                                if decoded_error != "InvalidHeaderCode":
-                                    op_byte = self.ser.read(1)
-                                    op_code = int.from_bytes(op_byte, 'little')
-
-                                    if op_code in self.__cmd_meta:
-                                        self.__shared_responses[op_code] = None
-
-                                printr(f"[ERROR]: ", decoded_error)
+                                break
                         else:
-                            err_byte = self.ser.read(1)
-                            error_code = int.from_bytes(err_byte, 'little')
-                            decoded_error = self.__enums['ErrorCodes'].get(error_code, "UNKLNONW")
-                            printr(f"[ERROR]: ", decoded_error)
-                            printr(f"Unexpected Byte: {header.hex()} - Alignment may be lost!")
-            
-            time.sleep(0.0001)
+                            if decoded_error == "InvalidHeaderCode":
+                                printr(f"[ERROR]: {decoded_error}")
+                                del local_buffer[:2]
+                            elif len(local_buffer) >= 3 :
+                                op_code = int(local_buffer[2])
+                                
+                                with self.lock:
+                                    self.__response = True
+                                    self.__shared_responses[op_code] = None
+                                printr(f"[ERROR]: {decoded_error} on OP {op_code}")
+                                del local_buffer[:3]
+                            else:
+                                break
+                    else:
+                        break
+                else:
+                    del local_buffer[0:1]
+                    printr(f"Alignment may be lost!")
+            time.sleep(0.001)
 
     def __run(self, limit=1_000_000):
         try:
