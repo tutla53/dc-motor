@@ -24,7 +24,6 @@ use crate::resources::SPEED_TOLERANCE_CPS;
 use crate::resources::TICKS_TO_CPS;
 use crate::resources::TIME_SAMPLING_US;
 use crate::resources::USB_BUFFER_SIZE;
-use crate::resources::USB_TX_CHANNEL;
 use crate::resources::UsbHeader;
 use crate::resources::load_config;
 use crate::resources::logger_resources::LogData;
@@ -65,7 +64,8 @@ use embassy_time::Duration;
 use embassy_time::Instant;
 use embassy_time::Ticker;
 use embassy_time::Timer;
-use embassy_usb::class::cdc_acm::CdcAcmClass;
+use embassy_usb::class::cdc_acm::Receiver;
+use embassy_usb::class::cdc_acm::Sender;
 use fixed::types::I16F16;
 use fixed::types::I32F32;
 

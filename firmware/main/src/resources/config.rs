@@ -53,8 +53,6 @@ pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 256;
 
 /* --------------------------- Communication Channels-------------------------- */
-pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_BUFFER_SIZE> =
-    Channel::new();
 pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> =
     Channel::new();
 pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> =

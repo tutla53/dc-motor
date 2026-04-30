@@ -37,9 +37,9 @@ use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
 use crate::tasks::heartbeat::heartbeat_task;
 use crate::tasks::logger::firmware_logger_task;
-use crate::tasks::usb_task::usb_communication_task;
 use crate::tasks::usb_task::usb_device_task;
-use crate::tasks::usb_task::usb_traffic_controller_task;
+use crate::tasks::usb_task::usb_rx_task;
+use crate::tasks::usb_task::usb_tx_task;
 
 // Library
 use embassy_executor::Executor;
@@ -114,6 +114,8 @@ async fn main(_spawner: Spawner) {
 
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     let usb_dev = builder.build();
+    // Split the class into transmitter and receiver
+    let (usb_transmitter, usb_receiver) = class.split();
 
     // DC Motor Initialization
     let Pio {
@@ -181,8 +183,8 @@ async fn main(_spawner: Spawner) {
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
         spawner.spawn(usb_device_task(usb_dev).expect("FAILED"));
-        spawner.spawn(usb_communication_task(class).expect("FAILED"));
-        spawner.spawn(usb_traffic_controller_task().expect("FAILED"));
+        spawner.spawn(usb_rx_task(usb_receiver).expect("FAILED"));
+        spawner.spawn(usb_tx_task(usb_transmitter).expect("FAILED"));
         spawner.spawn(firmware_logger_task().expect("FAILED"));
         spawner.spawn(heartbeat_task(onboard_led.into()).expect("FAILED"));
     });
