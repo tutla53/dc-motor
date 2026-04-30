@@ -40,6 +40,7 @@ impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
         self.prev_error = T::from_num(0);
     }
 
+    #[inline(always)]
     pub fn compute(&mut self, error: T) -> i32 {
         let next_integral = self.integral.saturating_add(error);
         self.integral = next_integral.clamp(-self.i_limit, self.i_limit);

@@ -177,6 +177,7 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
         }
     }
 
+    #[inline(always)]
     pub async fn run_motor_task(
         &mut self,
         event_sender: ChannelSender<
@@ -339,6 +340,8 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
 }
 
 /* --------------------------- DC Motor Task -------------------------- */
+#[inline(always)]
+#[unsafe(link_section = ".data")]
 #[embassy_executor::task]
 pub async fn motor0_task(
     mut dc_motor: DCMotor<'static, PIO0, 0>,
@@ -347,6 +350,8 @@ pub async fn motor0_task(
     dc_motor.run_motor_task(event_sender).await;
 }
 
+#[inline(always)]
+#[unsafe(link_section = ".data")]
 #[embassy_executor::task]
 pub async fn motor1_task(
     mut dc_motor: DCMotor<'static, PIO0, 1>,
