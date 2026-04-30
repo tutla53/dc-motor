@@ -12,9 +12,11 @@ use portable_atomic as _;
 
 // Crate
 use crate::resources::BOS_DESC;
+use crate::resources::CMD_CHANNEL;
 use crate::resources::CONFIG_DESC;
 use crate::resources::CONTROL_BUF;
 use crate::resources::CORE1_STACK;
+use crate::resources::EVENT_CHANNEL;
 use crate::resources::EXECUTOR_HIGH;
 use crate::resources::EXECUTOR0;
 use crate::resources::EXECUTOR1;
@@ -174,8 +176,8 @@ async fn main(_spawner: Spawner) {
         move || {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
-                spawner.spawn(motor0_task(motor0).expect("FAILED"));
-                spawner.spawn(motor1_task(motor1).expect("FAILED"));
+                spawner.spawn(motor0_task(motor0, EVENT_CHANNEL.sender()).expect("FAILED"));
+                spawner.spawn(motor1_task(motor1, EVENT_CHANNEL.sender()).expect("FAILED"));
             });
         },
     );
@@ -183,8 +185,16 @@ async fn main(_spawner: Spawner) {
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
         spawner.spawn(usb_device_task(usb_dev).expect("FAILED"));
-        spawner.spawn(usb_rx_task(usb_receiver).expect("FAILED"));
-        spawner.spawn(usb_tx_task(usb_transmitter).expect("FAILED"));
+        spawner.spawn(usb_rx_task(usb_receiver, CMD_CHANNEL.sender()).expect("FAILED"));
+        spawner.spawn(
+            usb_tx_task(
+                usb_transmitter,
+                CMD_CHANNEL.receiver(),
+                EVENT_CHANNEL.receiver(),
+                LOGGER.log_tx_buffer.receiver(),
+            )
+            .expect("FAILED"),
+        );
         spawner.spawn(firmware_logger_task().expect("FAILED"));
         spawner.spawn(heartbeat_task(onboard_led.into()).expect("FAILED"));
     });

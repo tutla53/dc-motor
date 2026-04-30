@@ -177,7 +177,15 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
         }
     }
 
-    pub async fn run_motor_task(&mut self) {
+    pub async fn run_motor_task(
+        &mut self,
+        event_sender: ChannelSender<
+            'static,
+            CriticalSectionRawMutex,
+            EventList,
+            EVENT_CHANNEL_SIZE,
+        >,
+    ) {
         /*
             Available Mode
             1. Stop
@@ -305,7 +313,7 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
                             if self.current_settle_ticks >= SETTLE_TICKS && !self.move_done {
                                 self.move_done = true;
                                 let _ =
-                                    EVENT_CHANNEL.try_send(EventList::MotorMoveDone(self.motor.id));
+                                    event_sender.try_send(EventList::MotorMoveDone(self.motor.id));
                             }
 
                             // PID Computation
@@ -332,11 +340,17 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
 
 /* --------------------------- DC Motor Task -------------------------- */
 #[embassy_executor::task]
-pub async fn motor0_task(mut dc_motor: DCMotor<'static, PIO0, 0>) {
-    dc_motor.run_motor_task().await;
+pub async fn motor0_task(
+    mut dc_motor: DCMotor<'static, PIO0, 0>,
+    event_sender: ChannelSender<'static, CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE>,
+) {
+    dc_motor.run_motor_task(event_sender).await;
 }
 
 #[embassy_executor::task]
-pub async fn motor1_task(mut dc_motor: DCMotor<'static, PIO0, 1>) {
-    dc_motor.run_motor_task().await;
+pub async fn motor1_task(
+    mut dc_motor: DCMotor<'static, PIO0, 1>,
+    event_sender: ChannelSender<'static, CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE>,
+) {
+    dc_motor.run_motor_task(event_sender).await;
 }

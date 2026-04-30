@@ -19,45 +19,57 @@ pub async fn usb_device_task(mut usb: embassy_usb::UsbDevice<'static, Driver<'st
 }
 
 #[embassy_executor::task]
-pub async fn usb_tx_task(mut usb_transmitter: Sender<'static, Driver<'static, USB>>) {
+pub async fn usb_tx_task(
+    mut usb_transmitter: CdcAcmSender<'static, Driver<'static, USB>>,
+    command_receiver: ChannelReceiver<'static, CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE>,
+    event_receiver: ChannelReceiver<
+        'static,
+        CriticalSectionRawMutex,
+        EventList,
+        EVENT_CHANNEL_SIZE,
+    >,
+    log_receiver: ChannelReceiver<'static, CriticalSectionRawMutex, LogData, LOG_BUFFER_SIZE>,
+) {
+    let mut packet = Packet::new();
+
     loop {
         usb_transmitter.wait_connection().await;
 
         loop {
             let action = select3(
-                CMD_CHANNEL.receive(),          // Priority 1
-                EVENT_CHANNEL.receive(),        // Priority 2
-                LOGGER.log_tx_buffer.receive(), // Priority 3
+                command_receiver.receive(), // Priority 1
+                event_receiver.receive(),   // Priority 2
+                log_receiver.receive(),     // Priority 3
             )
             .await;
 
-            let mut p = Packet::new();
+            packet.clear();
 
             match action {
                 Either3::First(response) => {
                     // COMMAND
-                    p = response;
+                    packet = response;
                 }
 
                 Either3::Second(event) => {
                     // EVENT
-                    p.data[0] = UsbHeader::Event as u8; // Event Header
+                    packet.data[0] = UsbHeader::Event as u8; // Event Header
 
                     match event {
                         EventList::MotorMoveDone(motor_id) => {
-                            p.data[1] = 0x00;
-                            p.data[2] = motor_id;
+                            packet.data[1] = 0x00;
+                            packet.data[2] = motor_id;
                         }
                     }
 
-                    p.len = 3;
+                    packet.len = 3;
                 }
 
                 Either3::Third(data_1) => {
                     // LOGGER
                     if LOGGER.is_logging_active() {
-                        data_1.pack_data(&mut p.data[0..26]);
-                        p.len = 26;
+                        data_1.pack_data(&mut packet.data[0..26]);
+                        packet.len = 26;
                     } else {
                         continue;
                     }
@@ -65,7 +77,11 @@ pub async fn usb_tx_task(mut usb_transmitter: Sender<'static, Driver<'static, US
             }
 
             // Send the Packet
-            if usb_transmitter.write_packet(p.as_slice()).await.is_err() {
+            if usb_transmitter
+                .write_packet(packet.as_slice())
+                .await
+                .is_err()
+            {
                 break;
             }
         }
@@ -73,7 +89,10 @@ pub async fn usb_tx_task(mut usb_transmitter: Sender<'static, Driver<'static, US
 }
 
 #[embassy_executor::task]
-pub async fn usb_rx_task(mut usb_receiver: Receiver<'static, Driver<'static, USB>>) {
+pub async fn usb_rx_task(
+    mut usb_receiver: Receiver<'static, Driver<'static, USB>>,
+    command_sender: ChannelSender<'static, CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE>,
+) {
     let mut rx_buf = [0u8; USB_BUFFER_SIZE];
 
     loop {
@@ -82,7 +101,7 @@ pub async fn usb_rx_task(mut usb_receiver: Receiver<'static, Driver<'static, USB
         loop {
             match usb_receiver.read_packet(&mut rx_buf).await {
                 Ok(len) if len > 0 => {
-                    let mut handler = CommandHandler::new(&rx_buf[..len]);
+                    let mut handler = CommandHandler::new(&rx_buf[..len], command_sender);
                     handler.process_command().await;
                 }
                 Ok(_) => continue,

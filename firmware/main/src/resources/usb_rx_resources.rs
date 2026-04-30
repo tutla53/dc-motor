@@ -14,14 +14,19 @@ pub struct CommandHandler<'a> {
     pub data: &'a [u8],
     pub cursor: usize,
     header: u8,
+    command_sender: ChannelSender<'static, CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE>,
 }
 
 impl<'a> CommandHandler<'a> {
-    pub fn new(data: &'a [u8]) -> Self {
+    pub fn new(
+        data: &'a [u8],
+        command_sender: ChannelSender<'static, CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE>,
+    ) -> Self {
         Self {
             data,
             cursor: 0,
             header: UsbHeader::Command as u8,
+            command_sender,
         }
     }
 
@@ -37,7 +42,7 @@ impl<'a> CommandHandler<'a> {
             }
         };
 
-        CMD_CHANNEL.send(buffer).await;
+        self.command_sender.send(buffer).await;
     }
 
     pub fn read<T: FromLeBytes>(&mut self) -> Option<T> {
@@ -249,7 +254,7 @@ impl<'a> CommandHandler<'a> {
                     .push(pid.kd)
                     .push(pid.i_limit);
 
-                CMD_CHANNEL.send(buffer).await;
+                self.command_sender.send(buffer).await;
             }
             OpCode::SetMotorSpeedPidParam => {
                 /* set_motor_speed_pid_param
@@ -292,7 +297,7 @@ impl<'a> CommandHandler<'a> {
                     .push(pid.ki)
                     .push(pid.kd)
                     .push(pid.i_limit);
-                CMD_CHANNEL.send(buffer).await;
+                self.command_sender.send(buffer).await;
             }
             OpCode::MoveMotorAbsPosTrapezoid => {
                 /* move_motor_abs_pos_trapezoid
@@ -326,7 +331,7 @@ impl<'a> CommandHandler<'a> {
                     .push(ErrorCode::NoError as u8)
                     .push(op_code)
                     .push(motor_pos);
-                CMD_CHANNEL.send(buffer).await;
+                self.command_sender.send(buffer).await;
             }
             OpCode::GetMotorSpeed => {
                 /* get_motor_speed */
@@ -338,7 +343,7 @@ impl<'a> CommandHandler<'a> {
                     .push(ErrorCode::NoError as u8)
                     .push(op_code)
                     .push(motor_speed);
-                CMD_CHANNEL.send(buffer).await;
+                self.command_sender.send(buffer).await;
             }
             OpCode::MoveMotorOpenLoop => {
                 /* move_motor_open_loop

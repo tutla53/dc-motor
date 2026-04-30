@@ -33,6 +33,10 @@ impl Packet {
     pub fn as_slice(&self) -> &[u8] {
         &self.data[..self.len]
     }
+
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
 }
 
 /* --------------------------- Packet Push Trait -------------------------- */
