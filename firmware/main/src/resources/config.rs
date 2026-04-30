@@ -50,7 +50,7 @@ pub const SETTLE_TICKS: u32 = 20;
 pub const USB_BUFFER_SIZE: usize = 64;
 pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
-pub const LOG_BUFFER_SIZE: usize = 256;
+pub const LOG_BUFFER_SIZE: usize = 2048;
 
 /* --------------------------- Communication Channels-------------------------- */
 pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> =
