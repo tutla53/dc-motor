@@ -6,6 +6,7 @@ import BasicFunction.Motor as Motor
 import Config.Motor0
 import Config.Motor1
 import Tool.plotter
+import Tool.FileProcessing
 from Tool.visualize import *
 from base_url import *
 
@@ -90,3 +91,43 @@ def open_loop_test(motor_id, pwm, duration=3, time_sampling = 10):
     file_tag = m.stop_log()
     
     Tool.plotter.save_image_by_tag(file_tag)
+
+def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
+    motor = None
+    
+    if motor_id == 0:
+        motor = m0
+    elif motor_id == 1:
+        motor = m1
+    else:
+        printr("Invalid Motor ID")
+        return
+    
+    pid_config = p.get_pid_motor_speed(motor_id)
+    
+    tag = "Speed_Step_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    motor.start_log(mask=10, time_sampling=time_sampling, folder_tag=tag)
+    motor.move_motor_speed(speed_rpm)
+    time.sleep(1)
+    motor.stop_motor()
+    dir_tag = motor.stop_log()
+    
+    log_dir = base_url+"/LOG/"+dir_tag+"/"
+    filename = os.listdir(base_url+"/LOG/"+dir_tag)[0]
+
+    extracted_data = Tool.FileProcessing.extract_firmware_log_data(log_dir+filename)
+    target, start_time, duration, dt_s, actual_commanded, actual_speed, actual_time = extracted_data
+    
+    simulation_time_list, simulation_speed, simulation_target = motor.simulate_pid_speed_control(
+                                                    target=target, 
+                                                    start_time=start_time, 
+                                                    duration=duration)
+    
+    Tool.plotter.create_simulation_plot(log_dir, 
+                                        pid_config,
+                                        simulation_time_list, 
+                                        actual_time,
+                                        simulation_speed, 
+                                        simulation_target,  
+                                        actual_speed, 
+                                        actual_commanded)
