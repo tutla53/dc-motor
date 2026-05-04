@@ -211,6 +211,11 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	<td>Closed-loop position control with trapezoidal motion profile</td>
 	<td><img src="assets/position-trapezoidal.jpg"></td>
   </tr>
+  <tr>
+    <td><code>speed_test_with_simulation</code></td>
+	<td>Closed-loop speed control with step input along with the motor simulation from system identification process</td>
+	<td><img src="assets/speed-step-with-simulation.jpg"></td>
+  </tr>  
 </table>
 
 
