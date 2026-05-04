@@ -1,7 +1,9 @@
 import time
 import math
+import numpy as np
 import FWLogger.FWLogger as Logger
 
+from scipy.signal import lfilter
 from Tool.visualize import *
 
 class MoveMotor:
@@ -129,3 +131,92 @@ class MoveMotor:
             t_total = 2 * t_acc
         
         return t_total
+    
+    def simulate_open_loop_response(params, u, dt):
+        '''
+            First Order System with Delay
+            Transfer Function
+                        K * e^(-L * s)
+                G(s) = ----------------
+                        τ * s + 1
+            
+            Where:
+                K   = Gain
+                τ   = Time Constant (seconds)
+                L   = Delay Time (seconds)
+            
+            Discrete Form: 
+                    y[k] = a·y[k-1] + b·u[k-d-1]
+        '''
+        
+        K, tau, L = params
+        
+        delay_samples = int(round(L / dt))
+        
+        # Shift the input signal u by 'delay_samples'
+        if delay_samples > 0:
+            u_delayed = np.zeros_like(u)
+            u_delayed[delay_samples:] = u[:-delay_samples]
+        else:
+            u_delayed = u
+
+        # Discrete-time coefficients
+        a = np.exp(-dt / tau)
+        b = K * (1 - a)
+        
+        # Simulate the first-order response
+        y_sim = lfilter([0, b], [1, -a], u_delayed)
+        return y_sim
+    
+    def simulate_pid_speed_control(self, target, start_time, duration):
+        dt_s = self.config.DT_S
+        steps = int(duration / dt_s)
+        t = np.linspace(0, duration, steps)
+        
+        current_speed   = 0.0
+        integral        = 0.0
+        prev_error      = 0.0
+        
+        speed_history       = []
+        setpoint_history    = []
+        pwm_buffer          = [0.0] * self.config.DELAY_STEPS # Hardware Latency Buffer
+        
+        # PID Config
+        pid_config = self.dev.get_pid_motor_speed(self.motor_id)
+        kp = pid_config["kp"]
+        ki = pid_config["ki"]
+        kd = pid_config["kd"]
+        i_limit = pid_config["i_limit"]
+        
+        # System Properties
+        max_pwm = self.config.MAX_PWM_TICKS
+        alpha = np.exp(-dt_s / self.config.TAU_S)
+        beta = self.config.K * (1 - alpha)
+        
+        for i in range(steps):
+            setpoint = target if t[i] >= start_time else 0.0
+            error = setpoint - current_speed
+            
+            # --- RUST IMPLEMENTATION LOGIC ---
+            integral += error
+            integral = np.clip(integral, -i_limit, i_limit)
+            
+            # let derivative = error - self.prev_error;
+            derivative = error - prev_error
+            prev_error = error
+            
+            # let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
+            pwm_out = (kp * error) + (ki * integral) + (kd * derivative)
+            pwm_out = np.clip(pwm_out, -max_pwm, max_pwm)
+            
+            # Delay Handler
+            pwm_buffer.append(pwm_out)
+            delayed_pwm = pwm_buffer.pop(0)
+            
+            # --- Physical Response ---
+            current_speed = (alpha * current_speed) + (beta * delayed_pwm)
+            
+            speed_history.append(current_speed)
+            setpoint_history.append(setpoint)
+            
+        return t, speed_history, setpoint_history    
