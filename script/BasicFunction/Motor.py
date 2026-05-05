@@ -132,7 +132,7 @@ class MoveMotor:
         
         return t_total
     
-    def simulate_open_loop_response(params, u, dt):
+    def simulate_open_loop_response(self, params, u, dt):
         '''
             First Order System with Delay
             Transfer Function
@@ -168,7 +168,7 @@ class MoveMotor:
         y_sim = lfilter([0, b], [1, -a], u_delayed)
         return y_sim
     
-    def simulate_pid_speed_control(self, target, start_time, duration):
+    def simulate_pid_speed_control(self, target, start_time, duration, pid_config=None):
         dt_s = self.config.DT_S
         steps = int(duration / dt_s)
         t = np.linspace(0, duration, steps)
@@ -182,7 +182,9 @@ class MoveMotor:
         pwm_buffer          = [0.0] * self.config.DELAY_STEPS # Hardware Latency Buffer
         
         # PID Config
-        pid_config = self.dev.get_pid_motor_speed(self.motor_id)
+        if pid_config is None:
+            pid_config = self.dev.get_pid_motor_speed(self.motor_id)
+            
         kp = pid_config["kp"]
         ki = pid_config["ki"]
         kd = pid_config["kd"]
