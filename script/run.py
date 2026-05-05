@@ -1,6 +1,8 @@
 # Pico Script
 
 import time
+import os
+
 import Board.Pico as Board
 import BasicFunction.Motor as Motor
 import Config.Motor0
@@ -105,7 +107,7 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
     
     pid_config = p.get_pid_motor_speed(motor_id)
     
-    tag = "Speed_Step_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    tag = "Speed_Step_and_Simulation" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
     motor.start_log(mask=10, time_sampling=time_sampling, folder_tag=tag)
     motor.move_motor_speed(speed_rpm)
     time.sleep(1)
@@ -115,7 +117,7 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
     log_dir = base_url+"/LOG/"+dir_tag+"/"
     filename = os.listdir(base_url+"/LOG/"+dir_tag)[0]
 
-    extracted_data = Tool.FileProcessing.extract_firmware_log_data(log_dir+filename)
+    extracted_data = Tool.FileProcessing.extract_firmware_log_data(log_dir+filename, "Commanded_Speed(RPM)", "Motor_Speed(RPM)")
     target, start_time, duration, dt_s, actual_commanded, actual_speed, actual_time = extracted_data
     
     simulation_time_list, simulation_speed, simulation_target = motor.simulate_pid_speed_control(
@@ -131,3 +133,31 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
                                         simulation_target,  
                                         actual_speed, 
                                         actual_commanded)
+
+def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, duration=1.5):
+    
+    pid_config = {
+        "kp": kp,
+        "ki": ki,
+        "kd": kd,
+        "i_limit": i_limit,
+    }
+    
+    tag = "Simulation_Speed_Step_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    log_dir = base_url+"/LOG/"+ tag+"/"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    simulation_time_list, simulation_speed, simulation_target = m0.simulate_pid_speed_control(
+                                                    target=speed_rpm, 
+                                                    start_time=start_time, 
+                                                    duration=duration,
+                                                    pid_config=pid_config)
+    Tool.plotter.create_simulation_plot(log_dir, 
+                                        pid_config,
+                                        simulation_time_list, 
+                                        None,
+                                        simulation_speed, 
+                                        simulation_target,  
+                                        None, 
+                                        None)
