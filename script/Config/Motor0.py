@@ -13,12 +13,12 @@ SYSTEM_FREQ_HZ          = 133_000_000
 PWM_FREQ_HZ             = 25_000
 MAX_PWM_TICKS           = (SYSTEM_FREQ_HZ / PWM_FREQ_HZ) - 1; # 25kHz Period = (125_000_000 (Pico clock)/25_000(Frequency)) -1
 
-# System Properties Based on the System Identification @ 5 ms sampling period
-K                       = 0.241583064142491
-TAU_S                   = 0.02879561246727829
-FREQUENCY_SAMPLING_HZ   = 200
-DELAY_TIME_S            = 0.018659895138243635
+# System Properties Based on the System Identification
+K                       = 0.24404
+TAU_S                   = 0.02868
+DELAY_TIME_S            = 0.01877
 
+FREQUENCY_SAMPLING_HZ   = 200
 DT_S                    = 1/FREQUENCY_SAMPLING_HZ
 DELAY_STEPS             = int(DELAY_TIME_S / DT_S)
 
