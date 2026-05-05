@@ -1,14 +1,13 @@
 import numpy as np
 import pandas as pd
 
-def extract_firmware_log_data(log_path):
-    print(log_path)
+def extract_firmware_log_data(log_path, commanded_header, log_header):
     data = pd.read_csv(log_path)
     dt_ms = data["Timestamp(ms)"][1] - data["Timestamp(ms)"][0]
     dt_s = dt_ms/1000.0
     t = data["Timestamp(ms)"]/1000.0
-    actual_speed = data["Motor_Speed(RPM)"]
-    commanded = data["Commanded_Speed(RPM)"]
+    actual_speed = data[log_header]
+    commanded = data[commanded_header]
     
     target = np.max(np.abs(commanded))
     duration = len(t)
