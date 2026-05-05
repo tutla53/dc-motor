@@ -63,7 +63,7 @@ def save_image(log_dir, filename):
 def create_simulation_plot(log_dir, pid_config, simulation_time_list: list|None, actual_time_list: list|None, simulation_speed: list|None, simulation_target: list|None, actual_speed: list|None, actual_commanded: list|None):
     plt.figure(figsize=(10, 5))
     
-    if (actual_time_list is None) or (simulation_time_list is None):
+    if (actual_time_list is None) and (simulation_time_list is None):
         printr("Invalid Time List")
         return
     
