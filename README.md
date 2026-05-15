@@ -190,18 +190,18 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 
 <table>
   <tr>
-    <th>Open-loop speed control with step PWM input</th>
-    <th>Closed-loop speed control with step input</th>
-	<th>Closed-loop position control with step input</th>
+    <th  align="center" width=300>Open-loop speed control with step PWM input</th>
+    <th  align="center" width=300>Closed-loop speed control with step input</th>
+	<th  align="center" width=300>Closed-loop position control with step input</th>
   </tr>
   <tr>
-    <td align="center">
-		<img height=200 src="assets/open-loop.jpg">
+    <td>
+		<img height=220 src="assets/open-loop.jpg">
 	</td>
-	<td align="center">
+	<td>
 		<img height=220 src="assets/speed-step.jpg">
 	</td>
-	<td align="center">
+	<td>
 		<img height=220 src="assets/position-step.jpg">
 	</td>
   </tr>
@@ -211,7 +211,7 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   </tr>
   <tr>
 	<td align="center">
-		<img height = 200 src="assets/position-trapezoidal.jpg">
+		<img height = 220 src="assets/position-trapezoidal.jpg">
 	</td>
 	<td colspan="2" align="center">
 		<img height = 220 src="assets/speed-step-with-simulation.jpg"> 
