@@ -1,4 +1,4 @@
-# Version: 0.1.2
+- Version: 0.1.3
 
 #---------------------------------- Headers -----------------------------------#
 - Headers:
@@ -19,6 +19,7 @@
       4: InvalidMotorId
       5: InvalidHeaderCode
       6: InvalidTimeSampling
+      7: FlashStorageError
     
 #---------------------------------- COMMAND -----------------------------------#
 - command: start_logger
@@ -130,3 +131,15 @@
   args: {motor_id: u8}
   ret: {speed_cps: i32}
   desc: Get motor speed in Count per Second (cps)
+
+- command: save_configuration
+  op: 14
+  args: {}
+  ret: {}
+  desc: save PID parameter on the Flash memory
+
+- command: reset_configuration
+  op: 15
+  args: {}
+  ret: {}
+  desc: reset PID parameter to default configuration
