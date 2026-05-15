@@ -186,44 +186,34 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	  ```   
 
 ## Project Example
-- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
+- On `script/run.py` you can create custom code to command the RP2040. We have created the example such as:
 
 <table>
   <tr>
-    <th>
-		Open-loop speed control with step PWM input
-	</th>
-    <th>
-		Closed-loop speed control with step input
-	</th>
-	<th>
-		Closed-loop position control with step input
-	</th>
+    <th>Open-loop speed control with step PWM input</th>
+    <th>Closed-loop speed control with step input</th>
+	<th>Closed-loop position control with step input</th>
   </tr>
   <tr>
     <td align="center">
-		<img height=250 src="assets/open-loop.jpg">
+		<img height=220 src="assets/open-loop.jpg">
 	</td>
 	<td align="center">
-		<img height=250 src="assets/speed-step.jpg">
+		<img height=220 src="assets/speed-step.jpg">
 	</td>
 	<td align="center">
-		<img height=250 src="assets/position-step.jpg">
+		<img height=220 src="assets/position-step.jpg">
 	</td>
   </tr>
   <tr>
-    <th>
-		Closed-loop position control with trapezoidal motion profile
-	</th>
-    <th colspan="2">
-		Closed-loop speed control with step input along with the motor simulation from system identification process
-	</th>
+    <th>Closed-loop position control with trapezoidal motion profile</th>
+    <th colspan="2">Closed-loop speed control with step input along with the motor simulation from system identification process</th>
   </tr>
   <tr>
 	<td align="center">
-		<img height = 250 src="assets/position-trapezoidal.jpg">
+		<img height = 220 src="assets/position-trapezoidal.jpg">
 	</td>
 	<td colspan="2" align="center">
-		<img height = 250 src="assets/speed-step-with-simulation.jpg"> 
+		<img height = 220 src="assets/speed-step-with-simulation.jpg"> 
   </tr>
 </table>
