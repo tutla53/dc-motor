@@ -184,45 +184,46 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	  cd script
       uv run python -i run.py
 	  ```   
-	- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
+
+## Project Example
+- On `run.py` you can create custom code to command the RP2040. We have created the example such as:
+
 <table>
   <tr>
-    <th width="60" align="center"> Example</th>
-	<th width="600" align="center"> Graph</th>
+    <th>
+		Open-loop speed control with step PWM input
+	</th>
+    <th>
+		Closed-loop speed control with step input
+	</th>
+	<th>
+		Closed-loop position control with step input
+	</th>
   </tr>
   <tr>
-    <td>
-	  <code>open_loop_test</code><br><br>
-	  Open-loop speed control with step PWM input
+    <td align="center">
+		<img height=250 src="assets/open-loop.jpg">
 	</td>
-	<td><img src="assets/open-loop.jpg"></td>
+	<td align="center">
+		<img height=250 src="assets/speed-step.jpg">
+	</td>
+	<td align="center">
+		<img height=250 src="assets/position-step.jpg">
+	</td>
   </tr>
   <tr>
-    <td>
-	  <code>speed_test</code><br><br>
-	  Closed-loop speed control with step input
-	</td>
-	<td><img src="assets/speed-step.jpg"></td>
+    <th>
+		Closed-loop position control with trapezoidal motion profile
+	</th>
+    <th colspan="2">
+		Closed-loop speed control with step input along with the motor simulation from system identification process
+	</th>
   </tr>
   <tr>
-    <td>
-	  <code>pos_step_test</code><br><br>
-	  Closed-loop position control with step input
+	<td align="center">
+		<img height = 250 src="assets/position-trapezoidal.jpg">
 	</td>
-	<td><img src="assets/position-step.jpg"></td>
+	<td colspan="2" align="center">
+		<img height = 250 src="assets/speed-step-with-simulation.jpg"> 
   </tr>
-  <tr>
-    <td>
-	  <code>pos_trapezoid_test</code><br><br>
-	  Closed-loop position control with trapezoidal motion profile
-	</td>
-	<td><img src="assets/position-trapezoidal.jpg"></td>
-  </tr>
-  <tr>
-    <td>
-	  <code>speed_test_with_simulation</code><br><br>
-	  Closed-loop speed control with step input along with the motor simulation from system identification process
-	</td>
-	<td><img src="assets/speed-step-with-simulation.jpg"></td>
-  </tr>  
 </table>
