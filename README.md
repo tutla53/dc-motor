@@ -196,7 +196,7 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   </tr>
   <tr>
     <td align="center">
-		<img height=220 src="assets/open-loop.jpg">
+		<img height=200 src="assets/open-loop.jpg">
 	</td>
 	<td align="center">
 		<img height=220 src="assets/speed-step.jpg">
@@ -211,7 +211,7 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   </tr>
   <tr>
 	<td align="center">
-		<img height = 220 src="assets/position-trapezoidal.jpg">
+		<img height = 200 src="assets/position-trapezoidal.jpg">
 	</td>
 	<td colspan="2" align="center">
 		<img height = 220 src="assets/speed-step-with-simulation.jpg"> 
