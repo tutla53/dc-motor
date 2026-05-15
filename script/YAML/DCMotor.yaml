@@ -1,4 +1,4 @@
-# Version: 0.1.1
+# Version: 0.1.2
 
 #---------------------------------- Headers -----------------------------------#
 - Headers:
@@ -39,7 +39,7 @@
 #-------------------------------- Motor Config ---------------------------------#
 - command: set_pid_motor_pos
   op: 6
-  args: {motor_id: u8, kp: f32, ki: f32, kd: f32, kp_speed: f32, ki_speed: f32, kd_speed: f32}
+  args: {motor_id: u8, kp: f32, ki: f32, kd: f32, i_limit: f32}
   ret: {}
   desc: |
         Set motor position PID parameter 
@@ -53,7 +53,7 @@
 
 - command: set_pid_motor_speed
   op: 8
-  args: {motor_id: u8, kp: f32, ki: f32, kd: f32}
+  args: {motor_id: u8, kp: f32, ki: f32, kd: f32, i_limit: f32}
   ret: {}
   desc: |
         Set motor speed PID parameter 
@@ -65,13 +65,13 @@
 - command: get_pid_motor_pos
   op: 7
   args: {motor_id: u8}
-  ret: {kp: f32, ki: f32, kd: f32, kp_speed: f32, ki_speed: f32, kd_speed: f32}
+  ret: {kp: f32, ki: f32, kd: f32, i_limit: f32}
   desc: Get motor position PID parameter, please see set_pid_motor_pos
 
 - command: get_pid_motor_speed
   op: 9
   args: {motor_id: u8}
-  ret: {kp: f32, ki: f32, kd: f32}
+  ret: {kp: f32, ki: f32, kd: f32, i_limit: f32}
   desc: Get motor speed PID parameter, please see set_pid_motor_speed
 
 #--------------------------------- Move Motor ----------------------------------#
