@@ -73,7 +73,9 @@ class Pico:
             printdb(self.yaml_version)
         else:
             self.__load_commands_from_yaml(yaml_path)
-            print_log("INFO", "Mode: ", end="")
+            print_log("ERROR", "", end="")
+            printr("RP2040 is not detected")
+            print_log("INFO", "Entering ", end="")
             printy("Simulation Mode")
             print_log("INFO",  "YAML Version: ", end="")
             printdb(self.yaml_version)
@@ -159,9 +161,11 @@ class Pico:
     
     def __connect(self, port):
         if port is None:
-            acm_ports = [
-                port.device for port in serial.tools.list_ports.comports() 
-                if port.serial_number.startswith("12345678")]
+            available_ports = serial.tools.list_ports.comports() 
+            if len(available_ports) == 0:
+                return False
+            
+            acm_ports = [port.device for port in available_ports if port.serial_number.startswith("12345678")]
             
             if not acm_ports:
                 printr("No USB ports found. Connect a device.")
