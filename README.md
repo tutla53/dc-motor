@@ -161,14 +161,18 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 - #### Firmware API
 	- The API to communicate with RP2040 is on `script/DeviceOpFuncs/DCMotor.toml`
 	- The structure of the communication is follows this pattern:
-	  ```
-	  Input Command Pattern
-	    [HEADER] [OP_CODE] [PARAMETERS]
-	  Output Pattern
-	    [HEADER] [ERROR_CODE] [OP_CODE] [DATA]
-	  Event Pattern
-	    [HEADER] [EVENT_CODE] [ID]
-	  ```
+	```
+	Command Format:
+		Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER ]
+		Response Command    --> [COMMAND_HEADER:u8] [ERROR_CODE:u8] [OP_CODE:u8] [RESPONSE_MESSAGE]
+
+	Event Format:
+		Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID: u8]
+
+	Logger Format:
+		Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [DATA_LOG:[i32;5]]
+		DATA_LOG:[i32;5] =  [current_pos, current_speed, commanded_pos, commanded_speed, commanded_pwm]
+	```
 	- You can see the `TOML` file for more detail.
   
 	- :warning: Please make sure to match the `TOML` file with the actual firmware op_code, input, output, and data type.
