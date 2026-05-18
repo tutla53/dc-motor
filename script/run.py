@@ -13,7 +13,7 @@ from Tool.visualize import *
 from base_url import *
 
 # -------------------------------------- Initialization -------------------------------------- #
-yaml_path = base_url+"/YAML/DCMotor.yaml"
+yaml_path = base_url+"/DeviceOpFuncs/DCMotor.toml"
 p = Board.Pico(yaml_path)
 m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
 m1 = Motor.MoveMotor(device = p, configfile = Config.Motor1)

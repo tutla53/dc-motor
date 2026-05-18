@@ -145,10 +145,10 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	├── BasicFunction
 	├── Board
 	├── Config
+	├── DeviceOpFuncs 	# Device OP file folder to call the firmware API
 	├── FWLogger
 	├── Tool
-	├── YAML        # YAML file folder to call the firmware API
-	└── run.py      # Python Script to Communicate with the Firmware
+	└── run.py      	# Python Script to Communicate with the Firmware
 ```
 
 ### `firmware` 
@@ -159,7 +159,7 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 
 ### `script`
 - #### Firmware API
-	- The API to communicate with RP2040 is on `script/YAML/{your_file}.yaml`
+	- The API to communicate with RP2040 is on `script/DeviceOpFuncs/DCMotor.toml`
 	- The structure of the communication is follows this pattern:
 	  ```
 	  Input Command Pattern
@@ -169,9 +169,9 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	  Event Pattern
 	    [HEADER] [EVENT_CODE] [ID]
 	  ```
-	- You can see the `YAML` file for more detail.
+	- You can see the `TOML` file for more detail.
   
-	- :warning: Please make sure to match the YAML file with the actual firmware op_code, input, output, and data type.
+	- :warning: Please make sure to match the `TOML` file with the actual firmware op_code, input, output, and data type.
 
 - #### Python Script
 	- Python script to communicate with the RP2040 including the firmware logger by executing the `run.py`.

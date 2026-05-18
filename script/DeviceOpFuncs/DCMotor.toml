@@ -1,0 +1,156 @@
+# /*
+#   Command Format:
+#       Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER ]
+#       Response Command    --> [COMMAND_HEADER:u8] [ERROR_CODE:u8] [OP_CODE:u8] [RESPONSE_MESSAGE]
+#
+#   Event Format:
+#       Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID: u8]
+#
+#   Logger Format:
+#       Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [DATA_LOG:[i32;5]]
+#           DATA_LOG:[i32;5] =  [current_pos, current_speed, commanded_pos, commanded_speed, commanded_pwm]
+# */
+
+# ---------------------------------- Project -----------------------------------#
+[project]
+name        = "DCMotor"
+version     = "0.1.4"
+description = "RP2040 DC Motor Control"
+
+# ---------------------------------- Headers -----------------------------------#
+[headers]
+COMMAND = 0xFF
+EVENT   = 0xFE
+LOGGER  = 0xFD
+
+# ---------------------------------- ENUMS -----------------------------------#
+[enums.EventCodes]
+0 = "MOVE_MOTOR_DONE"
+
+[enums.ErrorCodes]
+0 = "NoError"
+1 = "OpCodeNotFound"
+2 = "NonFiniteFloat"
+3 = "ReadByteError"
+4 = "InvalidMotorId"
+5 = "InvalidHeaderCode"
+6 = "InvalidTimeSampling"
+7 = "FlashStorageError"
+
+# ---------------------------------- Firmware Logger ----------------------------------#
+[[commands]]
+command = "start_logger"
+op      = 1
+args    = { motor_id = "u8", time_sampling = "u64" }
+ret     = {}
+desc    = "Start the firmware logger by set the time sampling in ms (min 1 ms)"
+
+[[commands]]
+command = "stop_logger"
+op      = 2
+args    = { motor_id = "u8" }
+ret     = {}
+desc    = "Stop the firmware logger"
+
+# -------------------------------- Motor Config ---------------------------------#
+[[commands]]
+command = "set_pid_motor_pos"
+op      = 6
+args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+ret     = {}
+desc    = "Set Motor PID parameters for Position Control"
+
+[[commands]]
+command = "set_pid_motor_speed"
+op      = 8
+args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+ret     = {}
+desc    = "Set Motor PID parameters for Speed Control"
+
+[[commands]]
+command = "get_pid_motor_pos"
+op      = 7
+args    = { motor_id = "u8" }
+ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+desc    = "Get motor position PID parameter(s)"
+
+[[commands]]
+command = "get_pid_motor_speed"
+op      = 9
+args    = { motor_id = "u8" }
+ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+desc    = "Get motor speed PID parameter(s)"
+
+# --------------------------------- Move Motor ----------------------------------#
+[[commands]]
+command = "move_motor_speed"
+op      = 3
+args    = { motor_id = "u8", speed = "i32" }
+ret     = {}
+desc    = "Motor Speed Control with Step Motion Profile in count per second (cps)"
+
+[[commands]]
+command = "move_motor_abs_pos"
+op      = 4
+args    = { motor_id = "u8", target = "i32" }
+ret     = {}
+desc    = "Motor Position Control with Step Motion Profile in count"
+
+[[commands]]
+command = "move_motor_abs_pos_trapezoid"
+op      = 10
+args    = { motor_id = "u8", target = "f32", vel = "f32", acc = "f32" }
+ret     = {}
+desc    = """
+            Motor Position Control with Commanded Trapezoid Motion Profile
+            Argument(s)
+            - target: Position Target in Count
+            - vel: Commanded Velocity in Count per Second (cps)
+            - acc: Commanded Acceleration in Count per Second Square (cps^2)
+        """
+
+[[commands]]
+command = "move_motor_open_loop"
+op      = 13
+args    = { motor_id = "u8", pwm = "i32" }
+ret     = {}
+desc    = """
+            Motor Speed Control with Open Loop Mode
+            Argument(s)
+            - pwm: pwm duty cycle from 0 - 1000
+        """
+
+[[commands]]
+command = "stop_motor"
+op      = 5
+args    = { motor_id = "u8" }
+ret     = {}
+desc    = "Stop the motor"
+
+[[commands]]
+command = "get_motor_pos"
+op      = 11
+args    = { motor_id = "u8" }
+ret     = { pos_count = "i32" }
+desc    = "Get motor position in Count"
+
+[[commands]]
+command = "get_motor_speed"
+op      = 12
+args    = { motor_id = "u8" }
+ret     = { speed_cps = "i32" }
+desc    = "Get motor speed in Count per Second (cps)"
+
+[[commands]]
+command = "save_configuration"
+op      = 14
+args    = {}
+ret     = {}
+desc    = "save PID parameter on the Flash memory"
+
+[[commands]]
+command = "reset_configuration"
+op      = 15
+args    = {}
+ret     = {}
+desc    = "reset PID parameter to default configuration"

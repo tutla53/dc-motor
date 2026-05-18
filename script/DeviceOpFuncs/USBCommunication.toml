@@ -1,0 +1,46 @@
+# /*
+#   Command Format:
+#       Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER ]
+#       Response Command    --> [COMMAND_HEADER:u8] [ERROR_CODE:u8] [OP_CODE:u8] [RESPONSE_MESSAGE]
+#
+#   Valid Onboard LED = 0x19 --> PIN_25
+# */
+
+# ---------------------------------- Project -----------------------------------#
+[project]
+name        = "USBCommunication"
+version     = "0.1.0"
+description = "RP2040 Basic Raw Bytes USB Communication"
+
+# ---------------------------------- Headers -----------------------------------#
+[headers]
+COMMAND = 0xFF
+
+# ---------------------------------- ENUMS -----------------------------------#
+[enums.EventCodes]
+0 = "MOVE_MOTOR_DONE"
+
+[enums.ErrorCodes]
+0 = "NoError"
+1 = "OpCodeNotFound"
+2 = "NonFiniteFloat"
+3 = "ReadByteError"
+4 = "InvalidLedId"
+
+[[commands]]
+command = "turn_on_led"
+op      = 1
+args    = { led_id = "i32" }
+ret     = {}
+
+[[commands]]
+command = "turn_off_led"
+op      = 2
+args    = { led_id = "i32" }
+ret     = {}
+
+[[commands]]
+command = "get_led_status"
+op      = 3
+args    = { led_id = "i32" }
+ret     = { status = "u8" }

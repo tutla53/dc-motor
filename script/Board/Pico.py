@@ -1,12 +1,12 @@
 import serial
-import yaml
-from functools import partial
+import toml
 import serial.tools.list_ports
 import threading
 import queue
 import time
 import struct
 from Tool.visualize import *
+from functools import partial
 
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
@@ -43,7 +43,7 @@ class Pico:
         'u64': ('Q', 8),
     }
 
-    def __init__(self, yaml_path="", com=None):
+    def __init__(self, toml_path="", com=None):
         # Public
         self.ser = None
         self.lock = threading.RLock()
@@ -60,38 +60,37 @@ class Pico:
         self.__cmd_meta = {}         
         self.__shared_responses = {}
         self.__response = False
-        self.yaml_version = ""
+        self.toml_version = ""
         
         printy("Running Raspberry Pico RP2040 script, please wait...")
         status = self.__connect(com)
+        
+        self.__load_commands_from_toml(toml_path)
+        
         if status:
-            self.__load_commands_from_yaml(yaml_path)
             self.__run()
             print_log("INFO", "Connected to: ", end="")
             printdg(self.ser.port)
-            print_log("INFO",  "YAML Version: ", end="")
-            printdb(self.yaml_version)
+            print_log("INFO",  "TOML Version: ", end="")
+            printdb(self.toml_version)
         else:
-            self.__load_commands_from_yaml(yaml_path)
             print_log("ERROR", "", end="")
             printr("RP2040 is not detected")
             print_log("INFO", "Entering ", end="")
             printy("Simulation Mode")
-            print_log("INFO",  "YAML Version: ", end="")
-            printdb(self.yaml_version)
+            print_log("INFO",  "TOML Version: ", end="")
+            printdb(self.toml_version)
 
     def _generate_method(self, cmd):
-        name = cmd['command']
-        op = int(cmd['op'])
-        args_dict = cmd.get('args', {})
-        ret_dict = cmd.get('ret', {})
+        name        = cmd['command']
+        op          = int(cmd['op'])
+        args_dict   = cmd.get('args', {})
+        ret_dict    = cmd.get('ret', {})
 
-        # 1. Build Packing Format (Outgoing)
         send_fmt = '<B' # Header: OpCode
         for t in args_dict.values():
             send_fmt += self.__TYPE_MAP[t][0]
 
-        # 2. Build Unpacking Format (Incoming Response)
         ret_fmt = '<'
         ret_size = 0
         for t in ret_dict.values():
@@ -106,7 +105,7 @@ class Pico:
             header_byte = self.__headers.get('COMMAND')
             
             if header_byte is None:
-                raise ValueError("COMMAND header not found in YAML config!")
+                raise ValueError("COMMAND header not found in TOML config!")
             
             op_and_args = struct.pack(_send_fmt, _op, *values)
             payload = header_byte + op_and_args  
@@ -114,32 +113,24 @@ class Pico:
 
         setattr(self, name, partial(method, self))
 
-    def __load_commands_from_yaml(self, yaml_path):
-        with open(yaml_path, 'r') as f:
-            Config = yaml.safe_load(f)
+    def __load_commands_from_toml(self, toml_path):
+        with open(toml_path, 'r') as f:
+            config = toml.load(f)
         
-        for item in Config:
-            if 'Headers' in item:
-                self.__headers = {k: v.to_bytes(1, 'little') for k, v in item['Headers'].items()}
+        if 'project' in config:
+            self.toml_version = config['project'].get('version', '0.0.0')
             
-            elif 'Enums' in item:
-                # The YAML parser creates a list for the dashes. 
-                # We convert that list into a single flat dictionary.
-                raw_enums = item['Enums']
-                self.__enums = {}
-                
-                if isinstance(raw_enums, list):
-                    for entry in raw_enums:
-                        if isinstance(entry, dict):
-                            # This handles the nested 'EventCodes' and 'ErrorCodes'
-                            self.__enums.update(entry)
-                else:
-                    self.__enums = raw_enums
-
-            elif 'command' in item:
-                self._generate_method(item)
-            elif "Version" in item:
-                self.yaml_version = item["Version"]
+        if 'headers' in config:
+            self.__headers = {k: v.to_bytes(1, 'little') for k, v in config['headers'].items()}
+        
+        if 'enums' in config:
+            self.__enums = {}
+            for enum_group, mapping in config['enums'].items():
+                self.__enums[enum_group] = {int(k): v for k, v in mapping.items()}
+        
+        if 'commands' in config:
+            for cmd in config['commands']:
+                self._generate_method(cmd)
 
     def _execute_with_lock(self, func, *args, **kwargs):
         with self.lock:
