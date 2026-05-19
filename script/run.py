@@ -9,6 +9,7 @@ import Config.Motor0
 import Config.Motor1
 import Tool.plotter
 import Tool.FileProcessing
+import Tool.SystemIdentification
 from Tool.visualize import *
 from base_url import *
 
@@ -107,6 +108,13 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
     
     pid_config = p.get_pid_motor_speed(motor_id)
     
+    kp = pid_config["kp"]
+    ki = pid_config["ki"]
+    kd = pid_config["kd"]
+    i_limit = pid_config["i_limit"]
+    
+    pid_params = [kp, ki, kd, i_limit]
+    
     tag = "Speed_Step_and_Simulation" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
     motor.start_log(mask=10, time_sampling=time_sampling, folder_tag=tag)
     motor.move_motor_speed(speed_rpm)
@@ -120,13 +128,14 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
     extracted_data = Tool.FileProcessing.extract_firmware_log_data(log_dir+filename, "Commanded_Speed(RPM)", "Motor_Speed(RPM)")
     target, start_time, duration, dt_s, actual_commanded, actual_speed, actual_time = extracted_data
     
-    simulation_time_list, simulation_speed, simulation_target = motor.simulate_pid_speed_control(
+    simulation_time_list, simulation_speed, simulation_target = motor.sim.simulate_pid_speed_control(
+                                                    pid_params=pid_params,
                                                     target=target, 
                                                     start_time=start_time, 
                                                     duration=duration)
     
     Tool.plotter.create_simulation_plot(log_dir, 
-                                        pid_config,
+                                        pid_params,
                                         simulation_time_list, 
                                         actual_time,
                                         simulation_speed, 
@@ -136,23 +145,19 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
 
 def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, duration=1.5):
     
-    pid_config = {
-        "kp": kp,
-        "ki": ki,
-        "kd": kd,
-        "i_limit": i_limit,
-    }
+    pid_config = [kp, ki, kd, i_limit]
     
     tag = "Simulation_Speed_Step_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
     log_dir = base_url+"/LOG/"+ tag+"/"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
-    simulation_time_list, simulation_speed, simulation_target = m0.simulate_pid_speed_control(
+    simulation_time_list, simulation_speed, simulation_target = m0.sim.simulate_pid_speed_control(
+                                                    pid_params=pid_config,
                                                     target=speed_rpm, 
                                                     start_time=start_time, 
                                                     duration=duration,
-                                                    pid_config=pid_config)
+                                                    )
     Tool.plotter.create_simulation_plot(log_dir, 
                                         pid_config,
                                         simulation_time_list, 

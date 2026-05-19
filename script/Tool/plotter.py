@@ -100,7 +100,7 @@ def create_simulation_plot(log_dir, pid_config, simulation_time_list: list|None,
         printr("Invalid parameter")
         return
     
-    plt.title(f"Step Speed Response (Kp={pid_config["kp"]:.2f}, Ki={pid_config["ki"]:.2f}, Kd={pid_config["kd"]:.2f} I_Limit={pid_config["i_limit"]:.0f})")
+    plt.title(f"Step Speed Response (Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})")
     plt.ylabel("RPM")
     plt.xlabel("Time (s)")
     plt.grid(True, alpha=0.3)
