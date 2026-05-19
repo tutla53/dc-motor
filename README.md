@@ -53,7 +53,7 @@ The table below shows the firmware features:
 	    	<td align="left"> 
 				<ul>
 					<li><code>CORE0</code> &rarr; USB Communication + Logger + Flash Storage</li>
-					<li><code>CORE1</code> &rarr; Motor Control (100 Hz sampling rate)</li>
+					<li><code>CORE1</code> &rarr; Motor Control (200 Hz sampling rate)</li>
 				</ul>
 			</td>
 	  	</tr>

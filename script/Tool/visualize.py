@@ -108,7 +108,7 @@ def print_log(label, *args, **kargs):
     # Pattern: [LABEL] in Grey, Message in 'color'
     
     if label == "WARN":
-        prefix = f"{cora.Fore.RED + cora.Style.BRIGHT}[{label}]{cora.Style.RESET_ALL}"
+        prefix = f"{cora.Fore.RED + cora.Style.DIM}[{label}]{cora.Style.RESET_ALL}"
         message_color = cora.Fore.RED + cora.Style.BRIGHT
     else:
         prefix = f"{cora.Fore.BLACK + cora.Style.BRIGHT}[{label}]{cora.Style.RESET_ALL}"

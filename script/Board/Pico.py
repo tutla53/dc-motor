@@ -83,8 +83,6 @@ class Pico:
             if self.fw_version != self.toml_version:
                 print_log("WARN",  "Firmware Version and TOML Version is different")
         else:
-            print_log("ERROR", "", end="")
-            printr("RP2040 is not detected")
             print_log("INFO", "Entering ", end="")
             printy("Simulation Mode")
             print_log("INFO",  "TOML Version: ", end="")
@@ -163,12 +161,13 @@ class Pico:
         if port is None:
             available_ports = serial.tools.list_ports.comports() 
             if len(available_ports) == 0:
+                print_log("WARN", "RP2040 is not detected")
                 return False
             
             acm_ports = [port.device for port in available_ports if port.serial_number.startswith("12345678")]
             
             if not acm_ports:
-                printr("No USB ports found. Connect a device.")
+                print_log("WARN", "No USB ports found. Connect a device.")
                 return False
 
             port = acm_ports[0]
@@ -183,7 +182,7 @@ class Pico:
                 self.ser.reset_input_buffer()
                 return True
         except Exception as e:
-            printr("Serial Error:", e)
+            print_log("WARN", e)
             return False
     
     def send_cmd(self, payload, op, expect_ret, timeout=0.5):
