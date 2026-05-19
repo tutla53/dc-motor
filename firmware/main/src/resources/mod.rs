@@ -56,3 +56,22 @@ pub use flash_storage::*;
 pub use motor_resources::*;
 pub use usb_resources::*;
 pub use usb_tx_resources::*;
+
+/* --------------------------- Version Parser -------------------------- */
+const fn const_parse_u8(s: &str, component_idx: usize) -> u8 {
+    let bytes = s.as_bytes();
+    let mut current_idx = 0;
+    let mut val = 0;
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'.' {
+            if current_idx == component_idx { return val; }
+            current_idx += 1;
+            val = 0;
+        } else if current_idx == component_idx {
+            val = val * 10 + (bytes[i] - b'0');
+        }
+        i += 1;
+    }
+    val
+}

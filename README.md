@@ -163,11 +163,11 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	- The structure of the communication is follows this pattern:
 	```
 	Command Format:
-		Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER ]
+		Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER]
 		Response Command    --> [COMMAND_HEADER:u8] [ERROR_CODE:u8] [OP_CODE:u8] [RESPONSE_MESSAGE]
 
 	Event Format:
-		Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID: u8]
+		Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID:u8]
 
 	Logger Format:
 		Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [time_stamp:u32] [DATA_LOG:[i32;5]]

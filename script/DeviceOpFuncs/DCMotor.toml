@@ -1,10 +1,10 @@
 # /*
 #   Command Format:
-#       Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER ]
+#       Send Command        --> [COMMAND_HEADER:u8] [OP_CODE:u8] [PARAMETER]
 #       Response Command    --> [COMMAND_HEADER:u8] [ERROR_CODE:u8] [OP_CODE:u8] [RESPONSE_MESSAGE]
 #
 #   Event Format:
-#       Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID: u8]
+#       Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID:u8]
 #
 #   Logger Format:
 #       Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [time_stamp:u32] [DATA_LOG:[i32;5]]
@@ -14,7 +14,7 @@
 # ---------------------------------- Project -----------------------------------#
 [project]
 name        = "DCMotor"
-version     = "0.1.4"
+version     = "0.1.5"
 description = "RP2040 DC Motor Control"
 
 # ---------------------------------- Headers -----------------------------------#
@@ -154,3 +154,10 @@ op      = 15
 args    = {}
 ret     = {}
 desc    = "reset PID parameter to default configuration"
+
+[[commands]]
+command = "get_firmware_version"
+op      = 16
+args    = {}
+ret     = { major = "u8", minor = "u8", patch = "u8" }
+desc    = "Get the compiled firmware version components (Major, Minor, Patch)"

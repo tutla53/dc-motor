@@ -9,9 +9,13 @@
 
 use super::*;
 
-pub const N_MOTOR: usize = 2;
+/* --------------------------- Firmware Version -------------------------- */
+pub const FW_VERSION_MAJOR: u8 = const_parse_u8(env!("CARGO_PKG_VERSION"), 0);
+pub const FW_VERSION_MINOR: u8 = const_parse_u8(env!("CARGO_PKG_VERSION"), 1);
+pub const FW_VERSION_PATCH: u8 = const_parse_u8(env!("CARGO_PKG_VERSION"), 2);
 
 /* --------------------------- Motor PID Config-------------------------- */
+pub const N_MOTOR: usize = 2;
 pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
     kp: 25.0,
     ki: 0.0,

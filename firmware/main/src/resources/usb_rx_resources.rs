@@ -129,10 +129,23 @@ impl<'a> CommandHandler<'a> {
                 }
             }
 
-            self.send_error_code(Some(op_code), ErrorCode::NoError)
-                .await;
+            self.send_error_code(Some(op_code), ErrorCode::NoError).await;
             return;
-        }
+        } else if op_enum == OpCode::GetFirmwareVersion {
+            /* get firmware version */
+            let mut buffer = Packet::new();
+
+            buffer
+                .push(self.header)
+                .push(ErrorCode::NoError as u8)
+                .push(op_code)
+                .push(FW_VERSION_MAJOR)
+                .push(FW_VERSION_MINOR)
+                .push(FW_VERSION_PATCH);
+
+            self.command_sender.send(buffer).await;
+            return;
+        } 
 
         let motor_id: Option<u8> = self.read();
         let Some(motor) = self.select_motor(motor_id) else {

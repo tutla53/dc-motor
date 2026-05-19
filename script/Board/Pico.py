@@ -61,6 +61,7 @@ class Pico:
         self.__shared_responses = {}
         self.__response = False
         self.toml_version = ""
+        self.fw_version = ""
         
         printy("Running Raspberry Pico RP2040 script, please wait...")
         status = self.__connect(com)
@@ -69,10 +70,18 @@ class Pico:
         
         if status:
             self.__run()
+            fw_version = self.get_firmware_version()
+            self.fw_version = ".".join(map(str, fw_version.values()))
+            
             print_log("INFO", "Connected to: ", end="")
             printdg(self.ser.port)
+            print_log("INFO",  "Firmware Version: ", end="")
+            printdb(self.fw_version)
             print_log("INFO",  "TOML Version: ", end="")
             printdb(self.toml_version)
+            
+            if self.fw_version != self.toml_version:
+                print_log("WARN",  "Firmware Version and TOML Version is different")
         else:
             print_log("ERROR", "", end="")
             printr("RP2040 is not detected")

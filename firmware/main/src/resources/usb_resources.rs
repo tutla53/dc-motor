@@ -38,6 +38,7 @@ create_opcode_enum! {
         MoveMotorOpenLoop = 13,
         SaveConfiguration = 14,
         SetToDefaultConfig = 15,
+        GetFirmwareVersion = 16,
     }
 }
 

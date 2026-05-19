@@ -104,13 +104,17 @@ def printbllb(*args,**kargs):
 	args.insert(0, cora.Back.CYAN+cora.Fore.BLACK+cora.Style.DIM)
 	consoleColoring(*args,**kargs)
 
-def print_log(label, color=cora.Fore.WHITE, *args, **kargs):
+def print_log(label, *args, **kargs):
     # Pattern: [LABEL] in Grey, Message in 'color'
-    grey_prefix = f"{cora.Fore.BLACK + cora.Style.BRIGHT}[{label}]{cora.Style.RESET_ALL}"
-    message_color = color + cora.Style.BRIGHT
     
+    if label == "WARN":
+        prefix = f"{cora.Fore.RED + cora.Style.BRIGHT}[{label}]{cora.Style.RESET_ALL}"
+        message_color = cora.Fore.RED + cora.Style.BRIGHT
+    else:
+        prefix = f"{cora.Fore.BLACK + cora.Style.BRIGHT}[{label}]{cora.Style.RESET_ALL}"
+        message_color = cora.Fore.WHITE + cora.Style.BRIGHT
+        
     args = list(args)
-    args.insert(0, grey_prefix + " " + message_color)
+    args.insert(0, prefix + " " + message_color)
     
-    # consoleColoring is your internal wrapper
     consoleColoring(*args, **kargs)
