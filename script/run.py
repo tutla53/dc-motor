@@ -5,19 +5,18 @@ import os
 
 import Board.Pico as Board
 import BasicFunction.Motor as Motor
-import Config.Motor0
-import Config.Motor1
+import Config.Motor0 as Motor0Config
+import Config.Motor1 as Motor1Config
 import Tool.plotter
 import Tool.FileProcessing
-import Tool.SystemIdentification
 from Tool.visualize import *
 from base_url import *
 
 # -------------------------------------- Initialization -------------------------------------- #
 yaml_path = base_url+"/DeviceOpFuncs/DCMotor.toml"
 p = Board.Pico(yaml_path)
-m0 = Motor.MoveMotor(device = p, configfile = Config.Motor0)
-m1 = Motor.MoveMotor(device = p, configfile = Config.Motor1)
+m0 = Motor.MoveMotor(device = p, configfile = Motor0Config)
+m1 = Motor.MoveMotor(device = p, configfile = Motor1Config)
 
 # -------------------------------------- Playground -------------------------------------- #
 def speed_test(motor_id, speed_rpm, time_sampling = 10, timeout= 10):
