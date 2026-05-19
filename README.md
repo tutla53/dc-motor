@@ -170,7 +170,7 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 		Received Event      --> [EVENT_HEADER:u8] [EVENT_CODE:u8] [MOTOR_ID: u8]
 
 	Logger Format:
-		Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [DATA_LOG:[i32;5]]
+		Received Log Data   --> [LOGGER_HEADER:u8] [sequence:u8] [time_stamp:u32] [DATA_LOG:[i32;5]]
 		DATA_LOG:[i32;5] =  [current_pos, current_speed, commanded_pos, commanded_speed, commanded_pwm]
 	```
 	- You can see the `TOML` file for more detail.
