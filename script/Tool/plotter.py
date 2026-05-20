@@ -60,55 +60,52 @@ def save_image(log_dir, filename):
         printr(f"[ERROR] - {e}" )
     plt.close()
 
-def create_simulation_plot(log_dir, pid_config, simulation_time_list: list|None, actual_time_list: list|None, simulation_speed: list|None, simulation_target: list|None, actual_speed: list|None, actual_commanded: list|None):
+def create_simulation_plot( log_dir, pid_config, 
+                            simulation_time_list: list|None, 
+                            actual_time_list: list|None, 
+                            simulation_data_list: list|None, 
+                            simulation_commanded_list: list|None, 
+                            actual_data_list: list|None, 
+                            actual_commanded_list: list|None, 
+                            tag="",
+                            plot_title ="",
+                            y_label = "RPM",
+                            x_label = "Time (s)",
+                            actual_data_label = "Actual Speed",
+                            actual_commanded_label = "Actual Command",
+                            simulation_data_label = "Simulation Speed",
+                            simulation_commanded_label = "Simulation Command",
+                            ):
+    
+    # TODO: Costumize the PID config on the left of the graph
+    
     plt.figure(figsize=(10, 5))
     
-    if (actual_time_list is None) and (simulation_time_list is None):
-        printr("Invalid Time List")
-        return
-    
-    if actual_speed is not None and actual_commanded is not None:
-        if simulation_speed is not None and simulation_target is not None:
-            if (actual_time_list is None) or (simulation_time_list is None):
-                printr("Invalid Time List")
-                return
+    if actual_time_list is not None:
+        if actual_commanded_list is not None:
+            plt.plot(actual_time_list, actual_commanded_list, label=actual_commanded_label, color = "black", linestyle='--')
         
-            # Complete Graph
-            plt.plot(actual_time_list, actual_commanded, label="Commanded Speed", color = "black", linestyle='--')
-            plt.plot(actual_time_list, actual_speed, label="Actual Speed", color="blue", linewidth=2)
-            plt.plot(simulation_time_list, simulation_speed, label="Simulated Speed", color="red", linewidth=2)
-            
-        else:
-            if (actual_time_list is None):
-                printr("Invalid Time List")
-                return
-            
-            # Firmware Log Only
-            plt.plot(actual_time_list, actual_commanded, label="Commanded Speed", color = "black", linestyle='--')
-            plt.plot(actual_time_list, actual_speed, label="Actual Speed", color="blue", linewidth=2)
+        if actual_data_list is not None:
+            plt.plot(actual_time_list, actual_data_list, label=actual_data_label, color="blue", linewidth=2)
     
-    elif (simulation_speed is not None) and (simulation_target is not None):
-        if (simulation_time_list is None):
-            printr("Invalid Time List")
-            return
-        
-        # Simulation Only
-        plt.plot(simulation_time_list, simulation_target, label="Commanded Speed", color = "black", linestyle='--')
-        plt.plot(simulation_time_list, simulation_speed, label="Simulated Speed", color="red", linewidth=2)
+    if simulation_time_list is not None:
+        if simulation_commanded_list is not None:
+            plt.plot(simulation_time_list, simulation_commanded_list, label=simulation_commanded_label, color = "black", linestyle='--')
+        if simulation_data_list is not None:
+            plt.plot(simulation_time_list, simulation_data_list, label=simulation_data_label, color="red", linewidth=2)
     
+    if plot_title == "":
+        plt.title(f"Step Response (Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})")
     else:
-        printr("Invalid parameter")
-        return
-    
-    plt.title(f"Step Speed Response (Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})")
-    plt.ylabel("RPM")
-    plt.xlabel("Time (s)")
+        plt.title(plot_title)
+        
+    plt.ylabel(y_label)
+    plt.xlabel(x_label)
     plt.grid(True, alpha=0.3)
     plt.legend()
     
     try:
-        
-        image_name = "simulation_graph.jpg"
+        image_name = tag + "simulation_graph_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + ".jpg"
         plt.savefig(log_dir+image_name, dpi = 300)
         
         _, sep, after = log_dir.partition("/LOG/")

@@ -157,14 +157,23 @@ def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, dur
                                                     start_time=start_time, 
                                                     duration=duration,
                                                     )
-    Tool.plotter.create_simulation_plot(log_dir, 
-                                        pid_config,
-                                        simulation_time_list, 
-                                        None,
-                                        simulation_speed, 
-                                        simulation_target,  
-                                        None, 
-                                        None)
+    
+    Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
+                                        pid_config                  = pid_config,
+                                        simulation_time_list        = simulation_time_list, 
+                                        actual_time_list            = None,
+                                        simulation_data_list        = simulation_speed, 
+                                        simulation_commanded_list   = simulation_target,  
+                                        actual_data_list            = None, 
+                                        actual_commanded_list       = None,
+                                        tag                         = "",
+                                        plot_title                  = "",
+                                        y_label                     = "Motor Speed (RPM)",
+                                        actual_data_label           = "",
+                                        actual_commanded_label      = "",
+                                        simulation_data_label       = "Simulation Speed",
+                                        simulation_commanded_label  = "Commanded Speed"
+                                        )
 
 def simulate_pos_control(pos_rotation, start_time = 0.4, duration=1.5):
     
@@ -183,14 +192,23 @@ def simulate_pos_control(pos_rotation, start_time = 0.4, duration=1.5):
                                                     start_time=start_time, 
                                                     duration=duration,
                                                     )
-    Tool.plotter.create_simulation_plot(log_dir, 
-                                        pid_pos_config,
-                                        simulation_time_list, 
-                                        None,
-                                        simulation_pos, 
-                                        simulation_target,  
-                                        None, 
-                                        None)
+    
+    Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
+                                        pid_config                  = pid_pos_config,
+                                        simulation_time_list        = simulation_time_list, 
+                                        actual_time_list            = None,
+                                        simulation_data_list        = simulation_pos, 
+                                        simulation_commanded_list   = simulation_target,  
+                                        actual_data_list            = None, 
+                                        actual_commanded_list       = None,
+                                        tag                         = "",
+                                        plot_title                  = "",
+                                        y_label                     = "Motor Position (Rotation)",
+                                        actual_data_label           = "",
+                                        actual_commanded_label      = "",
+                                        simulation_data_label       = "Simulation Position",
+                                        simulation_commanded_label  = "Commanded Position"
+                                        )
 
 def simulate_open_loop(target, start_time = 0.4, duration=1.5):
     
@@ -206,12 +224,62 @@ def simulate_open_loop(target, start_time = 0.4, duration=1.5):
                                                                     start_time=start_time, 
                                                                     duration=duration
                                                                     )
+    
+    Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
+                                        pid_config                  = pid_pos_config,
+                                        simulation_time_list        = simulation_time_list, 
+                                        actual_time_list            = None,
+                                        simulation_data_list        = simulation_speed_list, 
+                                        simulation_commanded_list   = commanded_pwm_list,  
+                                        actual_data_list            = None, 
+                                        actual_commanded_list       = None,
+                                        tag                         = "",
+                                        plot_title                  = f"Open Loop Simulation with PWM Target {target}",
+                                        y_label                     = "Motor Speed (RPM)",
+                                        actual_data_label           = "",
+                                        actual_commanded_label      = "",
+                                        simulation_data_label       = "Simulation Speed",
+                                        simulation_commanded_label  = "Input PWM"
+                                        )
 
-    Tool.plotter.create_simulation_plot(log_dir, 
-                                        pid_pos_config,
-                                        simulation_time_list, 
-                                        None,
-                                        simulation_speed_list, 
-                                        commanded_pwm_list,  
-                                        None, 
-                                        None)
+def verify_open_loop():
+    
+    pid_pos_config      = [0, 0, 0, 0]
+    
+    assets_dir = base_url + "/assets/open-loop-responses/"
+    saved_dir = base_url + "/assets/open-loop-plot/"
+    
+    all_log_files = os.listdir(assets_dir)
+        
+    dt_s = 0.005 # Default Time Sampling
+    
+    for idx, filename in enumerate(all_log_files):
+        if ".csv" not in filename: continue
+        
+        extracted_data = Tool.FileProcessing.extract_firmware_log_data(assets_dir+filename, "Commanded_PWM", "Motor_Speed(RPM)")
+        target, start_time, duration, dt_s, actual_commanded_list, actual_speed_list, actual_time_list = extracted_data
+
+        simulation_time_list, simulation_speed_list, commanded_pwm_list = m0.sim.simulate_open_loop_response(
+                                                                        target_pwm=target, 
+                                                                        start_time=start_time, 
+                                                                        duration=duration
+                                                                        )
+        percent_pwm = round((target/m0.config.MAX_PWM_TICKS)*100)
+        file_tag = f"A_{percent_pwm}_{idx}_" if target>0 else f"B_{percent_pwm}_{idx}_"
+        
+        Tool.plotter.create_simulation_plot(log_dir                     = saved_dir, 
+                                            pid_config                  = pid_pos_config,
+                                            simulation_time_list        = simulation_time_list, 
+                                            actual_time_list            = actual_time_list,
+                                            simulation_data_list        = simulation_speed_list, 
+                                            simulation_commanded_list   = None,  
+                                            actual_data_list            = actual_speed_list, 
+                                            actual_commanded_list       = actual_commanded_list,
+                                            tag                         = file_tag,
+                                            plot_title                  = f"PWM Input: {percent_pwm}%",
+                                            y_label                     = "Motor Speed (RPM)",
+                                            actual_data_label           = "Actual Speed",
+                                            actual_commanded_label      = "Commanded PWM",
+                                            simulation_data_label       = "Simulation Speed",
+                                            simulation_commanded_label  = ""
+                                            )
