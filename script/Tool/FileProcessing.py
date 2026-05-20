@@ -10,6 +10,10 @@ def extract_firmware_log_data(log_path, commanded_header, log_header):
     commanded = data[commanded_header]
     
     target = np.max(np.abs(commanded))
+    
+    if commanded[0] > commanded[len(commanded)-1] :
+        target = -target
+        
     duration = len(t)
     
     start_time = 0

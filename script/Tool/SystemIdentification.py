@@ -93,7 +93,8 @@ class MotorSim:
         """
         
         # Simulation Variable
-        target_rpm  = min(target_rpm, self.MAX_SPEED_RPM)
+        target_rpm = np.clip(target_rpm, -self.MAX_SPEED_RPM, self.MAX_SPEED_RPM)
+            
         target_pps  = target_rpm * self.PPS_PER_RPM
         steps       = int(duration / self.DT_S)
         time_axis   = np.linspace(0, duration, steps)
@@ -194,7 +195,7 @@ class MotorSim:
         setpoint_list_ticks = []    # RPM
         pwm_buffer          = [0.0] * self.L # Hardware Latency Buffer
         
-        target_pwm = min(target_pwm, self.MAX_PWM)
+        target_pwm = np.clip(target_pwm, -self.MAX_PWM, self.MAX_PWM)
         
         for i in range(steps):
             setpoint_pwm_ticks = target_pwm if time_axis[i] >= start_time else 0.0
