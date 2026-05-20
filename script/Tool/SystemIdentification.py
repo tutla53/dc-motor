@@ -10,27 +10,214 @@ from scipy.signal import lfilter
 from base_url import *
 from Tool.visualize import *
 
+class PIDControl():
+    def __init__(self, kp, ki, kd, i_limit, max_threshold):
+        self.kp             = kp
+        self.ki             = ki
+        self.kd             = kd
+        self.i_limit        = i_limit
+        self.integral       = 0
+        self.prev_error     = 0
+        self.max_threshold  = max_threshold
+
+    def reset(self):
+        self.integral   = 0
+        self.prev_error = 0
+        
+    def compute(self, error):
+        self.integral += error
+        self.integral = np.clip(self.integral, -self.i_limit, self.i_limit)
+        
+        derivative = error - self.prev_error
+        self.prev_error = error
+        
+        pwm_out = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+        pwm_out = np.clip(pwm_out, -self.max_threshold, self.max_threshold)
+        return pwm_out
+
 class MotorSim:
     def __init__(self, configfile):
-        self.config = configfile
-    
-    def simulate_open_loop_response(self, params, u, dt):
         '''
             First Order System with Delay
+            
+            Input:
+                pwm (ticks)
+            Output:
+                speed (pulse per seconds)
+            
             Transfer Function
                         K * e^(-L * s)
                 G(s) = ----------------
                         τ * s + 1
             
             Where:
-                K   = Gain
+                K   = Gain          ((pulse per seconds)/ ticks)
                 τ   = Time Constant (seconds)
-                L   = Delay Time (seconds)
+                L   = Delay Time    (seconds)
             
-            Discrete Form: 
-                    y[k] = a·y[k-1] + b·u[k-d-1]
+            Discrete Form with sampling time dt: 
+                y[k] = a·y[k-1] + b·u[k-d-1]
+                
+                with:
+                    a = e^(-dt / τ)
+                    b = K * (1-a)
+                    d = time_delay
         '''
+                
+        self.config = configfile
         
+        # System Parameter
+        self.K       = self.config.K             # Gain
+        self.tau     = self.config.TAU_S         # Time Constant
+        self.L       = self.config.DELAY_STEPS   # Time Delay
+        self.DT_S    = self.config.DT_S          # Time Sampling
+        
+        # System Config
+        self.RPM_PER_PPS            = (60.0*self.config.ROTATION_PER_PULSE)
+        self.PPS_PER_RPM            = 1 / self.RPM_PER_PPS
+        self.ROTATION_PER_PULSE     = self.config.ROTATION_PER_PULSE
+        self.PULSE_PER_ROTATION     = 1 / self.ROTATION_PER_PULSE
+        self.MAX_PWM                = self.config.MAX_PWM_TICKS
+        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPM_CONTROL * self.PPS_PER_RPM  # 1400 RPM for control calculation
+        self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
+        
+        # System Discrete Model
+        self.ALPHA   = np.exp(-self.DT_S / self.tau)
+        self.BETA    = self.K * (1 - self.ALPHA)
+
+    def simulate_pid_speed_control(self, pid_params, target_rpm, start_time, duration):
+        """
+            Target unit                 --> RPM
+            PID speed calculation unit  --> pulse per second
+            Speed output unit           --> RPM
+        """
+        
+        # Simulation Variable
+        target_rpm  = min(target_rpm, self.MAX_SPEED_RPM)
+        target_pps  = target_rpm * self.PPS_PER_RPM
+        steps       = int(duration / self.DT_S)
+        time_axis   = np.linspace(0, duration, steps)
+        
+        current_speed_pps   = 0.0   # pulse per seconds
+        speed_list_rpm      = []    # RPM
+        setpoint_list_rpm   = []    # RPM
+        pwm_buffer          = [0.0] * self.L # Hardware Latency Buffer
+        
+        # PID Speed Handler
+        kp, ki, kd, i_limit = pid_params        
+        speed_control = PIDControl(kp, ki, kd, i_limit, self.MAX_PWM)
+        
+        for i in range(steps):
+            setpoint_pps = target_pps if time_axis[i] >= start_time else 0.0
+            speed_error = setpoint_pps - current_speed_pps
+            
+            pwm_out = speed_control.compute(speed_error)
+            
+            # Delay Handler
+            pwm_buffer.append(pwm_out)
+            delayed_pwm = pwm_buffer.pop(0)
+            
+            # Physical Response
+            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            
+            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
+            setpoint_list_rpm.append(setpoint_pps * self.RPM_PER_PPS)
+            
+        return time_axis, np.array(speed_list_rpm), np.array(setpoint_list_rpm)
+
+    def simulate_pid_pos_control(self, pid_pos_params, pid_speed_params, target_rotation, start_time, duration):
+        """
+            Target unit                 --> rotation
+            PID pos calculation unit    --> pulse
+            PID speed calculation unit  --> pulse per seconds
+            Speed output unit           --> RPM
+            Position output unit        --> rotation
+        """
+        
+        # Simulation Variable
+        target_pulse    = target_rotation * self.PULSE_PER_ROTATION
+        steps           = int(duration / self.DT_S)
+        time_axis       = np.linspace(0, duration, steps)
+        
+        current_speed_pps       = 0.0   # pulse per second
+        prev_speed_pps          = 0.0   # pulse per second
+        current_pos_pulse       = 0.0   # pulse 
+        pos_list_rotation       = []    # rotation
+        speed_list_rpm          = []    # rpm
+        setpoint_list_rotation  = []    # rotation
+        pwm_buffer              = [0.0] * self.L    # Hardware Latency Buffer
+        
+        # PID Handler
+        kp_speed, ki_speed, kd_speed, i_limit_speed = pid_speed_params
+        kp_pos, ki_pos, kd_pos, i_limit_pos = pid_pos_params
+
+        speed_control       = PIDControl(kp_speed, ki_speed, kd_speed, i_limit_speed, self.MAX_PWM)
+        position_control    = PIDControl(kp_pos, ki_pos, kd_pos, i_limit_pos, self.MAX_SPEED_RPS)
+        
+        for i in range(steps):
+            setpoint_pulse = target_pulse if time_axis[i] >= start_time else 0.0
+            
+            pos_error = setpoint_pulse - current_pos_pulse          # pulse
+            target_speed_pps = position_control.compute(pos_error)  # pulse per second
+            
+            speed_error = target_speed_pps - current_speed_pps      # pulse per second
+            pwm_out = speed_control.compute(speed_error)            # ticks
+            
+            # Delay Handler
+            pwm_buffer.append(pwm_out)
+            delayed_pwm = pwm_buffer.pop(0)
+            
+            # --- Physical Response ---
+            prev_speed_pps = current_speed_pps
+            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            
+            current_pos_pulse += ((prev_speed_pps + current_speed_pps)/2.0) * self.DT_S
+            
+            pos_list_rotation.append(current_pos_pulse * self.ROTATION_PER_PULSE)    # rotation
+            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)              # RPM
+            setpoint_list_rotation.append(setpoint_pulse * self.ROTATION_PER_PULSE)  # rotation
+            
+        return time_axis, np.array(pos_list_rotation), np.array(setpoint_list_rotation)
+    
+    def simulate_open_loop_response(self, target_pwm, start_time, duration):
+        """
+            Target unit         --> pwm_ticks
+            Speed output unit   --> RPM
+        """
+        
+        # Simulation Variable
+        steps       = int(duration / self.DT_S)
+        time_axis   = np.linspace(0, duration, steps)
+        
+        current_speed_pps   = 0.0   # pulse per seconds
+        speed_list_rpm      = []    # RPM
+        setpoint_list_ticks = []    # RPM
+        pwm_buffer          = [0.0] * self.L # Hardware Latency Buffer
+        
+        target_pwm = min(target_pwm, self.MAX_PWM)
+        
+        for i in range(steps):
+            setpoint_pwm_ticks = target_pwm if time_axis[i] >= start_time else 0.0
+            
+            # Delay Handler
+            pwm_buffer.append(setpoint_pwm_ticks)
+            delayed_pwm = pwm_buffer.pop(0)
+            
+            # Physical Response
+            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            
+            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
+            setpoint_list_ticks.append(setpoint_pwm_ticks)
+            
+        return time_axis, np.array(speed_list_rpm), np.array(setpoint_list_ticks)
+
+class MotorOptimization:
+    def __init__(self, configfile):
+        self.config = configfile
+        self.motor = MotorSim(configfile)
+        self.__assets_dir = base_url + "/assets/open-loop-responses/"
+    
+    def __open_loop_response(self, params, u, dt):        
         K, tau, L = params
         
         delay_samples = int(round(L / dt))
@@ -49,61 +236,6 @@ class MotorSim:
         # Simulate the first-order response
         y_sim = lfilter([0, b], [1, -a], u_delayed)
         return y_sim
-
-    def simulate_pid_speed_control(self, pid_params, target, start_time, duration):
-        dt_s = self.config.DT_S
-        steps = int(duration / dt_s)
-        t = np.linspace(0, duration, steps)
-        
-        current_speed   = 0.0
-        integral        = 0.0
-        prev_error      = 0.0
-        
-        speed_history       = []
-        setpoint_history    = []
-        pwm_buffer          = [0.0] * self.config.DELAY_STEPS # Hardware Latency Buffer
-        
-        # PID Config
-        kp, ki, kd, i_limit = pid_params
-            
-        # System Properties
-        max_pwm = self.config.MAX_PWM_TICKS
-        alpha = np.exp(-dt_s / self.config.TAU_S)
-        beta = self.config.K * (1 - alpha)
-        
-        for i in range(steps):
-            setpoint = target if t[i] >= start_time else 0.0
-            error = setpoint - current_speed
-            
-            # --- RUST IMPLEMENTATION LOGIC ---
-            integral += error
-            integral = np.clip(integral, -i_limit, i_limit)
-            
-            # let derivative = error - self.prev_error;
-            derivative = error - prev_error
-            prev_error = error
-            
-            # let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
-            pwm_out = (kp * error) + (ki * integral) + (kd * derivative)
-            pwm_out = np.clip(pwm_out, -max_pwm, max_pwm)
-            
-            # Delay Handler
-            pwm_buffer.append(pwm_out)
-            delayed_pwm = pwm_buffer.pop(0)
-            
-            # --- Physical Response ---
-            current_speed = (alpha * current_speed) + (beta * delayed_pwm)
-            
-            speed_history.append(current_speed)
-            setpoint_history.append(setpoint)
-            
-        return t, np.array(speed_history), np.array(setpoint_history)
-
-class MotorOptimization:
-    def __init__(self, configfile):
-        self.config = configfile
-        self.motor = MotorSim(configfile)
-        self.__assets_dir = base_url + "/assets/open-loop-responses/"
     
     def run_system_identification(self):
         files_data = []
@@ -122,7 +254,7 @@ class MotorOptimization:
             
             df = pd.read_csv(self.__assets_dir + filename)
             u_data = df["Commanded_PWM"].values
-            y_data = df["Motor_Speed(RPM)"].values
+            y_data = df["Motor_Speed(RPM)"].values/(60.0*self.config.ROTATION_PER_PULSE)
             target = round((np.max(np.abs(u_data))/self.config.MAX_PWM_TICKS)*100)
             
             files_data.append((u_data.astype(float), y_data.astype(float)))
@@ -184,7 +316,7 @@ class MotorOptimization:
             
         total_error = 0
         for u, y_meas in files_data:
-            y_sim = self.motor.simulate_open_loop_response(params, u, dt)
+            y_sim = self.__open_loop_response(params, u, dt)
             
             error = y_meas - y_sim
             mse = np.mean(error**2)
@@ -224,7 +356,7 @@ class MotorOptimization:
                     percent_pwm = round((min(u_data)/self.config.MAX_PWM_TICKS)*100)
             
             param = (K, tau, L)
-            y_sim = self.motor.simulate_open_loop_response(param, u_data, dt_s)
+            y_sim = self.__open_loop_response(param, u_data, dt_s)
             
             mse = np.mean((y_sim - y_data)**2)
             rmse = np.sqrt(mse)

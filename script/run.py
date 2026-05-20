@@ -153,7 +153,7 @@ def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, dur
     
     simulation_time_list, simulation_speed, simulation_target = m0.sim.simulate_pid_speed_control(
                                                     pid_params=pid_config,
-                                                    target=speed_rpm, 
+                                                    target_rpm=speed_rpm, 
                                                     start_time=start_time, 
                                                     duration=duration,
                                                     )
@@ -163,5 +163,55 @@ def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, dur
                                         None,
                                         simulation_speed, 
                                         simulation_target,  
+                                        None, 
+                                        None)
+
+def simulate_pos_control(pos_rotation, start_time = 0.4, duration=1.5):
+    
+    pid_pos_config      = [25, 0, 5, 1500]
+    pid_speed_config    = [7.04482, 0.94301, 8.3334, 5319]
+    
+    tag = "Simulation_Position_Step_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    log_dir = base_url+"/LOG/"+ tag+"/"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    simulation_time_list, simulation_pos, simulation_target = m0.sim.simulate_pid_pos_control(
+                                                    pid_pos_params=pid_pos_config,
+                                                    pid_speed_params=pid_speed_config,
+                                                    target_rotation=pos_rotation, 
+                                                    start_time=start_time, 
+                                                    duration=duration,
+                                                    )
+    Tool.plotter.create_simulation_plot(log_dir, 
+                                        pid_pos_config,
+                                        simulation_time_list, 
+                                        None,
+                                        simulation_pos, 
+                                        simulation_target,  
+                                        None, 
+                                        None)
+
+def simulate_open_loop(target, start_time = 0.4, duration=1.5):
+    
+    pid_pos_config      = [0, 0, 0, 0]
+    
+    tag = "Simulation_Open_Loop_Test_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    log_dir = base_url+"/LOG/"+ tag+"/"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    simulation_time_list, simulation_speed_list, commanded_pwm_list = m0.sim.simulate_open_loop_response(
+                                                                    target_pwm=target, 
+                                                                    start_time=start_time, 
+                                                                    duration=duration
+                                                                    )
+
+    Tool.plotter.create_simulation_plot(log_dir, 
+                                        pid_pos_config,
+                                        simulation_time_list, 
+                                        None,
+                                        simulation_speed_list, 
+                                        commanded_pwm_list,  
                                         None, 
                                         None)
