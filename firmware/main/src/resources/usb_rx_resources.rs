@@ -129,7 +129,8 @@ impl<'a> CommandHandler<'a> {
                 }
             }
 
-            self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+            self.send_error_code(Some(op_code), ErrorCode::NoError)
+                .await;
             return;
         } else if op_enum == OpCode::GetFirmwareVersion {
             /* get firmware version */
@@ -145,7 +146,7 @@ impl<'a> CommandHandler<'a> {
 
             self.command_sender.send(buffer).await;
             return;
-        } 
+        }
 
         let motor_id: Option<u8> = self.read();
         let Some(motor) = self.select_motor(motor_id) else {

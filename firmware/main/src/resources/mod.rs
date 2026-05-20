@@ -65,7 +65,9 @@ const fn const_parse_u8(s: &str, component_idx: usize) -> u8 {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'.' {
-            if current_idx == component_idx { return val; }
+            if current_idx == component_idx {
+                return val;
+            }
             current_idx += 1;
             val = 0;
         } else if current_idx == component_idx {
