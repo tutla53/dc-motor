@@ -5,11 +5,17 @@ import os
 import Tool.FileProcessing
 
 from tqdm import tqdm
+from bisect import bisect_left
 from scipy.optimize import differential_evolution
 from scipy.signal import lfilter
 from base_url import *
 from Tool.visualize import *
+from enum import Enum
 
+class SystemModel(Enum):
+    Linear      = 0
+    Nonlinear   = 1
+    
 class PIDControl():
     def __init__(self, kp, ki, kd, i_limit, max_threshold):
         self.kp             = kp
@@ -37,6 +43,48 @@ class PIDControl():
 
 class MotorSim:
     def __init__(self, configfile):
+        self.config = configfile
+        
+        # System Parameter
+        self.K       = self.config.K                # Linear Gain
+        self.tau     = self.config.TAU_S            # Time Constant
+        self.L       = self.config.DELAY_STEPS      # Time Delay
+        self.DT_S    = self.config.DT_S             # Time Sampling
+        
+        # Nonlinear Motor Gain
+        self.K_LIST     =  self.config.K_LIST       # Nonlinear Gain Based on PWM Input
+        self.PWM_LIST   =  self.config.PWM_LIST
+        
+        # System Config
+        self.RPM_PER_PPS            = (60.0*self.config.ROTATION_PER_PULSE)
+        self.PPS_PER_RPM            = 1 / self.RPM_PER_PPS
+        self.ROTATION_PER_PULSE     = self.config.ROTATION_PER_PULSE
+        self.PULSE_PER_ROTATION     = 1 / self.ROTATION_PER_PULSE
+        self.MAX_PWM                = self.config.MAX_PWM_TICKS
+        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPM_CONTROL * self.PPS_PER_RPM  # 1400 RPM for control calculation
+        self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
+        
+        # Linear Discrete Model System
+        self.ALPHA      = np.exp(-self.DT_S / self.tau)
+        self.BETA       = self.K * (1 - self.ALPHA)
+    
+    def __calculate_nonlinear_K(self, input_pwm):    
+        
+        if input_pwm <= self.PWM_LIST[0]:
+            return self.K_LIST[0]
+        if input_pwm >= self.PWM_LIST[-1]:
+            return self.K_LIST[-1]
+        
+        idx = bisect_left(self.PWM_LIST, input_pwm)
+        
+        p0, p1 = self.PWM_LIST[idx-1], self.PWM_LIST[idx]
+        k0, k1 = self.K_LIST[idx-1], self.K_LIST[idx]
+        weight = (input_pwm - p0) / (p1 - p0)
+        K = k0 + weight * (k1 - k0)
+        
+        return K
+
+    def __update_motor_speed(self, current_speed_pps, input_pwm, mode: SystemModel = SystemModel.Nonlinear):
         '''
             First Order System with Delay
             
@@ -63,28 +111,16 @@ class MotorSim:
                     b = K * (1-a)
                     d = time_delay
         '''
-                
-        self.config = configfile
         
-        # System Parameter
-        self.K       = self.config.K             # Gain
-        self.tau     = self.config.TAU_S         # Time Constant
-        self.L       = self.config.DELAY_STEPS   # Time Delay
-        self.DT_S    = self.config.DT_S          # Time Sampling
+        if mode == SystemModel.Linear:
+            BETA = self.BETA
+        elif mode == SystemModel.Nonlinear:
+            BETA = self.__calculate_nonlinear_K(input_pwm) * (1 - self.ALPHA)
         
-        # System Config
-        self.RPM_PER_PPS            = (60.0*self.config.ROTATION_PER_PULSE)
-        self.PPS_PER_RPM            = 1 / self.RPM_PER_PPS
-        self.ROTATION_PER_PULSE     = self.config.ROTATION_PER_PULSE
-        self.PULSE_PER_ROTATION     = 1 / self.ROTATION_PER_PULSE
-        self.MAX_PWM                = self.config.MAX_PWM_TICKS
-        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPM_CONTROL * self.PPS_PER_RPM  # 1400 RPM for control calculation
-        self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
+        new_speed_pps = (self.ALPHA * current_speed_pps) + (BETA * input_pwm)
         
-        # System Discrete Model
-        self.ALPHA   = np.exp(-self.DT_S / self.tau)
-        self.BETA    = self.K * (1 - self.ALPHA)
-
+        return new_speed_pps
+    
     def simulate_pid_speed_control(self, pid_params, target_rpm, start_time, duration):
         """
             Target unit                 --> RPM
@@ -119,7 +155,7 @@ class MotorSim:
             delayed_pwm = pwm_buffer.pop(0)
             
             # Physical Response
-            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
             
             speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
             setpoint_list_rpm.append(setpoint_pps * self.RPM_PER_PPS)
@@ -170,7 +206,7 @@ class MotorSim:
             
             # --- Physical Response ---
             prev_speed_pps = current_speed_pps
-            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
             
             current_pos_pulse += ((prev_speed_pps + current_speed_pps)/2.0) * self.DT_S
             
@@ -178,7 +214,7 @@ class MotorSim:
             speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)              # RPM
             setpoint_list_rotation.append(setpoint_pulse * self.ROTATION_PER_PULSE)  # rotation
             
-        return time_axis, np.array(pos_list_rotation), np.array(setpoint_list_rotation)
+        return time_axis, np.array(pos_list_rotation), np.array(setpoint_list_rotation), np.array(speed_list_rpm)
     
     def simulate_open_loop_response(self, target_pwm, start_time, duration):
         """
@@ -205,7 +241,7 @@ class MotorSim:
             delayed_pwm = pwm_buffer.pop(0)
             
             # Physical Response
-            current_speed_pps = (self.ALPHA * current_speed_pps) + (self.BETA * delayed_pwm)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
             
             speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
             setpoint_list_ticks.append(setpoint_pwm_ticks)
@@ -239,12 +275,12 @@ class MotorOptimization:
         return y_sim
     
     def run_system_identification(self):
-        files_data = []
-        K_list = []
-        tau_list = []
-        L_list = []
-        success_count = 0
-        failed_count = 0
+        files_data      = []
+        K_list          = []
+        tau_list        = []
+        L_list          = []
+        success_count   = 0
+        failed_count    = 0
         
         all_log_files = os.listdir(self.__assets_dir)
         
@@ -256,7 +292,7 @@ class MotorOptimization:
             df = pd.read_csv(self.__assets_dir + filename)
             u_data = df["Commanded_PWM"].values
             y_data = df["Motor_Speed(RPM)"].values/(60.0*self.config.ROTATION_PER_PULSE)
-            target = round((np.max(np.abs(u_data))/self.config.MAX_PWM_TICKS)*100)
+            target = np.max(np.abs(u_data)) if u_data[0] > u_data[-1] else -np.max(np.abs(u_data))
             
             files_data.append((u_data.astype(float), y_data.astype(float)))
             
@@ -342,11 +378,10 @@ class MotorOptimization:
         for filename in all_log_files:
             if ".csv" not in filename: continue
             
-            extracted_data = Tool.FileProcessing.extract_firmware_log_data(assets_dir+filename, "Commanded_PWM", "Motor_Speed(RPM)")
-            target, _, _, dt_s, actual_commanded, actual_speed, _ = extracted_data
+            motor_response = Tool.FileProcessing.extract_firmware_log_data(assets_dir+filename, "Commanded_PWM", "Motor_Speed(RPM)")
             
-            u_data = actual_commanded.values
-            y_data = actual_speed.values
+            u_data = motor_response["command_list"]
+            y_data = motor_response["data_list"]
             
             if abs(max(u_data)) > abs(min(u_data)):
                 percent_pwm = round((max(u_data)/self.config.MAX_PWM_TICKS)*100)
@@ -357,7 +392,7 @@ class MotorOptimization:
                     percent_pwm = round((min(u_data)/self.config.MAX_PWM_TICKS)*100)
             
             param = (K, tau, L)
-            y_sim = self.__open_loop_response(param, u_data, dt_s)
+            y_sim = self.__open_loop_response(param, u_data, motor_response["dt_s"])
             
             mse = np.mean((y_sim - y_data)**2)
             rmse = np.sqrt(mse)
@@ -396,64 +431,91 @@ class MotorOptimization:
             print(f"[ERROR] - {e}" )
         plt.close()
 
-    def run_optimize_pid_speed(self):
-        # TARGET_SPEED = [300, 400, 500, 600, 700, 800, 900, 1000, 1100]
-        dspeed = 10
-        TARGET_SPEED = range(300, 1100+dspeed, dspeed)
-        START_TIME = 0.4
-        DURATION = 1.5
+    def run_tune_pid_speed(self):
+        TARGET_SPEED                = [-1200, -1100, -1000, -900, -800, -700, -600, -500, 500, 600, 700, 800, 900, 1000, 1100, 1200]
+        START_TIME                  = 0.4
+        DURATION                    = 1.0
+        MAXIMUM_OVERSHOOT_PERCENT   = 7.0
+        MAXIMUM_SETTLING_TIME_S     = 0.3
         
         KP = []
         KI = []
         KD = []
+        I_LIMIT = []
+        
+        success_count   = 0
+        failed_count    = 0
 
         for target_speed in tqdm(TARGET_SPEED, desc="Optimize PID Speed", unit="target"):
             # Search bounds for [Kp, Ki, Kd, i_limit]
             bounds = [
-                (0.0, 10.0),    # Kp
-                (0.0, 20.0),    # Ki
-                (0.0, 10.0),    # Kd
+                (0.0, 5.0),    # Kp
+                (0.8, 1.0),    # Ki
+                (0.0, 20.0),    # Kd
                 (self.config.MAX_PWM_TICKS, self.config.MAX_PWM_TICKS)   # i_limit
             ]
             
             result = differential_evolution(
                 self.__pid_speed_objective_function,
                 bounds=bounds,
-                args=(target_speed, START_TIME, DURATION),
+                args=(target_speed, START_TIME, DURATION, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S),
                 strategy='best1bin',
                 maxiter=100,
                 popsize=15,
                 tol=0.01,
                 seed=42,
+                polish=True,
                 disp=False
             )
             
             best_kp, best_ki, best_kd, best_i_limit = result.x
             
-            KP.append(best_kp)
-            KI.append(best_ki)
-            KD.append(best_kd)
+            if result.success:
+                best_kp, best_ki, best_kd, best_i_limit = result.x
+                success_count += 1
+                KP.append(best_kp)
+                KI.append(best_ki)
+                KD.append(best_kd)
+                I_LIMIT.append(best_i_limit)
+            else:
+                failed_count +=1
         
-        final_Kp = np.median(KP)
-        final_Ki = np.median(KI)
-        final_Kd = np.median(KD)
-        i_limit = self.config.MAX_PWM_TICKS
+        print_log("INFO", f"{success_count}/{success_count+failed_count} Success")
+        final_Kp    = np.median(KP)
+        final_Ki    = np.median(KI)
+        final_Kd    = np.median(KD)
+        i_limit     = np.median(I_LIMIT)
         
-        print_log("INFO", f"Median Kp: {final_Kp}")
-        print_log("INFO", f"Median Ki: {final_Ki}")
-        print_log("INFO", f"Median Kd: {final_Kd}")
-        print_log("INFO", f"Median i_limit: {i_limit}")    
+        print_log("INFO", f"Median Kp: {final_Kp} {np.mean(KP)}")
+        print_log("INFO", f"Median Ki: {final_Ki} {np.mean(KI)}")
+        print_log("INFO", f"Median Kd: {final_Kd} {np.mean(KD)}")
+        print_log("INFO", f"Median i_limit: {i_limit} {np.mean(I_LIMIT)}")      
         
         return final_Kp, final_Ki, final_Kd, i_limit
     
-    def __pid_speed_objective_function(self, pid_params, target, start_time, duration):
-        # Method: Root Mean Square Error (RMSE)
-        _, speed, setpoint = self.motor.simulate_pid_speed_control(pid_params, target, start_time, duration)
+    def __pid_speed_objective_function(self, pid_params, target, start_time, duration, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S):
         
+        time_axis, speed, setpoint = self.motor.simulate_pid_speed_control(pid_params, target, start_time, duration)
+        
+        # Check for Overshoot
+        overshoot = (abs((abs(target) - max(abs(speed)))/target)) * 100
+        
+        _ , settling_time = Tool.FileProcessing.calculate_settling_time(time_axis, speed, setpoint, threshold_percent=0.001)
+        
+        # Check overshoot and settling time
+        weight = 1
+        
+        if (settling_time == None) or (settling_time > MAXIMUM_SETTLING_TIME_S):
+            weight *= 100
+        if (overshoot > MAXIMUM_OVERSHOOT_PERCENT):
+            weight *= 100
+            
+        
+        # Method: Root Mean Square Error (RMSE)
         error = setpoint - speed
         rmse = np.sqrt(np.mean(error**2))
         
         if np.isnan(rmse):
             return 1e10
             
-        return rmse
+        return rmse * weight
