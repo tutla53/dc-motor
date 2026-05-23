@@ -58,7 +58,7 @@ $$
 Using the Zero-order Hold (ZOH) Method:
 
 $$
-    G(z) = (1 - z^{-1}) \cdot \mathcal{Z} \left\{ \frac{G(s)}{s} \right\}
+    G(z) = (1 - z^{-1}) \cdot \mathcal{Z} \left[ \frac{G(s)}{s} \right]
 $$
 
 The steps to find the difference equation are visualized below:
@@ -66,7 +66,7 @@ The steps to find the difference equation are visualized below:
 $$ 
     \underset{\text{TF}}{\boxed{G(s)}} 
     \to \underset{\text{Refactoring}}{\boxed{\frac{G(s)}{s}}} 
-    \to \underset{\text{Z-Transform}}{\boxed{\mathcal{Z} \left\{ \frac{G(s)}{s} \right\}}} 
+    \to \underset{\text{Z-Transform}}{\boxed{\mathcal{Z} \left\[ \frac{G(s)}{s} \right\]}} 
     \to \underset{\text{ZOH}}{\boxed{G(z)}} 
     \to \underset{\text{Discrete Output}}{\boxed{Y(z) = G(z) \cdot U(z)}} 
     \to \underset{\text{Difference Eq.}}{\boxed{y[n]}} 
