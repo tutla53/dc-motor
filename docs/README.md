@@ -4,11 +4,11 @@ In order to optimize the parameter control of a DC motor, we need the mathematic
 
 $$
     \xrightarrow{\substack{\text{Input} \\ \text{PWM}}}
-    \boxed{\quad \text{H-Bridge} \quad}
+    \boxed{\rule[-10pt]{0pt}{20pt}\quad \text{H-Bridge} \quad \rule{0pt}{15pt}}
     \xrightarrow{\substack{\text{Output} \\ \text{Voltage}}}
-    \boxed{\quad \text{DC Motor} \quad}
+    \boxed{\rule[-10pt]{0pt}{25pt} \quad \text{DC Motor} \quad}
     \xrightarrow{\substack{\text{Motor} \\ \text{Speed}}}
-    \boxed{\quad \text{Gearbox} \quad}
+    \boxed{\rule[-10pt]{0pt}{25pt} \quad \text{Gearbox} \quad}
     \xrightarrow{\substack{\text{Output} \\ \text{Speed}}}
 $$
 
@@ -16,7 +16,7 @@ In this project, we are only interested in the dynamic response between the inpu
 
 $$
     \xrightarrow{\substack{\text{Input} \\ \text{PWM}}}
-    \boxed{\quad G(s) \quad}
+    \boxed{\rule[-10pt]{0pt}{25pt} \quad G(s) \quad}
     \xrightarrow{\substack{\text{Output} \\ \text{Speed}}}
 $$
 
@@ -51,7 +51,7 @@ $$
 Considering firmware/hardware delay, we add the time delay parameter:
 
 $$ 
-    \boxed{ G(s) = \left( \frac{K}{\tau s + 1} \right) e^{-Ls} }
+    \boxed{ \rule[-20pt]{0pt}{50pt} \quad G(s) = \left( \frac{K}{\tau s + 1} \right) e^{-Ls} \quad}
 $$
 
 ### Discrete-Time System Model
@@ -64,18 +64,18 @@ $$
 The steps to find the difference equation are visualized below:
 
 $$ 
-    \underset{\text{TF}}{\boxed{G(s)}} 
-    \to \underset{\text{Refactoring}}{\boxed{\frac{G(s)}{s}}} 
-    \to \underset{\text{Z-Transform}}{\boxed{\mathcal{Z} \left\[ \frac{G(s)}{s} \right\]}} 
-    \to \underset{\text{ZOH}}{\boxed{G(z)}} 
-    \to \underset{\text{Discrete Output}}{\boxed{Y(z) = G(z) \cdot U(z)}} 
-    \to \underset{\text{Difference Eq.}}{\boxed{y[n]}} 
+    \underset{\text{TF}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(s) \quad}} 
+    \to \underset{\text{Refactoring}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \frac{G(s)}{s} \quad}} 
+    \to \underset{\text{Z-Transform}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \mathcal{Z} \left\[ \frac{G(s)}{s} \right\] \quad}} 
+    \to \underset{\text{ZOH}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(z) \quad}} 
+    \to \underset{\text{Discrete Output}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad Y(z) = G(z) \cdot U(z) \quad}} 
+    \to \underset{\text{Difference Eq.}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad y[n] \quad}} 
 $$
 
 The final difference equation is:
 
 $$
-    \boxed{ y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1] } 
+    y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1]
 $$
 
 where:
