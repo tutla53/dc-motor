@@ -111,7 +111,7 @@ def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sam
     pid_pos = p.get_pid_motor_pos(motor_id)
     pid_pos_config = [pid_pos["kp"], pid_pos["ki"], pid_pos["kd"], pid_pos["i_limit"]] 
     
-    tag = "Speed_Step_and_Simulation" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    tag = "Pos_Step_and_Simulation" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
     motor.start_log(mask = 5, time_sampling=time_sampling, folder_tag=tag)
     motor.move_motor_pos_step(position_rotation, print_motor_log=True)
     time.sleep(duration)
