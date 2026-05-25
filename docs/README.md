@@ -49,13 +49,7 @@ Based on the discussion above the DC Motor can be described as the `second-order
 Because of that we can reducing the order to the `first-order system` to form this equation:
 
 $$ 
-    G(s) = \frac{K_t}{RJs + (RB + K_t K_b)} = \frac{\frac{K_t}{(RB + K_t K_b)} }{\frac{RJ}{(RB + K_t K_b)}s + 1}
-$$
-
-Simplified as:
-
-$$ 
-    G(s) = \frac{K}{\tau s + 1}
+    G(s) = \frac{K_t}{RJs + (RB + K_t K_b)} = \frac{\frac{K_t}{(RB + K_t K_b)} }{\frac{RJ}{(RB + K_t K_b)}s + 1} = \frac{K}{\tau s + 1}
 $$
 
 Considering firmware/hardware delay, we add the time delay parameter:
@@ -115,10 +109,31 @@ The final equation is:
 $$
     y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1]
 $$
+condition: 
+* $n > 0$
+* $u= 0$ if $n < d$
 
-By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method to optimize the value the DC Motor parameter.
+By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
 ## System Identification Algorithm
 ### Method
 ### Result
 ## Verification
+
+<table>
+  <tr align = "center">
+    <th  align="center" width=50>PWM Input (%)</th>
+    <th  align="center">Positive Direction</th>
+    <th  align="center">Negative Direction</th>
+  </tr>
+
+  <tr>
+    <td> 20 </td>
+    <td> 
+        <img src="../assets/01_System_Identification/A_20.jpg">
+    </td>
+    <td> 
+        <img  src="../assets/01_System_Identification/B_-20.jpg">
+    </td>
+  </tr>
+</table>
