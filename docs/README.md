@@ -1,6 +1,26 @@
-# DC Motor System Identification
+# DC Motor System
 
-In order to optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
+---
+
+<table style="width:100%; border:none; text-align:center;">
+  <tr>
+    <td style="text-align:left; width:40%;">
+    </td>
+    <td style="text-align:center; width:20%;">
+      <a href="README.md">🏠 Home</a><br>
+    </td>
+    <td style="text-align:right; width:40%;">
+      <a href="01-System-Identification.md">Next »</a><br>
+      System Identification
+    </td>
+  </tr>
+</table>
+
+---
+
+
+## Transfer Function
+In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
 $$
     \xrightarrow{\substack{\text{Input} \\ \text{PWM}}}
@@ -42,8 +62,7 @@ Depends on the aplication, if we need to accurately model the DC Motor then we n
 
 In this project we will not measure all parameters because we dont need to identify the parameters one by one. Because of that, we will perform the system identification by using the optimization process.
 
-## DC Motor Model
-### Model Modification
+## DC Motor Model Modification
 Based on the discussion above the DC Motor can be described as the `second-order system` which generated from 6 parameters. We can reduced the system order by eliminating the least significant parameters. If we look back to the second-order model we found that we have two types of time constant: (1) electrical time-constant $\tau_e = L/R$ and (2) mechanical time-constant $\tau_m = J/B$. Typically the ratio between $\tau_m$ and $\tau_e$ on DC Motor with gearbox could be 100 to more than 1000 because the $L$ is usually very small an the $J$ is getting higher with the gearbox.
 
 Because of that we can reducing the order to the `first-order system` to form this equation:
@@ -66,7 +85,7 @@ where:
 
 By using that model we can identify the DC Motor by only three parameters. This is the common model that usually used to identify the DC Motor in real life.
 
-### Discrete-Time System Model
+## Discrete-Time System Model
 To works with the embedded system, we need to works in the discrete system. One method that usually usefull to transform the transfer function to the discrete-time transfer function $G(z)$ is by using the Zero-order Hold (ZOH) Method and then transform it to the difference equation. To do that, we can use this equation to transform the $G(s)$ to $G(z)$.
 
 $$
@@ -94,7 +113,7 @@ We can simplify the equation by defining new variables:
 
 * $\alpha = e^{-T_s/\tau}$ : Discrete Pole
 * $\beta = K \cdot (1 - \alpha)$ : Input Gain
-* $d = round(\frac{L}{T_s})$ : Dead-Time Index
+* $d = round(L/T_s)$ : Dead-Time Index
 
 The final equation is:
 
@@ -116,58 +135,20 @@ Notes: The time sampling must be constant
 
 By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
-## System Identification Algorithm
-### Method
-### Result
-## Verification
+---
 
-The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed target from 20% to 100% of PWM ticks.
-
-<table>
-  <tr align = "center">
-    <th  align="center" width=50>PWM Input (%)</th>
-    <th  align="center">Positive Direction</th>
-    <th  align="center">Negative Direction</th>
-  </tr>
-
+<table style="width:100%; border:none; text-align:center;">
   <tr>
-    <td align="center"> 20 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_20.jpg">
+    <td style="text-align:left; width:40%;">
     </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_-20.jpg">
+    <td style="text-align:center; width:20%;">
+      <a href="README.md">🏠 Home</a><br>
     </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 50 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_50.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_-50.jpg">
+    <td style="text-align:right; width:40%;">
+      <a href="01-System-Identification.md">Next »</a><br>
+      System Identification
     </td>
   </tr>
-
-  <tr>
-    <td align="center"> 85 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_85.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_-85.jpg">
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 100 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_100.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_-100.jpg">
-    </td>
-  </tr>
-
 </table>
+
+---
