@@ -1,7 +1,7 @@
 # System Identification
 
 <div align="center">
-  <a href="../README.md"><img src="../README.md" alt="<< Prev" height="30">
+  <a href="README.md"><img src="README.md" alt="<< Prev" height="30">
   <img src="../README.md" width="400" height="1">
   <a href="../README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
   <img src="../README.md" width="400" height="1">
