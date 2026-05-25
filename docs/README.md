@@ -90,14 +90,6 @@ $$
     y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{L}{T_s})-1]
 $$
 
-where:
-* $T_s$ : Time Sampling (s)
-* $\tau$ : Time Constant (s)
-* $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$
-* $L$ : time delay (s)
-
-Notes: The time sampling must be constant
-
 We can simplify the equation by defining new variables: 
 
 * $\alpha = e^{-T_s/\tau}$ : Discrete Pole
@@ -109,9 +101,18 @@ The final equation is:
 $$
     y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1]
 $$
+
+where:
+* $T_s$ : Time Sampling (s)
+* $\tau$ : Time Constant (s)
+* $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$
+* $L$ : time delay (s)
+
 condition: 
 * $n > 0$
 * $u= 0$ if $n < d$
+
+Notes: The time sampling must be constant
 
 By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
