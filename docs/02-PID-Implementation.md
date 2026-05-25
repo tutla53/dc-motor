@@ -1,44 +1,37 @@
 # PID Control Implementation on Firmware
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:33%;">
-      <a href="01-System-Identification.md">« Previous</a><br>
-      System Identification
-    </td>
-    <td style="text-align:center; width:33%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:33%;">
-      <a href="03-Speed-Control.md">Next »</a><br>
-      Speed Control
-    </td>
-  </tr>
-</table>
-
----
+<div align="center">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  System Identification
+  <img src="path/to/spacer.png" width="750" height="1">
+  Speed Control
+</div>
+    
+#
 
 ## Implementing Constant Time-Sampling Method
 ## Speed Control
 ## Position Control
 ## Position Trapezoidal Control
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:33%;">
-      <a href="01-System-Identification.md">« Previous</a><br>
-      System Identification
-    </td>
-    <td style="text-align:center; width:33%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:33%;">
-      <a href="03-Speed-Control.md">Next »</a><br>
-      Speed Control
-    </td>
-  </tr>
-</table>
-
----
+#
+<div align="center">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  System Identification
+  <img src="path/to/spacer.png" width="750" height="1">
+  Speed Control
+</div>
+    
+#
