@@ -1,23 +1,19 @@
 # DC Motor System
 
 ---
-
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="01-System-Identification.md">Next »</a><br>
-      System Identification
-    </td>
-  </tr>
-</table>
-
+<div align="center">
+  <!-- <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30"> --><< Prev
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  <img src="path/to/spacer.png" width="850" height="1">
+  System Identification
+</div>
+    
 ---
-
 
 ## Transfer Function
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
@@ -136,19 +132,16 @@ Notes: The time sampling must be constant
 By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
 ---
-
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="01-System-Identification.md">Next »</a><br>
-      System Identification
-    </td>
-  </tr>
-</table>
-
+<div align="center">
+  <!-- <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30"> --><< Prev
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  <img src="path/to/spacer.png" width="850" height="1">
+  System Identification
+</div>
+    
 ---
