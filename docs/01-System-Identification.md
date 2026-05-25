@@ -5,12 +5,12 @@
   <img src="path/to/spacer.png" width="400" height="1">
   <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
   <img src="path/to/spacer.png" width="400" height="1">
-  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+  <a href="02-PID-Implementation.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   Home
-  <img src="path/to/spacer.png" width="850" height="1">
-  Speed Control
+  <img src="path/to/spacer.png" width="800" height="1">
+  PID Implementation
 </div>
     
 #
@@ -104,12 +104,12 @@ The table below shows the comparison between the DC Motor open loop firmware log
   <img src="path/to/spacer.png" width="400" height="1">
   <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
   <img src="path/to/spacer.png" width="400" height="1">
-  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+  <a href="02-PID-Implementation.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   Home
-  <img src="path/to/spacer.png" width="850" height="1">
-  Speed Control
+  <img src="path/to/spacer.png" width="800" height="1">
+  PID Implementation
 </div>
     
 #
