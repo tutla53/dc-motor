@@ -1,23 +1,19 @@
 # System Identification
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-      <a href="README.md">« Previous</a><br>
-      Home
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="02-PID-Implementation.md">Next »</a><br>
-      PID Implementation on RP2040
-    </td>
-  </tr>
-</table>
-
----
+<div align="center">
+  <a href="README.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  Home
+  <img src="path/to/spacer.png" width="850" height="1">
+  Speed Control
+</div>
+    
+#
 
 ## Method
 ### Simulation with `lfilter`
@@ -102,21 +98,18 @@ The table below shows the comparison between the DC Motor open loop firmware log
 
 </table>
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-      <a href="README.md">« Previous</a><br>
-      Home
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="02-PID-Implementation.md">Next »</a><br>
-      PID Implementation on RP2040
-    </td>
-  </tr>
-</table>
-
----
+#
+<div align="center">
+  <a href="README.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="03-Speed-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  Home
+  <img src="path/to/spacer.png" width="850" height="1">
+  Speed Control
+</div>
+    
+#
