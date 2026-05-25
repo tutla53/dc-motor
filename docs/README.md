@@ -120,6 +120,8 @@ By using that difference equation we can construct the algorithm to simulate the
 ### Result
 ## Verification
 
+The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed target from 20% to 100% of PWM ticks.
+
 <table>
   <tr align = "center">
     <th  align="center" width=50>PWM Input (%)</th>
@@ -128,7 +130,7 @@ By using that difference equation we can construct the algorithm to simulate the
   </tr>
 
   <tr>
-    <td> 20 </td>
+    <td align="center"> 20 </td>
     <td> 
         <img src="../assets/01_System_Identification/A_20.jpg">
     </td>
@@ -136,4 +138,35 @@ By using that difference equation we can construct the algorithm to simulate the
         <img  src="../assets/01_System_Identification/B_-20.jpg">
     </td>
   </tr>
+
+  <tr>
+    <td align="center"> 50 </td>
+    <td> 
+        <img src="../assets/01_System_Identification/A_50.jpg">
+    </td>
+    <td> 
+        <img  src="../assets/01_System_Identification/B_-50.jpg">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"> 85 </td>
+    <td> 
+        <img src="../assets/01_System_Identification/A_85.jpg">
+    </td>
+    <td> 
+        <img  src="../assets/01_System_Identification/B_-85.jpg">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"> 100 </td>
+    <td> 
+        <img src="../assets/01_System_Identification/A_100.jpg">
+    </td>
+    <td> 
+        <img  src="../assets/01_System_Identification/B_-100.jpg">
+    </td>
+  </tr>
+
 </table>
