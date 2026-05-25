@@ -1,6 +1,5 @@
 # DC Motor System
 
----
 <div align="center">
   <!-- <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30"> --><< Prev
   <img src="path/to/spacer.png" width="400" height="1">
@@ -13,7 +12,7 @@
   System Identification
 </div>
     
----
+#
 
 ## Transfer Function
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
@@ -131,7 +130,7 @@ Notes: The time sampling must be constant
 
 By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
----
+#
 <div align="center">
   <!-- <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30"> --><< Prev
   <img src="path/to/spacer.png" width="400" height="1">
@@ -144,4 +143,4 @@ By using that difference equation we can construct the algorithm to simulate the
   System Identification
 </div>
     
----
+#
