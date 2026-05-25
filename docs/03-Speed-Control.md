@@ -1,23 +1,19 @@
-# DC Motor PID Control
+# PID Speed Control
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-      <a href="02-PID-Implementation.md">« Previous</a><br>
-      PID Implementation on RP2040
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="04-Position-Control.md">Next »</a><br>
-      Position Control
-    </td>
-  </tr>
-</table>
-
----
+<div align="center">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="04-Position-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  System Identification
+  <img src="path/to/spacer.png" width="740" height="1">
+  Position Control
+</div>
+    
+#
 
 ## Block Diagram
 ### Speed Control 
@@ -27,21 +23,18 @@
 ## PID Tuning
 ## Verification
 
----
-<table style="width:100%; border:none; text-align:center;">
-  <tr>
-    <td style="text-align:left; width:40%;">
-      <a href="02-PID-Implementation.md">« Previous</a><br>
-      PID Implementation on RP2040
-    </td>
-    <td style="text-align:center; width:20%;">
-      <a href="README.md">🏠 Home</a><br>
-    </td>
-    <td style="text-align:right; width:40%;">
-      <a href="04-Position-Control.md">Next »</a><br>
-      Position Control
-    </td>
-  </tr>
-</table>
-
----
+#
+<div align="center">
+  <a href="01-System-Identification.md"><img src="path/to/next-button.png" alt="<< Prev" height="30">
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
+  <img src="path/to/spacer.png" width="400" height="1">
+  <a href="04-Position-Control.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  System Identification
+  <img src="path/to/spacer.png" width="740" height="1">
+  Position Control
+</div>
+    
+#
