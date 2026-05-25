@@ -1,5 +1,11 @@
 # DC Motor PID Control
-DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `Python` to communicate with the firmware API via serial communication. It's possible to scale up the project with another applications.
+## Navigation
+* [DC Motor Research Documentation](docs/README.md) : Motor Identification and PID Control
+* [Build the RP2040 Firmware](firmware/README.md)
+* [Python Script Installation](script/README.md)
+##
+  
+DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `Python` to communicate with the firmware API via serial communication. It's possible to scale up the project with another applications. Please refer to the [DC Motor Research Documentation](docs/README.md) for detail research on the DC Motor.
 
 ## Features
 The table below shows the firmware features:
