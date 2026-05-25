@@ -1,11 +1,11 @@
 # System Identification
 
 <div align="center">
-  <a href="README.md"><img src="README.md" alt="<< Prev" height="30">
-  <img src="../README.md" width="400" height="1">
-  <a href="../README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
-  <img src="../README.md" width="400" height="1">
-  <a href="02-PID-Implementation.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <img src="../README.md" width="450" height="1">
+  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+  <img src="../README.md" width="450" height="1">
+  <a href="02-PID-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   DC Motor System
@@ -100,11 +100,11 @@ The table below shows the comparison between the DC Motor open loop firmware log
 
 #
 <div align="center">
-  <a href="../README.md"><img src="../README.md" alt="<< Prev" height="30">
-  <img src="../README.md" width="400" height="1">
-  <a href="../README.md"><img src="path/to/home-button.png" alt="🏠 Home" height="30"></a>
-  <img src="../README.md" width="400" height="1">
-  <a href="02-PID-Implementation.md"><img src="path/to/next-button.png" alt="Next >>" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <img src="../README.md" width="450" height="1">
+  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+  <img src="../README.md" width="450" height="1">
+  <a href="02-PID-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   DC Motor System
