@@ -17,15 +17,7 @@
 ## Transfer Function
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
-$$
-    \xrightarrow{\substack{\text{Input} \\ \text{PWM}}}
-    \boxed{\rule[-10pt]{0pt}{20pt}\quad \text{H-Bridge} \quad \rule{0pt}{15pt}}
-    \xrightarrow{\substack{\text{Output} \\ \text{Voltage}}}
-    \boxed{\rule[-10pt]{0pt}{25pt} \quad \text{DC Motor} \quad}
-    \xrightarrow{\substack{\text{Motor} \\ \text{Speed}}}
-    \boxed{\rule[-10pt]{0pt}{25pt} \quad \text{Gearbox} \quad}
-    \xrightarrow{\substack{\text{Output} \\ \text{Speed}}}
-$$
+![](../assets/diagram/block-diagram.png)
 
 In this project we only interest with the dynamic response between the input PWM and output speed. Because of that, the term `system` on this project is refer to the combination of H-Bridge, DC Motor, and Gearbox system. The picture below shows the block diagram between the input and the output that we want to identify.
 
@@ -143,5 +135,4 @@ By using that difference equation we can construct the algorithm to simulate the
   System Identification
 </div>
     
-#
 #
