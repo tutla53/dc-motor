@@ -17,25 +17,22 @@
 ## Transfer Function
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
-<div align="center"> <img src ="../assets/diagram/block-diagram.png" height="100"></img> </div>
+<div align="center"> 
+  <img src ="../assets/diagram/block-diagram.png" height="100"></img>
+</div>
 
 In this project we only interest with the dynamic response between the input PWM and output speed. Because of that, the term `system` on this project is refer to the combination of H-Bridge, DC Motor, and Gearbox system. The picture below shows the block diagram between the input and the output that we want to identify.
 
-<div align="center"> <img src ="../assets/diagram/modified-block-diagram.png" height="100"></img> </div>
+<div align="center"> 
+  <img src ="../assets/diagram/modified-block-diagram.png" height="100"></img> 
+</div>
 
 If we derive the mathematical model from the mechanical and electrical system, we get the `second-order system` model:
 
-$$ 
-    G(s) = \frac{K_t}{(Ls + R)(Js + B) + K_t K_b} \left[ \frac{\text{rad/s}}{\text{V}} \right]
-$$
 
-where:
-* $K_t$ : Torque Constant $(\text{N}\cdot\text{m/A})$
-* $K_b$ : Back EMF Constant $(\text{rad/s/V})$
-* $L$ : Motor Inductance $(\text{H})$
-* $R$ : Motor Resistance $(\Omega)$
-* $J$ : Rotor Inertia $(\text{kg}\cdot\text{m}^2)$
-* $B$ : Viscous Friction Constant $(\text{N}\cdot\text{m}\cdot\text{s})$
+<div align="center"> 
+  <img src ="../assets/diagram/second-order-motor.png" width="600"></img> 
+</div>
 
 Depends on the aplication, if we need to accurately model the DC Motor then we need to get all of those paraemters. There's several ways to get those DC Motor Parameter:
 * Ideally, if the DC motor manufacturer list all of those parameters then we can easily model the DC motor. 
