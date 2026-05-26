@@ -18,20 +18,19 @@
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
 <div align="center"> 
-  <img src ="../assets/diagram/block-diagram.png" height="100"></img>
+  <img src ="../assets/diagram/block-diagram.png" height="80"></img>
 </div>
 
 In this project we only interest with the dynamic response between the input PWM and output speed. Because of that, the term `system` on this project is refer to the combination of H-Bridge, DC Motor, and Gearbox system. The picture below shows the block diagram between the input and the output that we want to identify.
 
 <div align="center"> 
-  <img src ="../assets/diagram/modified-block-diagram.png" height="100"></img> 
+  <img src ="../assets/diagram/modified-block-diagram.png" height="80"></img> 
 </div>
 
 If we derive the mathematical model from the mechanical and electrical system, we get the `second-order system` model:
 
-
 <div align="center"> 
-  <img src ="../assets/diagram/second-order-motor.png" width="600"></img> 
+  <img src ="../assets/diagram/second-order-motor.png" height="250"></img> 
 </div>
 
 Depends on the aplication, if we need to accurately model the DC Motor then we need to get all of those paraemters. There's several ways to get those DC Motor Parameter:
@@ -47,69 +46,18 @@ Based on the discussion above the DC Motor can be described as the `second-order
 
 Because of that we can reducing the order to the `first-order system` to form this equation:
 
-$$ 
-    G(s) = \frac{K_t}{RJs + (RB + K_t K_b)} = \frac{\frac{K_t}{(RB + K_t K_b)} }{\frac{RJ}{(RB + K_t K_b)}s + 1} = \frac{K}{\tau s + 1}
-$$
-
-Considering firmware/hardware delay, we add the time delay parameter:
-
-$$ 
-    \boxed{ \rule[-20pt]{0pt}{50pt} \quad G(s) = \left( \frac{K}{\tau s + 1} \right) e^{-Ls} \quad}
-$$
-
-where:
-* $G(s)$ : transfer function in the Laplace domain
-* $K$ : static gain
-* $\tau$ : time constant
-* $L$ : time delay
+<div align="center"> 
+  <img src ="../assets/diagram/first-order-motor.png" height="300"></img> 
+</div>
 
 By using that model we can identify the DC Motor by only three parameters. This is the common model that usually used to identify the DC Motor in real life.
 
 ## Discrete-Time System Model
 To works with the embedded system, we need to works in the discrete system. One method that usually usefull to transform the transfer function to the discrete-time transfer function $G(z)$ is by using the Zero-order Hold (ZOH) Method and then transform it to the difference equation. To do that, we can use this equation to transform the $G(s)$ to $G(z)$.
 
-$$
-    G(z) = (1 - z^{-1}) \cdot \mathcal{Z} \left[ \frac{G(s)}{s} \right]
-$$
-
-The steps to find the difference equation are visualized below:
-
-$$ 
-    \underset{\text{TF}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(s) \quad}} 
-    \to \underset{\text{Refactoring}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \frac{G(s)}{s} \quad}} 
-    \to \underset{\text{Z-Transform}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \mathcal{Z} \left[ \frac{G(s)}{s} \right] \quad}} 
-    \to \underset{\text{ZOH}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(z) \quad}} 
-    \to \underset{\text{Discrete Output}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad Y(z) = G(z) \cdot U(z) \quad}} 
-    \to \underset{\text{Difference Eq.}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad y[n] \quad}} 
-$$
-
-After the ZOH discretization process above the difference equation is shown in the equation below:
-
-$$
-    y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{L}{T_s})-1]
-$$
-
-We can simplify the equation by defining new variables: 
-
-* $\alpha = e^{-T_s/\tau}$ : Discrete Pole
-* $\beta = K \cdot (1 - \alpha)$ : Input Gain
-* $d = round(L/T_s)$ : Dead-Time Index
-
-The final equation is:
-
-$$
-    y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1]
-$$
-
-where:
-* $T_s$ : Time Sampling (s)
-* $\tau$ : Time Constant (s)
-* $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$
-* $L$ : time delay (s)
-
-condition: 
-* $n > 0$
-* $u= 0$ if $n < d$
+<div align="center"> 
+  <img src ="../assets/diagram/discretization.png" height="600"></img> 
+</div>
 
 Notes: The time sampling must be constant
 
