@@ -17,15 +17,11 @@
 ## Transfer Function
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
-![](../assets/diagram/block-diagram.png)
+<div align="center"> <img src ="../assets/diagram/block-diagram.png" height="100"></img> </div>
 
 In this project we only interest with the dynamic response between the input PWM and output speed. Because of that, the term `system` on this project is refer to the combination of H-Bridge, DC Motor, and Gearbox system. The picture below shows the block diagram between the input and the output that we want to identify.
 
-$$
-    \xrightarrow{\substack{\text{Input} \\ \text{PWM}}}
-    \boxed{\rule[-10pt]{0pt}{25pt} \quad G(s) \quad}
-    \xrightarrow{\substack{\text{Output} \\ \text{Speed}}}
-$$
+<div align="center"> <img src ="../assets/diagram/modified-block-diagram.png" height="100"></img> </div>
 
 If we derive the mathematical model from the mechanical and electrical system, we get the `second-order system` model:
 
