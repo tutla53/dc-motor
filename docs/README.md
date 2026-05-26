@@ -18,19 +18,19 @@
 In order to characterize and optimize the parameter control of a DC motor, we need the mathematical model to simulate the DC motor behaviour. The DC Motor block diagram in this project is shown on the picture below:
 
 <div align="center"> 
-  <img src ="../assets/diagram/block-diagram.png" height="80"></img>
+  <img src ="../assets/diagram/block-diagram.png" height="100"></img>
 </div>
 
 In this project we only interest with the dynamic response between the input PWM and output speed. Because of that, the term `system` on this project is refer to the combination of H-Bridge, DC Motor, and Gearbox system. The picture below shows the block diagram between the input and the output that we want to identify.
 
 <div align="center"> 
-  <img src ="../assets/diagram/modified-block-diagram.png" height="80"></img> 
+  <img src ="../assets/diagram/modified-block-diagram.png" height="100"></img> 
 </div>
 
 If we derive the mathematical model from the mechanical and electrical system, we get the `second-order system` model:
 
 <div align="center"> 
-  <img src ="../assets/diagram/second-order-motor.png" height="250"></img> 
+  <img src ="../assets/diagram/second-order-motor.png" height="300"></img> 
 </div>
 
 Depends on the aplication, if we need to accurately model the DC Motor then we need to get all of those paraemters. There's several ways to get those DC Motor Parameter:
@@ -47,7 +47,7 @@ Based on the discussion above the DC Motor can be described as the `second-order
 Because of that we can reducing the order to the `first-order system` to form this equation:
 
 <div align="center"> 
-  <img src ="../assets/diagram/first-order-motor.png" height="300"></img> 
+  <img src ="../assets/diagram/first-order-motor.png" height="350"></img> 
 </div>
 
 By using that model we can identify the DC Motor by only three parameters. This is the common model that usually used to identify the DC Motor in real life.
@@ -56,7 +56,7 @@ By using that model we can identify the DC Motor by only three parameters. This 
 To works with the embedded system, we need to works in the discrete system. One method that usually usefull to transform the transfer function to the discrete-time transfer function $G(z)$ is by using the Zero-order Hold (ZOH) Method and then transform it to the difference equation. To do that, we can use this equation to transform the $G(s)$ to $G(z)$.
 
 <div align="center"> 
-  <img src ="../assets/diagram/discretization.png" height="600"></img> 
+  <img src ="../assets/diagram/discretization.png" height="800"></img> 
 </div>
 
 Notes: The time sampling must be constant
