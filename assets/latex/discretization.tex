@@ -1,0 +1,100 @@
+\documentclass[border={10pt, 10pt, 10pt, 10pt}]{standalone}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{siunitx}
+
+\pagecolor{black}
+\color{white}
+
+% $$
+%     G(z) = (1 - z^{-1}) \cdot \mathcal{Z} \left[ \frac{G(s)}{s} \right]
+% $$
+
+% The steps to find the difference equation are visualized below:
+
+% $$ 
+%     \underset{\text{TF}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(s) \quad}} 
+%     \to \underset{\text{Refactoring}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \frac{G(s)}{s} \quad}} 
+%     \to \underset{\text{Z-Transform}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \mathcal{Z} \left[ \frac{G(s)}{s} \right] \quad}} 
+%     \to \underset{\text{ZOH}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(z) \quad}} 
+%     \to \underset{\text{Discrete Output}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad Y(z) = G(z) \cdot U(z) \quad}} 
+%     \to \underset{\text{Difference Eq.}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad y[n] \quad}} 
+% $$
+
+% After the ZOH discretization process above the difference equation is shown in the equation below:
+
+% $$
+%     y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{L}{T_s})-1]
+% $$
+
+% We can simplify the equation by defining new variables: 
+
+% * $\alpha = e^{-T_s/\tau}$ : Discrete Pole
+% * $\beta = K \cdot (1 - \alpha)$ : Input Gain
+% * $d = round(L/T_s)$ : Dead-Time Index
+
+% The final equation is:
+
+% $$
+%     y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1]
+% $$
+
+% where:
+% * $T_s$ : Time Sampling (s)
+% * $\tau$ : Time Constant (s)
+% * $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$
+% * $L$ : time delay (s)
+
+% condition: 
+% * $n > 0$
+% * $u= 0$ if $n < d$
+
+\begin{document}
+    \begin{minipage}{20cm}
+    \[
+        G(z) = (1 - z^{-1}) \cdot \mathcal{Z} \left[ \frac{G(s)}{s} \right]
+    \]
+    
+    The steps to find the difference equation are visualized below:
+
+    \[
+        \underset{\text{TF}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(s) \quad}} 
+        \to \underset{\text{Refactoring}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \frac{G(s)}{s} \quad}} 
+        \to \underset{\text{Z-Transform}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad \mathcal{Z} \left[ \frac{G(s)}{s} \right] \quad}} 
+        \to \underset{\text{ZOH}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad G(z) \quad}} 
+        \to \underset{\text{Discrete Output}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad Y(z) = G(z) \cdot U(z) \quad}} 
+        \to \underset{\text{Difference Eq.}}{\boxed{\rule[-15pt]{0pt}{35pt} \quad y[n] \quad}} 
+    \]
+
+    After the ZOH discretization process above the difference equation is shown in the equation below:
+    \[
+        y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{L}{T_s})-1]
+    \]
+
+    We can simplify the equation by defining new variables: 
+    
+    \begin{tabular}{l l}
+        $\alpha = e^{-T_s/\tau}$ : Discrete Pole \\
+        $\beta = K \cdot (1 - \alpha)$ : Input Gain \\
+        $d = round(L/T_s)$ : Dead-Time Index \\
+    \end{tabular} \\
+
+    The final equation is:
+    \[
+        \boxed{\quad y[n] = \alpha \cdot y[n-1] + \beta \cdot u[n-d-1] \quad}
+    \]
+    where: \\
+        \begin{tabular}{l l}    
+            $T_s$ : Time Sampling (s) \\
+            $\tau$ : Time Constant (s) \\
+            $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$ \\
+            $L$ : time delay (s) \\
+        \end{tabular} \\
+    
+    condition: \\
+        \begin{tabular}{l l}    
+            $n > 0$
+            $u= 0$ if $n < d$
+        \end{tabular}
+    \end{minipage}
+\end{document}

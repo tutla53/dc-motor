@@ -1,0 +1,25 @@
+\documentclass[border={10pt, 10pt, 0pt, 10pt}]{standalone}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{siunitx}
+
+\pagecolor{black}
+\color{white}
+
+\begin{document}
+    \begin{minipage}{10cm}
+    \[
+        G(s) = \frac{K_t}{(Ls + R)(Js + B) + K_t K_b} \quad \left[ \frac{\text{rad/s}}{\text{V}} \right]
+    \]
+
+    where: \\
+        \begin{tabular}{l l}    
+            $K_t$: Torque Constant $\left( \frac{N \cdot m}{A} \right)$ \\
+            $K_b$: Back EMF Constant $\left( \frac{rad/s}{V} \right)$ \\
+            $L$: Motor Inductance $(H)$ \\
+            $R$: Motor Resistance $(\Omega)$ \\
+            $J$: Rotor Inertia $(\text{kg}\cdot\text{m}^2)$ \\
+            $B$: Viscous Friction Constant $(\text{N}\cdot\text{m}\cdot\text{s})$ \\
+        \end{tabular}
+    \end{minipage}
+\end{document}

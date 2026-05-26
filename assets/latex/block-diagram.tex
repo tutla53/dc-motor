@@ -1,0 +1,36 @@
+\documentclass[border={0pt, 10pt, 10pt, 10pt}]{standalone}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+
+\pagecolor{black}
+\color{white}
+
+\begin{document}
+
+    % Variables
+    \newlength{\NodeDistance}
+    \newlength{\FirstNodeDistance}
+    \setlength{\NodeDistance}{2.0cm}
+    \setlength{\FirstNodeDistance}{2.8cm}
+
+    \begin{tikzpicture}[
+        node distance   = \NodeDistance,
+        block/.style    = {rectangle, draw=white, minimum height=1cm, minimum width=2cm, align=center},
+        arrow/.style    ={-{Stealth[scale=1.2]}, white, thick}
+    ]
+
+        % Define Nodes
+        \node[block] (hbridge) {H-Bridge};
+        \node[block, right=of hbridge] (motor) {DC Motor};
+        \node[block, right=of motor] (gearbox) {Gearbox};
+
+        \draw[arrow] (-\FirstNodeDistance, 0) -- (hbridge.west) node[midway, above]{Input}  node[midway, below]{PWM};
+        \draw[arrow] (hbridge.east) -- (motor.west)             node[midway, above]{Output} node[midway, below]{Voltage};
+        \draw[arrow] (motor.east) -- (gearbox.west)             node[midway, above]{Motor}  node[midway, below]{Speed};
+        \draw[arrow] (gearbox.east) -- ++(\NodeDistance,0)      node[midway, above]{Output} node[midway, below]{Speed};
+
+    \end{tikzpicture}
+
+\end{document}

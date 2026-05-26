@@ -1,0 +1,27 @@
+\documentclass[border={10pt, 10pt, 10pt, 10pt}]{standalone}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{siunitx}
+
+\pagecolor{black}
+\color{white}
+
+\begin{document}
+    \begin{minipage}{15cm}
+    \[
+        G(s) = \frac{K_t}{RJs + (RB + K_t K_b)} = \frac{\frac{K_t}{(RB + K_t K_b)} }{\frac{RJ}{(RB + K_t K_b)}s + 1} = \frac{K}{\tau s + 1}
+    \]
+    
+    Considering firmware/hardware delay, we add the time delay parameter:
+    \[
+        G(s) = \left( \frac{K}{\tau s + 1} \right) e^{-Ls}
+    \]
+    where: \\
+        \begin{tabular}{l l}    
+            $G(s)$ : transfer function in the Laplace domain \\
+            $K$ : static gain \\
+            $\tau$ : time constant \\
+            $L$ : time delay \\ 
+        \end{tabular}
+    \end{minipage}
+\end{document}
