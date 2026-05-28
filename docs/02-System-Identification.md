@@ -9,7 +9,7 @@
 </div>
 <div align="center">
   Control Implementation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
   Speed Control
 </div>
     
@@ -107,7 +107,7 @@ The table below shows the comparison between the DC Motor open loop firmware log
 </div>
 <div align="center">
   Control Implementation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
   Speed Control
 </div>
     
