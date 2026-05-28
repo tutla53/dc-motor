@@ -69,7 +69,7 @@ The table below shows the firmware features:
 ## Hardware
 <p align="center">
     <br>
-    <img src="assets/motor_setup.jpg" width="500">
+    <img src="assets/00_Preview/motor_setup.jpg" width="500">
 </p>
 
 ### Specification
@@ -206,13 +206,13 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   </tr>
   <tr>
     <td>
-		<img height=220 src="assets/open-loop.jpg">
+		<img height=220 src="assets/00_Preview/open-loop.jpg">
 	</td>
 	<td>
-		<img height=220 src="assets/speed-step.jpg">
+		<img height=220 src="assets/00_Preview/speed-step.jpg">
 	</td>
 	<td>
-		<img height=220 src="assets/position-step.jpg">
+		<img height=220 src="assets/00_Preview/position-step.jpg">
 	</td>
   </tr>
   <tr>
@@ -221,9 +221,9 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   </tr>
   <tr>
 	<td align="center">
-		<img height = 220 src="assets/position-trapezoidal.jpg">
+		<img height = 220 src="assets/00_Preview/position-trapezoidal.jpg">
 	</td>
 	<td colspan="2" align="center">
-		<img height = 220 src="assets/speed-step-with-simulation.jpg"> 
+		<img height = 220 src="assets/00_Preview/speed-step-with-simulation.jpg"> 
   </tr>
 </table>
