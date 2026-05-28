@@ -1,15 +1,16 @@
 # DC Motor System
 
 <div align="center">
-  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="../README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="01-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="01-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="850" height="1">
-  System Identification
+  Home
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="820" height="1">
+  Control Implementation
 </div>
     
 #
@@ -63,17 +64,17 @@ Notes: The time sampling must be constant
 
 By using that difference equation we can construct the algorithm to simulate the DC Motor. The remaining problem is we need to characterize the value of $K$, $\tau$, and $L$. The plan is we need to collect the open-loop data from the real DC Motor and perform numerical-method with three input variables to optimize the value the DC Motor parameter.
 
-#
 <div align="center">
-  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="../README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="01-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="01-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="850" height="1">
-  System Identification
+  Home
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="820" height="1">
+  Control Implementation
 </div>
     
 #

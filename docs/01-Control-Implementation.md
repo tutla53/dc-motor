@@ -1,16 +1,16 @@
 # Control System Implementation on RP2040
 
 <div align="center">
-  <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
+  DC Motor System
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="750" height="1">
-  Speed Control
 </div>
     
 #
@@ -28,18 +28,17 @@ There're several method to
 #### Step Motion Profile
 #### Trapezoidal Motion Profile
 
-#
 <div align="center">
-  <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="🏠 Home" height="30"></a>
+  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
+  DC Motor System
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="750" height="1">
-  Speed Control
 </div>
     
 #

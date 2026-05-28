@@ -1,7 +1,7 @@
 # PID Speed Control
 
 <div align="center">
-  <a href="02-PID-Implementation.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="02-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
@@ -9,7 +9,7 @@
 </div>
 <div align="center">
   PID Implementation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="740" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="780" height="1">
   Position Control
 </div>
     
@@ -154,7 +154,7 @@
 
 #
 <div align="center">
-  <a href="02-PID-Implementation.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="02-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
@@ -162,7 +162,7 @@
 </div>
 <div align="center">
   PID Implementation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="740" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="780" height="1">
   Position Control
 </div>
     
