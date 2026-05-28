@@ -5,7 +5,7 @@
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="04-Position-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <!-- <a href="04-Position-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a> -->
 </div>
 <div align="center">
   Speed Control
