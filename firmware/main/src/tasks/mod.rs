@@ -36,9 +36,7 @@ use crate::resources::usb_resources::EventList;
 use crate::resources::usb_rx_resources::CommandHandler;
 use crate::resources::usb_tx_resources::Packet;
 
-use embassy_futures::select::Either;
 use embassy_futures::select::Either3;
-use embassy_futures::select::select;
 use embassy_futures::select::select3;
 use embassy_rp::Peri;
 use embassy_rp::gpio::AnyPin;
