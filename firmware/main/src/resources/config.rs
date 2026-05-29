@@ -31,8 +31,8 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
 };
 
 /* --------------------------- Motor Properties -------------------------- */
-pub const MOTOR_MAX_SPEED_CPS: i32 = 968; // Physical Limit 1200 RPM
 pub const MOTOR_CONTROL_MAX_SPEED_CPS: i32 = 1130; // 1400 RPM for control limit
+pub const MOTOR_MAX_SPEED_CPS_FIXED: I32F32 = fixed!(968: I32F32); // Physical Limit 1200 RPM
 
 /* --------------------------- Clock and PWM Config -------------------------- */
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000; // 133 MHz

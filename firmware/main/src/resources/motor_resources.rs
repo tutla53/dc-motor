@@ -8,7 +8,7 @@ use super::*;
 #[derive(Clone, Copy, PartialEq)]
 pub enum Shape {
     Step(i32),
-    Trapezoidal(f32, f32, f32),
+    Trapezoidal(I32F32, I32F32, I32F32),
 }
 
 #[derive(Clone, Copy, PartialEq)]

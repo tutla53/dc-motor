@@ -48,14 +48,13 @@ impl<'d, T: Instance, const SM: usize> RotaryEncoder<'d, T, SM> {
 
     #[inline(always)]
     pub async fn run_encoder_task(&mut self) {
-        let mut current_pos = self.motor.get_current_pos();
-
         loop {
-            match self.encoder.read().await {
-                Direction::Clockwise => current_pos = current_pos.saturating_add(1),
-                Direction::CounterClockwise => current_pos = current_pos.saturating_sub(1),
-            }
-            self.motor.set_current_pos(current_pos);
+            let step = match self.encoder.read().await {
+                Direction::Clockwise => 1,
+                Direction::CounterClockwise => -1,
+            };
+            let current_pos = self.motor.get_current_pos();
+            self.motor.set_current_pos(current_pos.saturating_add(step));
         }
     }
 }
@@ -67,7 +66,7 @@ pub struct DCMotor<'d> {
     speed_control: PIDcontrol<I16F16>,
     position_control: PIDcontrol<I32F32>,
     control_mode: ControlMode,
-    motion_profile: Option<TrapezoidProfile>,
+    motion_profile: Option<TrapezoidProfile<I32F32>>,
     move_done: bool,
     command_just_received: bool,
     final_target: I32F32,
@@ -244,6 +243,7 @@ impl<'d> DCMotor<'d> {
             ticker.next().await;
 
             let current_pos = self.motor.get_current_pos();
+            self.current_pos = I32F32::from_num(current_pos);
             let delta_pos = current_pos - last_pos_for_speed;
             last_pos_for_speed = current_pos;
 
@@ -278,11 +278,14 @@ impl<'d> DCMotor<'d> {
                 if let MotorCommand::PositionControl(Shape::Trapezoidal(final_pos, vel, acc)) =
                     current_active_cmd
                 {
-                    let start_pos = self.current_pos.to_num::<f32>();
-                    let safe_vel = vel.min(MOTOR_MAX_SPEED_CPS as f32);
+                    let safe_vel = vel.clamp(-MOTOR_MAX_SPEED_CPS_FIXED, MOTOR_MAX_SPEED_CPS_FIXED);
                     start_time = Instant::now();
-                    self.motion_profile =
-                        Some(TrapezoidProfile::new(start_pos, final_pos, safe_vel, acc));
+                    self.motion_profile = Some(TrapezoidProfile::new(
+                        self.current_pos,
+                        final_pos,
+                        safe_vel,
+                        acc,
+                    ));
                 }
             }
 
@@ -305,9 +308,9 @@ impl<'d> DCMotor<'d> {
                         Shape::Trapezoidal(target, _, _) => {
                             if let Some(ref profile) = self.motion_profile {
                                 self.final_target = I32F32::from_num(target);
-                                let elapsed_ms = start_time.elapsed().as_millis();
-                                let elapsed_s = (elapsed_ms as f32) / 1_000.0;
-                                profile.position(elapsed_s) as i32
+                                let elapsed_us = start_time.elapsed().as_micros();
+                                let elapsed_s = I32F32::from_num(elapsed_us) / 1_000_000;
+                                profile.position(elapsed_s).to_num::<i32>()
                             } else {
                                 self.current_pos.to_num::<i32>()
                             }

@@ -7,7 +7,8 @@ use panic_probe as _;
 use crate::resources::PIDConfig;
 use core::ops::Neg;
 use fixed::traits::Fixed;
-use libm::sqrtf;
+use fixed::traits::FixedSigned;
+use fixed_sqrt::FastSqrt;
 
 pub mod motion_profile;
 pub mod pid_control;

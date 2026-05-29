@@ -16,7 +16,7 @@ use crate::resources::DEFAULT_PID_POS_CONFIG;
 use crate::resources::DEFAULT_PID_SPEED_CONFIG;
 use crate::resources::EVENT_CHANNEL_SIZE;
 use crate::resources::LOG_BUFFER_SIZE;
-use crate::resources::MOTOR_MAX_SPEED_CPS;
+use crate::resources::MOTOR_MAX_SPEED_CPS_FIXED;
 use crate::resources::POS_TOLERANCE_COUNT;
 use crate::resources::PWM_PERIOD_TICKS;
 use crate::resources::SETTLE_TICKS;

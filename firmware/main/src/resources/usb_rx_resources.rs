@@ -324,9 +324,9 @@ impl<'a> CommandHandler<'a> {
                     (self.read_f32(), self.read_f32(), self.read_f32())
                 {
                     motor.set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(
-                        target,
-                        velocity,
-                        acceleration,
+                        I32F32::from_num(target),
+                        I32F32::from_num(velocity),
+                        I32F32::from_num(acceleration),
                     )));
                     self.send_error_code(Some(op_code), ErrorCode::NoError)
                         .await;
