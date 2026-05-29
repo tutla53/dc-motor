@@ -36,6 +36,7 @@ use embassy_time::{Duration, Ticker};
 
 const TIME_SAMPLING_US: u64 = 5000;
 
+#[embassy_executor::task]
 async fn run_motor_task() {
   let mut ticker = Ticker::every(Duration::from_micros(TIME_SAMPLING_US));
 
@@ -50,6 +51,33 @@ async fn run_motor_task() {
 The code above generate the `ticker` for every 5 ms (200 Hz) that will trigger the loop on the `run_motor_task`. It's not the relative delay like `delay()` on Arduino which will start the calculation after the function is called, but it's will calculate the time after declaration and will be executed with constant tick. This ticker also is not blocking delay, while the `ticker` is waiting for the next tick, the CPU will jump to another task that available. By using this method, we can create constant time-sampling for 200 Hz application.
 
 ## Encoder Reading Method
+We can measured the motor position by counting how much rotary encoder signal or pulse. We can convert the pulse to radian or rotation based on the rotary encoder signal pulse per rotation. This measurement method could be very instensive especially on high speed DC motor. For example, on our DC motor we have:
+- Rotary Encoder = 48.4 pulse/rotation
+- Maximum Speed = 1200 RPM or 20 rotation/seconds
+- Rotary Encoder Maximum Frequency = `968 pulse/seconds`
+
+To accomodate that, we can create a task just to keep counting for every position change. On the `embassy-rp` we can use the `PioEncoder` to read the rotary encoder position for both clockwise and counter clockwise direction. This will be useful to reduce the CPU load during reading two ditial pin of the rotary encoder. The example of the PioEncoder can be found [here](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/pio_rotary_encoder.rs). To avoid the data racing during read and write the current position, we can use `Atomic`, specifically for this project we use `AtomicI32`, which can be safely shared between threads (control, logger, etc). The code below shows the example how to updating the motor position by using AtomicI32 and PioEncoder.
+
+```Rust
+use core::sync::atomic::AtomicI32;
+use embassy_rp::pio_programs::rotary_encoder::Direction;
+
+pub static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
+
+#[embassy_executor::task]
+async fn run_encoder_task() {
+    loop {
+        let step = match self.encoder.read().await {
+            Direction::Clockwise => 1,
+            Direction::CounterClockwise => -1,
+        };
+        let current_pos = CURRENT_POS.load(Ordering::Relaxed);
+        self.motor.set_current_pos(current_pos.saturating_add(step));
+    }
+}
+```
+We can measure the speed at the beginning of the DC Motor control loop by dividing the pos difference by the time sampling. The pos difference it self can be collected from the encoder task. By using this implementation we can perform the open loop speed control and log the position and the speed of the DC motor. The complete implementation can be found on the `firmware/main/src/tasks/dc_motor.rs`
+
 ## PID Control
 ### Speed Control
 ### Position Control
