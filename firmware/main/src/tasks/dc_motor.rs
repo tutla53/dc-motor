@@ -8,18 +8,61 @@
 use super::*;
 
 /* --------------------------- DC Motor Struct -------------------------- */
-pub struct MotorPin<'d, S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>, P2: PioPin, P3: PioPin> {
+pub struct MotorPin<'d, S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>> {
     pub pwm_cw_pin: Peri<'d, P0>,
     pub pwm_ccw_pin: Peri<'d, P1>,
     pub pwm_slice: Peri<'d, S>,
-    pub encoder_pin_a: Peri<'d, P2>,
-    pub encoder_pin_b: Peri<'d, P3>,
 }
 
-pub struct DCMotor<'d, T: Instance, const SM: usize> {
+pub struct EncoderPin<'d, P0: PioPin, P1: PioPin> {
+    pub encoder_pin_a: Peri<'d, P0>,
+    pub encoder_pin_b: Peri<'d, P1>,
+}
+
+pub struct RotaryEncoder<'d, T: Instance, const SM: usize> {
+    encoder: PioEncoder<'d, T, SM>,
+    motor: &'static MotorHandler,
+}
+
+impl<'d, T: Instance, const SM: usize> RotaryEncoder<'d, T, SM> {
+    pub fn build<P0: PioPin, P1: PioPin>(
+        encoder_pin: EncoderPin<'d, P0, P1>,
+        common: &mut Common<'d, T>,
+        sm: StateMachine<'d, T, SM>,
+        motor_handler: &'static MotorHandler,
+    ) -> Self {
+        let enc_prg = PioEncoderProgram::new(common);
+        let pio_encoder = PioEncoder::new(
+            common,
+            sm,
+            encoder_pin.encoder_pin_a,
+            encoder_pin.encoder_pin_b,
+            &enc_prg,
+        );
+
+        Self {
+            encoder: pio_encoder,
+            motor: motor_handler,
+        }
+    }
+
+    #[inline(always)]
+    pub async fn run_encoder_task(&mut self) {
+        let mut current_pos = self.motor.get_current_pos();
+
+        loop {
+            match self.encoder.read().await {
+                Direction::Clockwise => current_pos = current_pos.saturating_add(1),
+                Direction::CounterClockwise => current_pos = current_pos.saturating_sub(1),
+            }
+            self.motor.set_current_pos(current_pos);
+        }
+    }
+}
+
+pub struct DCMotor<'d> {
     pwm_cw: PwmOutput<'d>,
     pwm_ccw: PwmOutput<'d>,
-    encoder: PioEncoder<'d, T, SM>,
     motor: &'static MotorHandler,
     speed_control: PIDcontrol<I16F16>,
     position_control: PIDcontrol<I32F32>,
@@ -36,11 +79,9 @@ pub struct DCMotor<'d, T: Instance, const SM: usize> {
     ticks_to_cps_rolling: I16F16,
 }
 
-impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
-    pub async fn build<S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>, P2: PioPin, P3: PioPin>(
-        motor_pin: MotorPin<'d, S, P0, P1, P2, P3>,
-        common: &mut Common<'d, T>,
-        sm: StateMachine<'d, T, SM>,
+impl<'d> DCMotor<'d> {
+    pub async fn build<S: Slice, P0: ChannelBPin<S>, P1: ChannelAPin<S>>(
+        motor_pin: MotorPin<'d, S, P0, P1>,
         motor_handler: &'static MotorHandler,
     ) -> Option<Self> {
         // Build PWM
@@ -60,20 +101,9 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
         let pwm_ccw = pwm_a?;
         let pwm_cw = pwm_b?;
 
-        // Build Rotary Encoder
-        let enc_prg = PioEncoderProgram::new(common);
-        let pio_encoder = PioEncoder::new(
-            common,
-            sm,
-            motor_pin.encoder_pin_a,
-            motor_pin.encoder_pin_b,
-            &enc_prg,
-        );
-
         let dc_motor = Self {
             pwm_cw,
             pwm_ccw,
-            encoder: pio_encoder,
             motor: motor_handler,
             speed_control: PIDcontrol::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks),
             position_control: PIDcontrol::new(DEFAULT_PID_POS_CONFIG, motor_handler.max_speed_cps),
@@ -174,20 +204,6 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
                 self.move_motor(0);
                 self.motion_profile = None;
             }
-        }
-    }
-
-    #[inline(always)]
-    pub async fn run_encoder_task(&mut self) {
-        let mut current_pos = self.motor.get_current_pos();
-
-        loop {
-            match self.encoder.read().await {
-                Direction::Clockwise => current_pos = current_pos.saturating_add(1),
-                Direction::CounterClockwise => current_pos = current_pos.saturating_sub(1),
-            }
-            self.current_pos = I32F32::from_num(current_pos);
-            self.motor.set_current_pos(current_pos);
         }
     }
 
@@ -341,7 +357,7 @@ impl<'d, T: Instance, const SM: usize> DCMotor<'d, T, SM> {
 #[unsafe(link_section = ".data")]
 #[embassy_executor::task]
 pub async fn motor0_task(
-    mut dc_motor: DCMotor<'static, PIO0, 0>,
+    mut dc_motor: DCMotor<'static>,
     event_sender: ChannelSender<'static, CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE>,
 ) {
     dc_motor.run_motor_task(event_sender).await;
@@ -350,10 +366,23 @@ pub async fn motor0_task(
 #[inline(always)]
 #[unsafe(link_section = ".data")]
 #[embassy_executor::task]
+pub async fn encoder0_task(mut encoder: RotaryEncoder<'static, PIO0, 0>) {
+    encoder.run_encoder_task().await;
+}
+
+#[inline(always)]
+#[unsafe(link_section = ".data")]
+#[embassy_executor::task]
 pub async fn motor1_task(
-    mut dc_motor: DCMotor<'static, PIO0, 1>,
+    mut dc_motor: DCMotor<'static>,
     event_sender: ChannelSender<'static, CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE>,
 ) {
     dc_motor.run_motor_task(event_sender).await;
-    dc_motor.run_encoder_task().await;
+}
+
+#[inline(always)]
+#[unsafe(link_section = ".data")]
+#[embassy_executor::task]
+pub async fn encoder1_task(mut encoder: RotaryEncoder<'static, PIO0, 1>) {
+    encoder.run_encoder_task().await;
 }

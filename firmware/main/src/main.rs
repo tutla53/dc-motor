@@ -34,7 +34,11 @@ use crate::resources::gpio_list::Motor1Resources;
 use crate::resources::logger_resources::LoggerHandler;
 use crate::resources::motor_resources::MotorHandler;
 use crate::tasks::dc_motor::DCMotor;
+use crate::tasks::dc_motor::EncoderPin;
 use crate::tasks::dc_motor::MotorPin;
+use crate::tasks::dc_motor::RotaryEncoder;
+use crate::tasks::dc_motor::encoder0_task;
+use crate::tasks::dc_motor::encoder1_task;
 use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
 use crate::tasks::heartbeat::heartbeat_task;
@@ -79,10 +83,32 @@ async fn main(_spawner: Spawner) {
     let ph = embassy_rp::init(config);
     let p = split_resources!(ph);
 
-    // On Board LED
+    /* ---------------- Pin Assignment ---------------- */
     let mut onboard_led = ph.PIN_25;
 
-    // FLash Storage
+    let motor0_pin = MotorPin {
+        pwm_cw_pin: p.motor_0.Motor_PWM_CW_PIN,
+        pwm_ccw_pin: p.motor_0.Motor_PWM_CCW_PIN,
+        pwm_slice: p.motor_0.SLICE,
+    };
+
+    let rotary_encoder0_pin = EncoderPin {
+        encoder_pin_a: p.motor_0.Encoder_PIN_A,
+        encoder_pin_b: p.motor_0.Encoder_PIN_B,
+    };
+
+    let motor1_pin = MotorPin {
+        pwm_cw_pin: p.motor_1.Motor_PWM_CW_PIN,
+        pwm_ccw_pin: p.motor_1.Motor_PWM_CCW_PIN,
+        pwm_slice: p.motor_1.SLICE,
+    };
+
+    let rotary_encoder1_pin = EncoderPin {
+        encoder_pin_a: p.motor_1.Encoder_PIN_A,
+        encoder_pin_b: p.motor_1.Encoder_PIN_B,
+    };
+
+    /* ---------------- Building Flash Storage ---------------- */
     let flash = Flash::<_, Async, FLASH_SIZE>::new(ph.FLASH, ph.DMA_CH0, Irqs);
     let storage_config = const { MapConfig::new(STORAGE_START..STORAGE_END) };
     let storage = MapStorage::<u8, _, _>::new(flash, storage_config, NoCache::new());
@@ -92,7 +118,7 @@ async fn main(_spawner: Spawner) {
         *guard = Some(storage);
     }
 
-    // USB Initialization
+    /* ---------------- Building USB Communication ---------------- */
     let usb_driver = Driver::new(ph.USB, Irqs);
 
     let usb_config = {
@@ -116,10 +142,9 @@ async fn main(_spawner: Spawner) {
 
     let class = CdcAcmClass::new(&mut builder, USB_STATE.init(State::new()), 64);
     let usb_dev = builder.build();
-    // Split the class into transmitter and receiver
-    let (usb_transmitter, usb_receiver) = class.split();
+    let (usb_transmitter, usb_receiver) = class.split(); // Split the class into transmitter and receiver
 
-    // DC Motor Initialization
+    /* ---------------- Building DC Motor ---------------- */
     let Pio {
         mut common,
         sm0,
@@ -128,38 +153,24 @@ async fn main(_spawner: Spawner) {
     } = Pio::new(ph.PIO0, Irqs);
 
     // Build Motor 0
-    let motor0_pin = MotorPin {
-        pwm_cw_pin: p.motor_0.Motor_PWM_CW_PIN,
-        pwm_ccw_pin: p.motor_0.Motor_PWM_CCW_PIN,
-        pwm_slice: p.motor_0.SLICE,
-        encoder_pin_a: p.motor_0.Encoder_PIN_A,
-        encoder_pin_b: p.motor_0.Encoder_PIN_B,
-    };
-
-    let Some(motor0) = DCMotor::build(motor0_pin, &mut common, sm0, &MOTOR[0]).await else {
+    let Some(motor0) = DCMotor::build(motor0_pin, &MOTOR[0]).await else {
         {
             let mut led = Output::new(onboard_led.reborrow(), Level::Low);
             led.set_high();
         }
         return;
     };
+    let encoder0 = RotaryEncoder::build(rotary_encoder0_pin, &mut common, sm0, &MOTOR[0]);
 
     // Build Motor 1
-    let motor1_pin = MotorPin {
-        pwm_cw_pin: p.motor_1.Motor_PWM_CW_PIN,
-        pwm_ccw_pin: p.motor_1.Motor_PWM_CCW_PIN,
-        pwm_slice: p.motor_1.SLICE,
-        encoder_pin_a: p.motor_1.Encoder_PIN_A,
-        encoder_pin_b: p.motor_1.Encoder_PIN_B,
-    };
-
-    let Some(motor1) = DCMotor::build(motor1_pin, &mut common, sm1, &MOTOR[1]).await else {
+    let Some(motor1) = DCMotor::build(motor1_pin, &MOTOR[1]).await else {
         {
             let mut led = Output::new(onboard_led.reborrow(), Level::Low);
             led.set_high();
         }
         return;
     };
+    let encoder1 = RotaryEncoder::build(rotary_encoder1_pin, &mut common, sm1, &MOTOR[1]);
 
     // Blink after Initialization
     {
@@ -177,7 +188,9 @@ async fn main(_spawner: Spawner) {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
                 spawner.spawn(motor0_task(motor0, EVENT_CHANNEL.sender()).expect("FAILED"));
+                spawner.spawn(encoder0_task(encoder0).expect("FAILED"));
                 spawner.spawn(motor1_task(motor1, EVENT_CHANNEL.sender()).expect("FAILED"));
+                spawner.spawn(encoder1_task(encoder1).expect("FAILED"));
             });
         },
     );
