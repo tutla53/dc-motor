@@ -15,6 +15,87 @@
     
 #
 
+## Highlight
+<div align="center">
+	<table>
+		<tr> 
+			<th width=300 align="center"> Parameter</th>
+			<th width=600 align="center"> Value </th>
+		</tr>
+		<tr> 
+      <td align="left"> Motor Bandwidth (est.)</td>
+      <td align="left"> 6.2 Hz</td>
+    </tr>
+		<tr> 
+      <td align="left"> Time-Constant (est.)</td>
+      <td align="left"> 0.025 - 0.045 s</td>
+    </tr> 
+		<tr> 
+      <td align="left"> Sampling Frequency</td>
+      <td align="left"> 200 Hz (5 ms)</td>
+    </tr>
+		<tr> 
+      <td align="left"> Main Control Loop Sampling Method</td>
+      <td align="left"> Pooling with 
+        <code> embassy-time::Ticker </code> 
+      </td>
+    </tr>     
+		<tr> 
+      <td align="left"> Position Measurement Method</td>
+      <td align="left">
+        <ul>
+          <li>Implemented with <code>PioEncoder</code> to read the encoder position and direction </li>
+          <li> Create a task to keep the position counter only </li>
+        </ul> 
+      </td>
+    </tr>
+		<tr> 
+      <td align="left"> Speed Measurement Method</td>
+      <td align="left">
+        <ul>
+          <li>Get the position at the beginning of the control loop to get the delta position</li>
+          <li>speed = delta_position / time_sampling</li>
+        </ul> 
+      </td>
+    </tr>
+		<tr> 
+      <td align="left"> Handling Floating-Point Data Type</td>
+      <td align="left"> Fixed-point arithmetic to represent the "float" as an integer by using
+        <code>fixed</code> crate
+      </td>
+    </tr>
+		<tr> 
+      <td align="left"> Inter-Task Communication Method</td>
+      <td align="left">
+        <ul>
+          <li>USB Communication (Command, Event, Logger): <code>embassy_sync::channel</code> </li>
+          <li>Encoder Data: <code>AtomicI32</code> </li>
+          <li>PID Data: <code>embassy_sync::mutex</code> </li>
+        </ul>
+      </td>
+    </tr> 
+		<tr> 
+      <td align="left"> Task List</td>
+      <td align="left">
+        <ul>
+          CORE 0
+          <li><code>usb_device_task</code> : Start USB Communication</li>
+          <li><code>usb_rx_task</code> : Handling Received Message</li>
+          <li><code>usb_tx_task</code> : Handling Firmware Response</li>
+          <li><code>firmware_logger_task</code> : Handling Data Streaming</li>
+          <li><code>heartbeat_task</code> : LED Indicator</li>
+          <br>
+          CORE 1
+          <li><code>motor0_task</code> : Motor 0 main control loop</li>
+          <li><code>encoder0_task</code> : Rotary Encoder Counter for Motor 0</li>
+          <li><code>motor1_task</code> : Motor 1 main control loop</li>
+          <li><code>encoder1_task</code> : Rotary Encoder Counter for Motor 1</li>      
+        </ul>
+      </td>
+    </tr>                                
+	</table>
+</div>
+
 ## Time-Sampling
 One of the most important parameter on the discrete-time system is time-sampling or sampling frequency. Time sampling is a fundamental process in discrete systems, playing a critical role in converting continuous signals into discrete signals. This conversion is essential for various applications, particularly in digital control and signal processing. On most application we need to make sure the time-sampling is constant to represent it's analog model. To determine the time-sampling we usually refer to `Nyquist-Shannon Sampling Theorem`. The Nyquist-Shannon sampling theorem states that a continuous signal can be perfectly reconstructed from its samples if it is sampled at a rate greater than twice its highest frequency. We can write that the sampling frequency ($f_s$) must be greater or equal to two times the system's bandwidth or mathematically we can write: $f_s \geq 2 \cdot f_{bandwidth}$ . This requirement is to make sure that the signal that we process is correct for all frequency and avoid aliasing.
 
@@ -50,34 +131,6 @@ async fn run_motor_task() {
 ```
 
 The code above generate the `ticker` for every 5 ms (200 Hz) that will trigger the loop on the `run_motor_task`. It's not the relative delay like `delay()` on Arduino which will start the calculation after the function is called, but it's will calculate the time after declaration and will be executed with constant tick. This ticker also is not blocking delay, while the `ticker` is waiting for the next tick, the CPU will jump to another task that available. By using this method, we can create constant time-sampling for 200 Hz application.
-
-#### Summary
-<div align="center">
-	<table>
-		<tr> 
-			<th width=300 align="center"> Parameter</th>
-			<th width=300 align="center"> Value </th>
-		</tr>
-		<tr> 
-      <td align="left"> Motor Bandwidth (est.)</td>
-      <td align="left"> 6.2 Hz</td>
-    </tr>
-		<tr> 
-      <td align="left"> Time-Constant (est.)</td>
-      <td align="left"> 0.025 - 0.045 s</td>
-    </tr> 
-		<tr> 
-      <td align="left"> Sampling Frequency</td>
-      <td align="left"> 200 Hz (5 ms)</td>
-    </tr>
-		<tr> 
-      <td align="left"> Sampling Frequency Implementation</td>
-      <td align="left"> Pooling with 
-        <code> embassy-time::Ticker </code> 
-      </td>
-    </tr>            
-	</table>
-</div>
 
 ## Encoder Reading Method
 We can measured the motor position by counting how much rotary encoder signal or pulse. We can convert the pulse to radian or rotation based on the rotary encoder signal pulse per rotation. This measurement method could be very instensive especially on high speed DC motor. For example, on our DC motor we have:
