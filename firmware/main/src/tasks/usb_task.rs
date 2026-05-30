@@ -37,9 +37,9 @@ pub async fn usb_tx_task(
 
         loop {
             let action = select3(
-                command_receiver.receive(), // Priority 1
-                event_receiver.receive(),   // Priority 2
-                log_receiver.receive(),     // Priority 3
+                command_receiver.receive(),
+                event_receiver.receive(),
+                log_receiver.receive(),
             )
             .await;
 
@@ -57,7 +57,7 @@ pub async fn usb_tx_task(
 
                     match event {
                         EventList::MotorMoveDone(motor_id) => {
-                            packet.data[1] = 0x00;
+                            packet.data[1] = 0x00; // OP Code
                             packet.data[2] = motor_id;
                         }
                     }

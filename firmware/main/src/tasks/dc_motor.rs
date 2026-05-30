@@ -76,6 +76,7 @@ pub struct DCMotor<'d> {
     delta_buffer: [i32; SPEED_FILTER_WINDOW],
     delta_idx: usize,
     ticks_to_cps_rolling: I16F16,
+    trapz_time_s: I32F32,
 }
 
 impl<'d> DCMotor<'d> {
@@ -118,6 +119,7 @@ impl<'d> DCMotor<'d> {
             delta_idx: 0,
             ticks_to_cps_rolling: I16F16::from_num(TICKS_TO_CPS)
                 / I16F16::from_num(SPEED_FILTER_WINDOW),
+            trapz_time_s: I32F32::from_num(0),
         };
 
         // Initialized Motor Config
@@ -227,7 +229,7 @@ impl<'d> DCMotor<'d> {
         let mut ticker = Ticker::every(Duration::from_micros(TIME_SAMPLING_US));
         // self.enable();
 
-        let mut start_time = Instant::now();
+        self.trapz_time_s = I32F32::from_num(0);
 
         let mut current_active_cmd = MotorCommand::Stop;
         let mut last_command: Option<MotorCommand> = None;
@@ -279,7 +281,7 @@ impl<'d> DCMotor<'d> {
                     current_active_cmd
                 {
                     let safe_vel = vel.clamp(-MOTOR_MAX_SPEED_CPS_FIXED, MOTOR_MAX_SPEED_CPS_FIXED);
-                    start_time = Instant::now();
+                    self.trapz_time_s = I32F32::from_num(0);
                     self.motion_profile = Some(TrapezoidProfile::new(
                         self.current_pos,
                         final_pos,
@@ -308,9 +310,8 @@ impl<'d> DCMotor<'d> {
                         Shape::Trapezoidal(target, _, _) => {
                             if let Some(ref profile) = self.motion_profile {
                                 self.final_target = I32F32::from_num(target);
-                                let elapsed_us = start_time.elapsed().as_micros();
-                                let elapsed_s = I32F32::from_num(elapsed_us) / 1_000_000;
-                                profile.position(elapsed_s).to_num::<i32>()
+                                self.trapz_time_s += TIME_SAMPLING_S_FIXED;
+                                profile.position(self.trapz_time_s).to_num::<i32>()
                             } else {
                                 self.current_pos.to_num::<i32>()
                             }
