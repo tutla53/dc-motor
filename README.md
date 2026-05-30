@@ -1,9 +1,9 @@
 # DC Motor PID Control
 
 <div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="300" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
   <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="400" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
   <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
@@ -252,9 +252,9 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 
 #
 <div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="300" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
   <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="400" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
   <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
