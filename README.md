@@ -199,31 +199,39 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 - On `script/run.py` you can create custom code to command the RP2040. We have created the example such as:
 
 <table>
-  <tr>
-    <th  align="center" width=300>Open-loop speed control with step PWM input</th>
-    <th  align="center" width=300>Closed-loop speed control with step input</th>
-	<th  align="center" width=300>Closed-loop position control with step input</th>
+  <tr align = "center">
+	<th  align="center" width=50>Example</th>
+	<th  align="center">Positive Direction</th>
+	<th  align="center">Negative Direction</th>
   </tr>
+
   <tr>
-    <td>
-		<img height=220 src="assets/00_Preview/open-loop.jpg">
+	<td align="center">Open Loop</td>
+	<td> 
+		<img src="assets/01_System_Identification/A_100.jpg">
 	</td>
-	<td>
-		<img height=220 src="assets/00_Preview/speed-step.jpg">
-	</td>
-	<td>
-		<img height=220 src="assets/00_Preview/position-step.jpg">
+	<td> 
+		<img  src="assets/01_System_Identification/B_-100.jpg">
 	</td>
   </tr>
+
   <tr>
-    <th>Closed-loop position control with trapezoidal motion profile</th>
-    <th colspan="2">Closed-loop speed control with step input along with the motor simulation from system identification process</th>
-  </tr>
-  <tr>
-	<td align="center">
-		<img height = 220 src="assets/00_Preview/position-trapezoidal.jpg">
+	<td align="center">Speed Control</td>
+	<td> 
+		<img src="assets/02_Speed_Control/A_600.jpg">
 	</td>
-	<td colspan="2" align="center">
-		<img height = 220 src="assets/00_Preview/speed-step-with-simulation.jpg"> 
+	<td> 
+		<img  src="assets/02_Speed_Control/B_600.jpg">
+	</td>
+  </tr>
+
+  <tr>
+	<td align="center">Position Control</td>
+	<td> 
+		<img src="assets/03_Position_Control/A_5.jpg">
+	</td>
+	<td> 
+		<img  src="assets/03_Position_Control/B_5.jpg">
+	</td>
   </tr>
 </table>
