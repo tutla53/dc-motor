@@ -43,7 +43,7 @@ pub struct MotorHandler {
     current_commanded_pos: AtomicI32,
     current_commanded_speed: AtomicI32,
     current_commanded_pwm: AtomicI32,
-    commanded_motor_speed: Channel<CriticalSectionRawMutex, MotorCommand, 16>,
+    motor_command: Channel<CriticalSectionRawMutex, MotorCommand, 16>,
     pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     pub default_pos_pid: PIDConfig,
@@ -61,7 +61,7 @@ impl MotorHandler {
             current_commanded_pos: AtomicI32::new(0),
             current_commanded_speed: AtomicI32::new(0),
             current_commanded_pwm: AtomicI32::new(0),
-            commanded_motor_speed: Channel::new(),
+            motor_command: Channel::new(),
             pos_pid: Mutex::new(DEFAULT_PID_POS_CONFIG),
             speed_pid: Mutex::new(DEFAULT_PID_SPEED_CONFIG),
             default_pos_pid: DEFAULT_PID_POS_CONFIG,
@@ -105,11 +105,11 @@ impl MotorHandler {
     }
 
     pub fn set_motor_command(&self, speed: MotorCommand) {
-        let _ = self.commanded_motor_speed.try_send(speed);
+        let _ = self.motor_command.try_send(speed);
     }
 
     pub fn get_motor_command(&self) -> Option<MotorCommand> {
-        self.commanded_motor_speed.try_receive().ok()
+        self.motor_command.try_receive().ok()
     }
 
     pub fn set_commanded_pwm(&self, pwm: i32) {
