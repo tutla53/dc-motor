@@ -41,7 +41,7 @@
 		<tr> 
       <td align="left"> Main Control Loop Sampling Method</td>
       <td align="left"> Pooling with 
-        <a href="https://docs.embassy.dev/embassy-time/0.5.1/default/struct.Ticker.html"><code> embassy-time::Ticker </code> </a>
+        <a href="https://docs.embassy.dev/embassy-time/0.5.1/default/struct.Ticker.html"><code>embassy-time::Ticker</code></a>
       </td>
     </tr>     
 		<tr> 
@@ -49,7 +49,7 @@
       <td align="left">
         <ul>
           <li>Implemented with 
-          <a href ="https://docs.embassy.dev/embassy-rp/0.10.0/rp2040/pio_programs/rotary_encoder/struct.PioEncoder.html"> <code>PioEncoder</code> </a>
+          <a href ="https://docs.embassy.dev/embassy-rp/0.10.0/rp2040/pio_programs/rotary_encoder/struct.PioEncoder.html"><code>PioEncoder</code></a>
           to read the encoder position and direction </li>
           <li> Create a task to keep the position counter only </li>
         </ul> 
