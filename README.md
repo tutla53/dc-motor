@@ -1,4 +1,18 @@
 # DC Motor PID Control
+
+<div align="center">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
+  <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
+  <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="780" height="1">
+  DC Motor Research Documentation
+</div>
+	
+#
+
 ## Navigation
 * [DC Motor Research Documentation](docs/README.md) : Motor Identification and PID Control
 * [Build the RP2040 Firmware](firmware/README.md)
@@ -235,3 +249,17 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
 	</td>
   </tr>
 </table>
+
+#
+<div align="center">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
+  <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
+  <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+</div>
+<div align="center">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="780" height="1">
+  DC Motor Research Documentation
+</div>
+	
+#
