@@ -163,9 +163,12 @@ class Pico:
             if len(available_ports) == 0:
                 print_log("WARN", "RP2040 is not detected")
                 return False
-            
-            acm_ports = [port.device for port in available_ports if port.serial_number.startswith("12345678")]
-            
+            try:
+                acm_ports = [port.device for port in available_ports if port.serial_number.startswith("12345678")]
+            except Exception as e:
+                print_log("WARN", e)
+                return False
+                        
             if not acm_ports:
                 print_log("WARN", "No USB ports found. Connect a device.")
                 return False
