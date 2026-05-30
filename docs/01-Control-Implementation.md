@@ -19,7 +19,7 @@
 <div align="center">
 	<table>
 		<tr> 
-			<th width=300 align="center"> Parameter</th>
+			<th width=200 align="center"> Parameter</th>
 			<th width=600 align="center"> Value </th>
 		</tr>
 		<tr> 
@@ -31,20 +31,26 @@
       <td align="left"> 0.025 - 0.045 s</td>
     </tr> 
 		<tr> 
-      <td align="left"> Sampling Frequency</td>
-      <td align="left"> 200 Hz (5 ms)</td>
-    </tr>
+      <td align="left"> Control Sampling</td>
+      <td align="left"> 
+        Sampling Frequency: 200 Hz (~62 times motor bandwidth) <br>
+        Time-Sampling: 5 ms
+      </td>
+    </tr>    
+		<tr>  
 		<tr> 
       <td align="left"> Main Control Loop Sampling Method</td>
       <td align="left"> Pooling with 
-        <code> embassy-time::Ticker </code> 
+        <a href="https://docs.embassy.dev/embassy-time/0.5.1/default/struct.Ticker.html"><code> embassy-time::Ticker </code> </a>
       </td>
     </tr>     
 		<tr> 
       <td align="left"> Position Measurement Method</td>
       <td align="left">
         <ul>
-          <li>Implemented with <code>PioEncoder</code> to read the encoder position and direction </li>
+          <li>Implemented with 
+          <a href ="https://docs.embassy.dev/embassy-rp/0.10.0/rp2040/pio_programs/rotary_encoder/struct.PioEncoder.html"> <code>PioEncoder</code> </a>
+          to read the encoder position and direction </li>
           <li> Create a task to keep the position counter only </li>
         </ul> 
       </td>
@@ -61,31 +67,52 @@
 		<tr> 
       <td align="left"> Handling Floating-Point Data Type</td>
       <td align="left"> Fixed-point arithmetic to represent the "float" as an integer by using
-        <code>fixed</code> crate
+        <a href="https://crates.io/crates/fixed"><code>fixed</code> </a> crate
       </td>
     </tr>
 		<tr> 
-      <td align="left"> Inter-Task Communication Method</td>
+      <td align="left"> Inter-Task and Inter-Core Communication Method</td>
       <td align="left">
+        <a href="https://rust.docs.kernel.org/6.1/core/sync/atomic/struct.AtomicI32.html"><code>AtomicI32</code></a>
+        : Transfer single interger data (i32) to control tasks safely without blocking
         <ul>
-          <li>USB Communication (Command, Event, Logger): <code>embassy_sync::channel</code> </li>
-          <li>Encoder Data: <code>AtomicI32</code> </li>
-          <li>PID Data: <code>embassy_sync::mutex</code> </li>
+          <li>Current Position Data</li>
+          <li>Current Speed Data</li>
+          <li>Current Commanded Position Data</li>
+          <li>Current Commanded Speed Data</li>
+          <li>Current Commanded PWM Data</li>
+        </ul>       
+        <a href="https://docs.embassy.dev/embassy-sync/git/default/channel/index.html"><code>embassy_sync::channel</code></a>
+        : Transfer time-sensitve data (critical) with struct data type and interact with the control task and usb communication task
+        <ul>
+          <li>Event Data</li>
+          <li>Command Data</li>
+          <li>Firmware Logger Data</li>
+          <li>Motor Command Data</li>          
         </ul>
+        </ul>
+        <a href="https://docs.embassy.dev/embassy-sync/git/default/mutex/index.html"><code>embassy_sync::mutex</code></a>
+        : Transfer non time-sensitve config with struct data type
+        <ul>
+          <li>Position Control PID Config</li>
+          <li>Speed Control PID Config</li>
+        </ul>         
       </td>
     </tr> 
 		<tr> 
       <td align="left"> Task List</td>
       <td align="left">
+        CORE 0
         <ul>
-          CORE 0
           <li><code>usb_device_task</code> : Start USB Communication</li>
           <li><code>usb_rx_task</code> : Handling Received Message</li>
           <li><code>usb_tx_task</code> : Handling Firmware Response</li>
           <li><code>firmware_logger_task</code> : Handling Data Streaming</li>
           <li><code>heartbeat_task</code> : LED Indicator</li>
           <br>
-          CORE 1
+        </ul>
+        CORE 1
+        <ul>
           <li><code>motor0_task</code> : Motor 0 main control loop</li>
           <li><code>encoder0_task</code> : Rotary Encoder Counter for Motor 0</li>
           <li><code>motor1_task</code> : Motor 1 main control loop</li>
@@ -101,7 +128,7 @@ One of the most important parameter on the discrete-time system is time-sampling
 
 Even though the minimum frequency must be greater or equal to 2, but in practical application we usually  set the minimum value to higher rate (e.g. 10 to 100 times). Based on our discussion on the transfer function, the DC motor bandwidth can be calculated by the equation below:
 
-$$ f_{bandwidth} = \frac{1}{2\pi \cdot \tau } (Hz)$$
+$$ f_{bandwidth} = \frac{1}{2 \pi \tau } (Hz)$$
 
 Because we don't know exactly the time-constant for our DC motor, we can perform open loop response test with step input and measure the settling-time. We can estimate the time-constant by $\tau = t_s/4$ for 5% settling criterion or $\tau = t_s/5$ for 2% settling criterion. For this project DC motor we got the time-constant is around 0.025 to 0.04 seconds. By using the formula above we can get the bandwidth frequency of this project DC motor is `6.4 Hz`. 
 
@@ -161,12 +188,49 @@ async fn run_encoder_task() {
 We can measure the speed at the beginning of the DC Motor control loop by dividing the pos difference by the time sampling. The pos difference it self can be collected from the encoder task. By using this implementation we can perform the open loop speed control and log the position and the speed of the DC motor. The complete implementation can be found on the `firmware/main/src/tasks/dc_motor.rs`
 
 ## PID Control
-### Speed Control
+### Floating Point Handler
+The RP2040 doesn't have have floating-point arithmetic implemented in hardware and it is best to
+avoid it if possible. The compiler like `gcc` or `rustc` comes with software floating-point libraries for processors without floating-point support. But the problem with the compiler-builtins is it takes around 60–90 clock cycles to perform a single-precision float addition or substract. Raspberry included a fast floating-point library on the `bootROM`. This library knows all the features of the RP2040 and uses the division coprocessor. This can reduce the CPU cycles 2-3 times, so this makes the floating point calculation faster. But there's faster way to handle the floating point arithmetic, is by using <a href="https://crates.io/crates/fixed"><code>fixed</code></a> which treat the float as the integer. By using that, the addition and substraction can be done by using only 1 cpu cycle. This method can speed up the floating-point arithmetic 2-3 times faster than the boot ROM and 5-6 times faster than the compiler builtins. This is very significant improvment because the PID calculation is always executed on the control loop task. 
+
+### PID Implementation
+The implementation of the PID by using the fixed-point float is shown on the code below. The PIDControl is designed to a generic fixed point because the `fixed` type of the speed and position control is different. Because the input range of speed control is from -1200 to 1200 RPM, it's enough using the `I16F16` (16-bit fixed-point numbers) which has the range from -32_768 to 32_767. For the position control it's need the `I32F32` (32-bit fixed-point numbers) because we have no limitation for the position command. By using this we can easily calculate the PID output by calling the `compute` function.
+
+```Rust
+pub struct PIDcontrol<T: Fixed> {
+    kp: T,
+    ki: T,
+    kd: T,
+    i_limit: T,
+    integral: T,
+    prev_error: T,
+    max_threshold: i32,
+}
+
+impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
+    #[inline(always)]
+    pub fn compute(&mut self, error: T) -> i32 {
+        let next_integral = self.integral.saturating_add(error);
+        self.integral = next_integral.clamp(-self.i_limit, self.i_limit);
+
+        let derivative = error - self.prev_error;
+        self.prev_error = error;
+
+        let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
+
+        sig.to_num::<i32>().clamp(-self.max_threshold, self.max_threshold)
+    }
+}
+```
+
+To separate the communication and the main PID control tasks, we used the multicore capability of the RP2040. CORE0 will be used for the communication tasks and CORE1 is for the control tasks.
+
+<!-- ### Speed Control
 ### Position Control
 #### Step Motion Profile
 #### Trapezoidal Motion Profile
-## Firmware Logger Implementation
+## Firmware Logger Implementation -->
 
+#
 <div align="center">
   <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
