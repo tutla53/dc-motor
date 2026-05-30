@@ -42,6 +42,8 @@ pub const MOTOR_MAX_PWM_TICKS: i32 = PWM_PERIOD_TICKS as i32; // Full Range
 
 /* --------------------------- Control Config -------------------------- */
 pub const TIME_SAMPLING_US: u64 = 5000; // Control Loop Frequency
+pub const TIME_SAMPLING_S_FIXED: I32F32 =
+    I32F32::from_bits(((TIME_SAMPLING_US * (1u64 << 32)) / 1_000_000) as i64);
 pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32; // Calculating Speed from Ticks
 pub const SPEED_FILTER_WINDOW: usize = 1 << 3; // Must be 2^n
 
