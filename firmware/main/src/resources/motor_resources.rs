@@ -48,8 +48,9 @@ pub struct MotorHandler {
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     pub default_pos_pid: PIDConfig,
     pub default_speed_pid: PIDConfig,
+    pub default_max_speed: i32,
     pub max_pwm_ticks: i32,
-    pub max_speed_cps: i32,
+    pub max_speed_cps: AtomicI32,
     pub id: u8,
 }
 
@@ -66,8 +67,9 @@ impl MotorHandler {
             speed_pid: Mutex::new(DEFAULT_PID_SPEED_CONFIG),
             default_pos_pid: DEFAULT_PID_POS_CONFIG,
             default_speed_pid: DEFAULT_PID_SPEED_CONFIG,
+            default_max_speed: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
-            max_speed_cps: MOTOR_CONTROL_MAX_SPEED_CPS,
+            max_speed_cps: AtomicI32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
             id,
         }
     }
@@ -136,5 +138,13 @@ impl MotorHandler {
 
     pub async fn get_speed_pid(&self) -> PIDConfig {
         return *self.speed_pid.lock().await;
+    }
+
+    pub fn set_max_speed(&self, speed: i32) {
+        self.max_speed_cps.store(speed, Ordering::Relaxed);
+    }
+
+    pub fn get_max_speed(&self) -> i32 {
+        self.max_speed_cps.load(Ordering::Relaxed)
     }
 }

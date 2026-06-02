@@ -35,6 +35,10 @@ impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
         self.i_limit = T::from_num(i_limit);
     }
 
+    pub fn update_max_output(&mut self, max_output: i32) {
+        self.max_output = max_output;
+    }
+
     pub fn reset(&mut self) {
         self.integral = T::from_num(0);
         self.prev_error = T::from_num(0);

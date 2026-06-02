@@ -78,6 +78,7 @@ pub struct DCMotor<'d> {
     filter: MovingAverageFilter<SPEED_FILTER_WINDOW>,
     ticks_to_cps_per_windows: I16F16,
     trapz_time_s_fixed: I32F32,
+    max_speed_cps: i32,
 }
 
 impl<'d> DCMotor<'d> {
@@ -107,7 +108,10 @@ impl<'d> DCMotor<'d> {
             pwm_ccw,
             motor: motor_handler,
             speed_control: PIDcontrol::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks),
-            position_control: PIDcontrol::new(DEFAULT_PID_POS_CONFIG, motor_handler.max_speed_cps),
+            position_control: PIDcontrol::new(
+                DEFAULT_PID_POS_CONFIG,
+                DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
+            ),
             control_mode: ControlMode::Stop,
             motion_profile: None,
             move_done: false,
@@ -119,6 +123,7 @@ impl<'d> DCMotor<'d> {
             filter: MovingAverageFilter::new(),
             ticks_to_cps_per_windows: I16F16::from_num(TICKS_TO_CPS_PER_WINDOWS),
             trapz_time_s_fixed: I32F32::from_num(0),
+            max_speed_cps: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
         };
 
         // Initialized Motor Config
@@ -140,11 +145,20 @@ impl<'d> DCMotor<'d> {
         .await;
         motor_handler.set_pos_pid(pos_pid).await;
 
+        let max_speed = load_config(
+            motor_id,
+            ConfigType::MaxSpeed,
+            DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
+        )
+        .await;
+        motor_handler.set_max_speed(max_speed);
+
         Some(dc_motor)
     }
 
     async fn update_pos_pid_config(&mut self) {
         let new_pos_pid = self.motor.get_pos_pid().await;
+        let new_max_speed = self.motor.get_max_speed();
 
         self.position_control.reset();
         self.position_control.update_pid_param(
@@ -153,6 +167,8 @@ impl<'d> DCMotor<'d> {
             new_pos_pid.kd,
             new_pos_pid.i_limit,
         );
+        self.position_control.update_max_output(new_max_speed);
+        self.max_speed_cps = new_max_speed;
     }
 
     async fn update_speed_pid_config(&mut self) {
@@ -280,13 +296,13 @@ impl<'d> DCMotor<'d> {
                     acc_fixed,
                 )) = current_active_cmd
                 {
-                    let safe_vel =
-                        vel_fixed.clamp(-MOTOR_MAX_SPEED_CPS_FIXED, MOTOR_MAX_SPEED_CPS_FIXED);
+                    let max_speed = I32F32::from_num(self.max_speed_cps);
+                    let safe_vel_fixed = vel_fixed.clamp(-max_speed, max_speed);
                     self.trapz_time_s_fixed = I32F32::from_num(0);
                     self.motion_profile = Some(TrapezoidProfile::new(
                         self.current_pos_count_fixed,
                         final_pos_fixed,
-                        safe_vel,
+                        safe_vel_fixed,
                         acc_fixed,
                     ));
                 }
@@ -298,7 +314,11 @@ impl<'d> DCMotor<'d> {
                 }
                 MotorCommand::SpeedControl(commanded_speed) => {
                     self.motor.set_commanded_speed(commanded_speed);
-                    let error = I16F16::from_num(commanded_speed) - self.current_speed_cps_fixed;
+                    let clamped_commanded_spee_fixed = I16F16::from_num(
+                        commanded_speed.clamp(-self.max_speed_cps, self.max_speed_cps),
+                    );
+
+                    let error = clamped_commanded_spee_fixed - self.current_speed_cps_fixed;
                     let sig = self.speed_control.compute(error);
                     self.move_motor(sig);
                 }
