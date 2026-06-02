@@ -8,6 +8,7 @@ use panic_probe as _;
 
 use crate::LOGGER;
 use crate::MOTOR;
+use crate::control::MovingAverageFilter;
 use crate::control::PIDcontrol;
 use crate::control::TrapezoidProfile;
 use crate::resources::ConfigType;
@@ -22,7 +23,7 @@ use crate::resources::PWM_PERIOD_TICKS;
 use crate::resources::SETTLE_TICKS;
 use crate::resources::SPEED_FILTER_WINDOW;
 use crate::resources::SPEED_TOLERANCE_CPS;
-use crate::resources::TICKS_TO_CPS;
+use crate::resources::TICKS_TO_CPS_PER_WINDOWS;
 use crate::resources::TIME_SAMPLING_S_FIXED;
 use crate::resources::TIME_SAMPLING_US;
 use crate::resources::USB_BUFFER_SIZE;
