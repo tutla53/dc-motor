@@ -12,13 +12,14 @@ def extract_firmware_log_data(log_path, command_header, data_header, threshold_p
     
     target = np.max(np.abs(command_list))
     
-    if command_list[0] > command_list[len(command_list)-1] :
-        target = -target
         
     duration = len(t)
     
     start_time, settling_time = calculate_settling_time(t, data_list, command_list, 2)
     
+    if command_list[0] > command_list[len(command_list)-10] :
+        target = -target
+        
     output = {  "target"        : target,
                 "start_time_s"  : start_time,
                 "duration_s"    : (duration*dt_s),
