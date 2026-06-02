@@ -14,6 +14,7 @@ pub static STORAGE: Mutex<ThreadModeRawMutex, Option<MyStorage>> = Mutex::new(No
 pub enum ConfigType {
     SpeedPID = 0,
     PositionPID = 1,
+    MaxSpeed = 2,
 }
 
 /* --------------------------- Flash Storage -------------------------- */

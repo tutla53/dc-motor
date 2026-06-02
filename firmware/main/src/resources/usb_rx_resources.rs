@@ -93,13 +93,16 @@ impl<'a> CommandHandler<'a> {
             for (id, motor) in MOTOR.iter().enumerate() {
                 let current_speed_pid: PIDConfig = motor.get_speed_pid().await;
                 let current_pos_pid: PIDConfig = motor.get_pos_pid().await;
+                let current_max_speed: i32 = motor.get_max_speed();
 
                 let saved_speed =
                     save_config(id as u8, ConfigType::SpeedPID, &current_speed_pid).await;
                 let saved_pos =
                     save_config(id as u8, ConfigType::PositionPID, &current_pos_pid).await;
+                let saved_max_speed =
+                    save_config(id as u8, ConfigType::MaxSpeed, &current_max_speed).await;
 
-                if let (Err(()), Err(())) = (saved_speed, saved_pos) {
+                if let (Err(()), Err(()), Err(())) = (saved_speed, saved_pos, saved_max_speed) {
                     self.send_error_code(Some(op_code), ErrorCode::FlashStorageError)
                         .await;
                     return;
@@ -113,16 +116,20 @@ impl<'a> CommandHandler<'a> {
             for (id, motor) in MOTOR.iter().enumerate() {
                 let default_speed_pid = motor.default_speed_pid;
                 let default_pos_pid = motor.default_pos_pid;
+                let default_max_speed = motor.default_max_speed;
 
                 motor.set_speed_pid(default_speed_pid).await;
                 motor.set_pos_pid(default_pos_pid).await;
+                motor.set_max_speed(default_max_speed);
 
                 let saved_speed =
                     save_config(id as u8, ConfigType::SpeedPID, &default_speed_pid).await;
                 let saved_pos =
                     save_config(id as u8, ConfigType::PositionPID, &default_pos_pid).await;
+                let saved_max_speed =
+                    save_config(id as u8, ConfigType::MaxSpeed, &default_max_speed).await;
 
-                if let (Err(()), Err(())) = (saved_speed, saved_pos) {
+                if let (Err(()), Err(()), Err(())) = (saved_speed, saved_pos, saved_max_speed) {
                     self.send_error_code(Some(op_code), ErrorCode::FlashStorageError)
                         .await;
                     return;
@@ -372,6 +379,27 @@ impl<'a> CommandHandler<'a> {
                 motor.set_motor_command(MotorCommand::OpenLoop(pwm));
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
                     .await;
+            }
+            OpCode::GetMotorMaxSpeed => {
+                let motor_max_speed = motor.get_max_speed();
+
+                let mut buffer = Packet::new();
+                buffer
+                    .push(self.header)
+                    .push(ErrorCode::NoError as u8)
+                    .push(op_code)
+                    .push(motor_max_speed);
+                self.command_sender.send(buffer).await;
+            }
+            OpCode::SetMotorMaxSpeed => {
+                if let Some(motor_max_speed) = self.read() {
+                    motor.set_max_speed(motor_max_speed);
+                    self.send_error_code(Some(op_code), ErrorCode::NoError)
+                        .await;
+                } else {
+                    self.send_error_code(Some(op_code), ErrorCode::ReadByteError)
+                        .await;
+                }
             }
             _ => {
                 self.send_error_code(Some(op_code), ErrorCode::OpCodeNotFound)

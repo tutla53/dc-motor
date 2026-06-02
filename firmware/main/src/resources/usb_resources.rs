@@ -39,6 +39,8 @@ create_opcode_enum! {
         SaveConfiguration = 14,
         SetToDefaultConfig = 15,
         GetFirmwareVersion = 16,
+        GetMotorMaxSpeed = 17,
+        SetMotorMaxSpeed = 18,
     }
 }
 
