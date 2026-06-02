@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import csv
 import Tool.FileProcessing
 
 from tqdm import tqdm
@@ -53,6 +54,7 @@ class MotorSim:
         
         # Nonlinear Motor Gain
         self.K_LIST     =  self.config.K_LIST       # Nonlinear Gain Based on PWM Input
+        self.TAU_LIST   =  self.config.TAU_LIST 
         self.PWM_LIST   =  self.config.PWM_LIST
         
         # System Config
@@ -68,17 +70,17 @@ class MotorSim:
         self.ALPHA      = np.exp(-self.DT_S / self.tau)
         self.BETA       = self.K * (1 - self.ALPHA)
     
-    def __calculate_nonlinear_K(self, input_pwm):    
+    def __calculate_nonlinear(self, data_list, input_pwm):    
         
         if input_pwm <= self.PWM_LIST[0]:
-            return self.K_LIST[0]
+            return data_list[0]
         if input_pwm >= self.PWM_LIST[-1]:
-            return self.K_LIST[-1]
+            return data_list[-1]
         
         idx = bisect_left(self.PWM_LIST, input_pwm)
         
         p0, p1 = self.PWM_LIST[idx-1], self.PWM_LIST[idx]
-        k0, k1 = self.K_LIST[idx-1], self.K_LIST[idx]
+        k0, k1 = data_list[idx-1], data_list[idx]
         weight = (input_pwm - p0) / (p1 - p0)
         K = k0 + weight * (k1 - k0)
         
@@ -113,11 +115,14 @@ class MotorSim:
         '''
         
         if mode == SystemModel.Linear:
+            ALPHA = self.ALPHA
             BETA = self.BETA
         elif mode == SystemModel.Nonlinear:
-            BETA = self.__calculate_nonlinear_K(input_pwm) * (1 - self.ALPHA)
+            K_intrp     = self.__calculate_nonlinear(self.K_LIST, input_pwm)
+            ALPHA       = self.ALPHA
+            BETA        = K_intrp * (1 - ALPHA)
         
-        new_speed_pps = (self.ALPHA * current_speed_pps) + (BETA * input_pwm)
+        new_speed_pps = (ALPHA * current_speed_pps) + (BETA * input_pwm)
         
         return new_speed_pps
     
@@ -324,11 +329,27 @@ class MotorOptimization:
         
         print_log("INFO", f"{success_count}/{success_count+failed_count} Success")
         
+        # Save the Result to CSV
+        K_list_csv, PWM_csv = map(list, zip(*K_list))
+        tau_list_csv, _ = map(list, zip(*tau_list))
+        L_list_csv, _ = map(list, zip(*L_list))
+        
+        filename = base_url+"/LOG/system_identification.csv"
+        columns = ["PWM", "K", "tau", "L"]
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            
+            writer.writerow(columns)
+            
+            for row in zip(PWM_csv, K_list_csv, tau_list_csv, L_list_csv):
+                writer.writerow(row)
+        
+        
         sorted_K = sorted(K_list, key=lambda x: (x[0], x[1]))
         sorted_tau = sorted(tau_list, key=lambda x: (x[0], x[1]))
         sorted_L = sorted(L_list, key=lambda x: (x[0], x[1]))
         
-        K_list, _ = map(list, zip(*sorted_K))
+        K_list, PWM = map(list, zip(*sorted_K))
         tau_list, _ = map(list, zip(*sorted_tau))
         L_list, _ = map(list, zip(*sorted_L))
         
