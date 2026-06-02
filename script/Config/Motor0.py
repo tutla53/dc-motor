@@ -9,8 +9,8 @@ motor_id = 0
 GEAR_RATIO              = 4.4
 ENCODER_PPR             = 11
 ROTATION_PER_PULSE      = 1/(GEAR_RATIO*ENCODER_PPR)
-MAX_SPEED_RPM           = 1200  # Physical Limit
-MAX_SPEED_RPM_CONTROL   = 1437  # Control Calculation Limit
+MAX_SPEED_RPS           = 807
+MAX_SPEED_RPM           = 1000
 
 # Electronic Properties
 SYSTEM_FREQ_HZ          = 133_000_000
@@ -22,7 +22,7 @@ FREQUENCY_SAMPLING_HZ   = 1000
 DT_S                    = 1/FREQUENCY_SAMPLING_HZ
 
 ## Linear Model Properties
-K                       = 0.19915   # (pulse per seconds)/PWM_TICKS
+K                       = 0.26190  # (pulse per seconds)/PWM_TICKS
 TAU_S                   = 0.02664   # seconds
 DELAY_TIME_S            = 0.01461   # seconds
 DELAY_STEPS             = int(DELAY_TIME_S / DT_S)

@@ -14,7 +14,7 @@
 # ---------------------------------- Project -----------------------------------#
 [project]
 name        = "DCMotor"
-version     = "0.1.6"
+version     = "0.1.7"
 description = "RP2040 DC Motor Control"
 
 # ---------------------------------- Headers -----------------------------------#
@@ -161,3 +161,17 @@ op      = 16
 args    = {}
 ret     = { major = "u8", minor = "u8", patch = "u8" }
 desc    = "Get the compiled firmware version components (Major, Minor, Patch)"
+
+[[commands]]
+command = "get_motor_max_speed"
+op      = 17
+args    = { motor_id = "u8" }
+ret     = { motor_max_speed_cps = "i32" }
+desc    = "Get the motor maximum speed in cps"
+
+[[commands]]
+command = "set_motor_max_speed"
+op      = 18
+args    = {motor_id = "u8", motor_max_speed_cps = "i32" }
+ret     = {}
+desc    = "Set the motor maximum speed in cps"

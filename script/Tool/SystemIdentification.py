@@ -63,7 +63,7 @@ class MotorSim:
         self.ROTATION_PER_PULSE     = self.config.ROTATION_PER_PULSE
         self.PULSE_PER_ROTATION     = 1 / self.ROTATION_PER_PULSE
         self.MAX_PWM                = self.config.MAX_PWM_TICKS
-        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPM_CONTROL * self.PPS_PER_RPM  # 1400 RPM for control calculation
+        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPS
         self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
         
         # Linear Discrete Model System
@@ -211,7 +211,7 @@ class MotorSim:
             
             # --- Physical Response ---
             prev_speed_pps = current_speed_pps
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Linear)
             
             current_pos_pulse += ((prev_speed_pps + current_speed_pps)/2.0) * self.DT_S
             
@@ -257,7 +257,7 @@ class MotorOptimization:
     def __init__(self, configfile):
         self.config = configfile
         self.motor = MotorSim(configfile)
-        self.__assets_dir = base_url + "/assets/open-loop-responses/"
+        self.__assets_dir = base_url[:-7] + "/assets/01_System_Identification/open-loop-responses/"
     
     def __open_loop_response(self, params, u, dt):        
         K, tau, L = params
