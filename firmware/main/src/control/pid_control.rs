@@ -12,11 +12,11 @@ pub struct PIDcontrol<T: Fixed> {
     i_limit: T,
     integral: T,
     prev_error: T,
-    max_threshold: i32,
+    max_output: i32,
 }
 
 impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
-    pub fn new(config: PIDConfig, threshold: i32) -> Self {
+    pub fn new(config: PIDConfig, max_output: i32) -> Self {
         Self {
             kp: T::from_num(config.kp),
             ki: T::from_num(config.ki),
@@ -24,7 +24,7 @@ impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
             i_limit: T::from_num(config.i_limit),
             integral: T::from_num(0),
             prev_error: T::from_num(0),
-            max_threshold: threshold,
+            max_output,
         }
     }
 
@@ -50,7 +50,6 @@ impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
 
         let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
 
-        sig.to_num::<i32>()
-            .clamp(-self.max_threshold, self.max_threshold)
+        sig.to_num::<i32>().clamp(-self.max_output, self.max_output)
     }
 }
