@@ -25,9 +25,9 @@ pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
 
 pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
     kp: 2.0,
-    ki: 0.8,
-    kd: 10.0,
-    i_limit: MOTOR_MAX_PWM_TICKS as f32,
+    ki: 0.16,
+    kd: 25.0,
+    i_limit: 26_595.0,
 };
 
 /* --------------------------- Motor Properties -------------------------- */
@@ -37,20 +37,23 @@ pub const MOTOR_MAX_SPEED_CPS_FIXED: I32F32 = fixed!(968: I32F32); // Physical L
 /* --------------------------- Clock and PWM Config -------------------------- */
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000; // 133 MHz
 pub const PWM_FREQ_HZ: u32 = 25_000; // 25kHz
-pub const PWM_PERIOD_TICKS: u16 = (SYSTEM_FREQ_HZ / PWM_FREQ_HZ) as u16 - 1; // 25kHz Period = (125_000_000 (Pico clock)/25_000(Frequency)) -1
+pub const PWM_PERIOD_TICKS: u16 = (SYSTEM_FREQ_HZ / PWM_FREQ_HZ) as u16 - 1;
 pub const MOTOR_MAX_PWM_TICKS: i32 = PWM_PERIOD_TICKS as i32; // Full Range
 
 /* --------------------------- Control Config -------------------------- */
-pub const TIME_SAMPLING_US: u64 = 5000; // Control Loop Frequency
+pub const TIME_SAMPLING_US: u64 = 1000; // Control Loop Frequency
 pub const TIME_SAMPLING_S_FIXED: I32F32 =
     I32F32::from_bits(((TIME_SAMPLING_US * (1u64 << 32)) / 1_000_000) as i64);
-pub const TICKS_TO_CPS: f32 = 1_000_000.0_f32 / TIME_SAMPLING_US as f32; // Calculating Speed from Ticks
-pub const SPEED_FILTER_WINDOW: usize = 1 << 3; // Must be 2^n
+
+/* --------------------------- Moving Average Filter Config -------------------------- */
+pub const SPEED_FILTER_WINDOW: usize = 1 << 5; // Must be 2^n
+pub const TICKS_TO_CPS_PER_WINDOWS: f32 =
+    1_000_000.0_f32 / (TIME_SAMPLING_US as f32 * SPEED_FILTER_WINDOW as f32);
 
 /* --------------------------- Motor Steady-State Criteria -------------------------- */
 pub const POS_TOLERANCE_COUNT: i32 = 5;
 pub const SPEED_TOLERANCE_CPS: i32 = 2;
-pub const SETTLE_TICKS: u32 = 20;
+pub const SETTLE_TICKS: u32 = (50 * 1000) / TIME_SAMPLING_US as u32; // 50 ms
 
 /* --------------------------- USB Communication-------------------------- */
 pub const USB_BUFFER_SIZE: usize = 64;
