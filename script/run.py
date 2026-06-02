@@ -128,30 +128,31 @@ def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sam
     for pos in motor_response["data_list"]:
         normalized_actual_position_list.append(pos-motor_response["command_list"][0])
     
-    simulation_time_list, simulation_pos, simulation_target, simulation_speed = m0.sim.simulate_pid_pos_control(
-                                                            pid_pos_params      = pid_pos_config,
-                                                            pid_speed_params    = pid_speed_config,
-                                                            target_rotation     = position_rotation - motor_response["command_list"][0], 
-                                                            start_time          = motor_response["start_time_s"],
-                                                            duration            = motor_response["duration_s"],
-                                                            )
-    
-    Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
-                                        pid_config                  = pid_pos_config,
-                                        simulation_time_list        = simulation_time_list, 
-                                        actual_time_list            = motor_response["time_list"],
-                                        simulation_data_list        = simulation_pos, 
-                                        simulation_commanded_list   = simulation_target,  
-                                        actual_data_list            = normalized_actual_position_list, 
-                                        actual_commanded_list       = None,
-                                        tag                         = "Position_",
-                                        plot_title                  = "",
-                                        y_label                     = "Motor Position (Rotation)",
-                                        actual_data_label           = "Actual Position",
-                                        actual_commanded_label      = "",
-                                        simulation_data_label       = "Simulation Position",
-                                        simulation_commanded_label  = "Commanded Position"
-                                        )
+    if motor_response["start_time_s"] is not None:
+        simulation_time_list, simulation_pos, simulation_target, simulation_speed = m0.sim.simulate_pid_pos_control(
+                                                                pid_pos_params      = pid_pos_config,
+                                                                pid_speed_params    = pid_speed_config,
+                                                                target_rotation     = position_rotation - motor_response["command_list"][0], 
+                                                                start_time          = motor_response["start_time_s"],
+                                                                duration            = motor_response["duration_s"],
+                                                                )
+        
+        Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
+                                            pid_config                  = pid_pos_config,
+                                            simulation_time_list        = simulation_time_list, 
+                                            actual_time_list            = motor_response["time_list"],
+                                            simulation_data_list        = simulation_pos, 
+                                            simulation_commanded_list   = simulation_target,  
+                                            actual_data_list            = normalized_actual_position_list, 
+                                            actual_commanded_list       = None,
+                                            tag                         = "Position_",
+                                            plot_title                  = "",
+                                            y_label                     = "Motor Position (Rotation)",
+                                            actual_data_label           = "Actual Position",
+                                            actual_commanded_label      = "",
+                                            simulation_data_label       = "Simulation Position",
+                                            simulation_commanded_label  = "Commanded Position"
+                                            )
 
 def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
     motor = None
@@ -185,28 +186,29 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
 
     motor_response = Tool.FileProcessing.extract_firmware_log_data(log_dir+filename, "Commanded_Speed(RPM)", "Motor_Speed(RPM)")
     
-    simulation_time_list, simulation_speed, simulation_target = motor.sim.simulate_pid_speed_control(
-                                                    pid_params=pid_params,
-                                                    target_rpm=motor_response["target"], 
-                                                    start_time=motor_response["start_time_s"], 
-                                                    duration=motor_response["duration_s"])
-    
-    Tool.plotter.create_simulation_plot(log_dir                 = log_dir, 
-                                    pid_config                  = pid_params,
-                                    simulation_time_list        = simulation_time_list, 
-                                    actual_time_list            = motor_response["time_list"],
-                                    simulation_data_list        = simulation_speed, 
-                                    simulation_commanded_list   = simulation_target,  
-                                    actual_data_list            = motor_response["data_list"], 
-                                    actual_commanded_list       = None,
-                                    tag                         = "Speed_",
-                                    plot_title                  = "",
-                                    y_label                     = "Motor Speed (RPM)",
-                                    actual_data_label           = "Actual Speed",
-                                    actual_commanded_label      = "",
-                                    simulation_data_label       = "Simulation Speed",
-                                    simulation_commanded_label  = "Commanded Speed"
-                                    )
+    if motor_response["start_time_s"] is not None:
+        simulation_time_list, simulation_speed, simulation_target = motor.sim.simulate_pid_speed_control(
+                                                        pid_params=pid_params,
+                                                        target_rpm=motor_response["target"], 
+                                                        start_time=motor_response["start_time_s"], 
+                                                        duration=motor_response["duration_s"])
+        
+        Tool.plotter.create_simulation_plot(log_dir                 = log_dir, 
+                                        pid_config                  = pid_params,
+                                        simulation_time_list        = simulation_time_list, 
+                                        actual_time_list            = motor_response["time_list"],
+                                        simulation_data_list        = simulation_speed, 
+                                        simulation_commanded_list   = simulation_target,  
+                                        actual_data_list            = motor_response["data_list"], 
+                                        actual_commanded_list       = None,
+                                        tag                         = "Speed_",
+                                        plot_title                  = "",
+                                        y_label                     = "Motor Speed (RPM)",
+                                        actual_data_label           = "Actual Speed",
+                                        actual_commanded_label      = "",
+                                        simulation_data_label       = "Simulation Speed",
+                                        simulation_commanded_label  = "Commanded Speed"
+                                        )
 
 def simulate_speed_control(speed_rpm, kp, ki, kd, i_limit, start_time = 0.4, duration=1.5):
     
