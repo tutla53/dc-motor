@@ -44,10 +44,16 @@ def __open_loop_response(self, params, u, dt):
 ```
 
 ## Result
+### Motor Linearity
+Based on the open loop log, we can get the plot between the the motor speed and the voltage PWM input as shown on the graph below. From that graph we can see that the motor starting to move with the PWM input of 19% and saturated at the 85%.
+
+<div align="center"> 
+  <img src="../assets/01_System_Identification/Motor_Linearity.jpg" width="800"></img>
+</div>
 
 ## Verification
 
-The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed target from 20% to 100% of PWM ticks.
+The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed target from 17% to 98% of PWM ticks. We can see that the motor starting to move with the PWM input of 19%.
 
 <table>
   <tr align = "center">
@@ -57,22 +63,32 @@ The table below shows the comparison between the DC Motor open loop firmware log
   </tr>
 
   <tr>
-    <td align="center"> 20 </td>
+    <td align="center"> 17 </td>
     <td> 
-        <img src="../assets/01_System_Identification/A_20.jpg">
+        <img src="../assets/01_System_Identification/A_17.jpg">
     </td>
     <td> 
-        <img  src="../assets/01_System_Identification/B_-20.jpg">
+        <img  src="../assets/01_System_Identification/B_17.jpg">
     </td>
   </tr>
 
   <tr>
-    <td align="center"> 50 </td>
+    <td align="center"> 19 </td>
     <td> 
-        <img src="../assets/01_System_Identification/A_50.jpg">
+        <img src="../assets/01_System_Identification/A_19.jpg">
     </td>
     <td> 
-        <img  src="../assets/01_System_Identification/B_-50.jpg">
+        <img  src="../assets/01_System_Identification/B_19.jpg">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"> 49 </td>
+    <td> 
+        <img src="../assets/01_System_Identification/A_49.jpg">
+    </td>
+    <td> 
+        <img  src="../assets/01_System_Identification/B_49.jpg">
     </td>
   </tr>
 
@@ -82,17 +98,17 @@ The table below shows the comparison between the DC Motor open loop firmware log
         <img src="../assets/01_System_Identification/A_85.jpg">
     </td>
     <td> 
-        <img  src="../assets/01_System_Identification/B_-85.jpg">
+        <img  src="../assets/01_System_Identification/B_85.jpg">
     </td>
   </tr>
 
   <tr>
-    <td align="center"> 100 </td>
+    <td align="center"> 98 </td>
     <td> 
-        <img src="../assets/01_System_Identification/A_100.jpg">
+        <img src="../assets/01_System_Identification/A_98.jpg">
     </td>
     <td> 
-        <img  src="../assets/01_System_Identification/B_-100.jpg">
+        <img  src="../assets/01_System_Identification/B_98.jpg">
     </td>
   </tr>
 

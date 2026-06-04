@@ -64,55 +64,28 @@ class MotorOptimization:
             writer.writerow(columns)
             for row in Sorted_Param_List:
                 writer.writerow(row)
+        
+        self.process_csv(filename)
 
-    def plot_rmse(self, positive_axis_only=True):
-        K, tau, L = self.run_system_identification()
+    def process_csv(self, filename):
+        data        = pd.read_csv(filename)
+        PWM_LIST    = data["PWM"].values
+        K_LIST      = data["K"].values
+        TAU_LIST    = data["tau"].values
+        L_LIST      = data["L"].values
+        PPS_LIST    = PWM_LIST * K_LIST * self.config.ROTATION_PER_PULSE * 60
         
-        assets_dir = base_url + "/assets/open-loop-responses/"
-        all_log_files = os.listdir(assets_dir)
         
-        rmse_list = []
-        pwm_list = []
+        plt.figure(figsize=(10, 5))
+        plt.plot((PWM_LIST/self.config.MAX_PWM_TICKS)*100, PPS_LIST, label='PWM Input', marker=".", color="red")
         
-        for filename in all_log_files:
-            if ".csv" not in filename: continue
-            
-            motor_response = Tool.FileProcessing.extract_firmware_log_data(assets_dir+filename, "Commanded_PWM", "Motor_Speed(RPM)")
-            
-            u_data = motor_response["command_list"]
-            y_data = motor_response["data_list"]
-            
-            if abs(max(u_data)) > abs(min(u_data)):
-                percent_pwm = round((max(u_data)/self.config.MAX_PWM_TICKS)*100)
-            else:
-                if positive_axis_only:
-                    continue
-                else:
-                    percent_pwm = round((min(u_data)/self.config.MAX_PWM_TICKS)*100)
-            
-            param = (K, tau, L)
-            y_sim = self.__open_loop_response(param, u_data, motor_response["dt_s"])
-            
-            mse = np.mean((y_sim - y_data)**2)
-            rmse = np.sqrt(mse)
-            
-            target = np.max(np.abs(y_data))
-            if target == 0: target = 1 
-            
-            total_error = (rmse / target)*100
-            rmse_list.append(total_error)
-            pwm_list.append(percent_pwm)
-                        
-        sorted_pairs = sorted(zip(pwm_list, rmse_list))
-        pwm_list, rmse_list = map(list, zip(*sorted_pairs))
+        plt.axhline(0, color="black")
+        plt.axvline(0, color="black")
         
-        plt.figure(figsize=(16, 4))
-        plt.plot(pwm_list, rmse_list, label='PWM Input', marker='*')
-        plt.xlabel('Percent PWM')
-        plt.ylabel('RMSE (%)')
-        plt.title(f"Motor RMSE Value")
-        plt.ylim([0, 20])
-        plt.tight_layout()
+        plt.xlabel('PWM Input (%)')
+        plt.ylabel('Motor Speed (RPM)')
+        plt.title(f"Motor Linearity")
+        plt.ylim([-1500, 1500])
         plt.legend()
         plt.grid()
 
