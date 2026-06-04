@@ -1,6 +1,7 @@
 debug/
 target/
 out/
+assets/01_System_Identification/open-loop-plot/
 
 Cargo.lock
 
