@@ -3,6 +3,7 @@ import math
 import numpy as np
 import FWLogger.FWLogger as Logger
 import Tool.SystemIdentification
+import Tool.MotorSim
 
 from scipy.signal import lfilter
 from Tool.visualize import *
@@ -13,7 +14,7 @@ class MoveMotor:
         self.config = configfile
         self.motor_id = configfile.motor_id
         self.logger = Logger.FWLogger(device)
-        self.sim = Tool.SystemIdentification.MotorSim(configfile)
+        self.sim = Tool.MotorSim.SimulateMotor(configfile)
         self.optimize = Tool.SystemIdentification.MotorOptimization(configfile)
 
     def __wait_move_done(self, timeout=180):

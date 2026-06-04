@@ -1,391 +1,69 @@
+import os
+import csv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
-import csv
 import Tool.FileProcessing
+import Tool.MotorSim
 
 from tqdm import tqdm
-from bisect import bisect_left
 from scipy.optimize import differential_evolution
+from scipy.optimize import least_squares
 from scipy.signal import lfilter
 from base_url import *
 from Tool.visualize import *
-from enum import Enum
-
-class SystemModel(Enum):
-    Linear      = 0
-    Nonlinear   = 1
-    
-class PIDControl():
-    def __init__(self, kp, ki, kd, i_limit, max_threshold):
-        self.kp             = kp
-        self.ki             = ki
-        self.kd             = kd
-        self.i_limit        = i_limit
-        self.integral       = 0
-        self.prev_error     = 0
-        self.max_threshold  = max_threshold
-
-    def reset(self):
-        self.integral   = 0
-        self.prev_error = 0
-        
-    def compute(self, error):
-        self.integral += error
-        self.integral = np.clip(self.integral, -self.i_limit, self.i_limit)
-        
-        derivative = error - self.prev_error
-        self.prev_error = error
-        
-        pwm_out = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
-        pwm_out = np.clip(pwm_out, -self.max_threshold, self.max_threshold)
-        return pwm_out
-
-class MotorSim:
-    def __init__(self, configfile):
-        self.config = configfile
-        
-        # System Parameter
-        self.K       = self.config.K                # Linear Gain
-        self.tau     = self.config.TAU_S            # Time Constant
-        self.L       = self.config.DELAY_STEPS      # Time Delay
-        self.DT_S    = self.config.DT_S             # Time Sampling
-        
-        # Nonlinear Motor Gain
-        self.K_LIST     =  self.config.K_LIST       # Nonlinear Gain Based on PWM Input
-        self.TAU_LIST   =  self.config.TAU_LIST 
-        self.PWM_LIST   =  self.config.PWM_LIST
-        
-        # System Config
-        self.RPM_PER_PPS            = (60.0*self.config.ROTATION_PER_PULSE)
-        self.PPS_PER_RPM            = 1 / self.RPM_PER_PPS
-        self.ROTATION_PER_PULSE     = self.config.ROTATION_PER_PULSE
-        self.PULSE_PER_ROTATION     = 1 / self.ROTATION_PER_PULSE
-        self.MAX_PWM                = self.config.MAX_PWM_TICKS
-        self.MAX_SPEED_RPS          = self.config.MAX_SPEED_RPS
-        self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
-        
-        # Linear Discrete Model System
-        self.ALPHA      = np.exp(-self.DT_S / self.tau)
-        self.BETA       = self.K * (1 - self.ALPHA)
-    
-    def __calculate_nonlinear(self, data_list, input_pwm):    
-        
-        if input_pwm <= self.PWM_LIST[0]:
-            return data_list[0]
-        if input_pwm >= self.PWM_LIST[-1]:
-            return data_list[-1]
-        
-        idx = bisect_left(self.PWM_LIST, input_pwm)
-        
-        p0, p1 = self.PWM_LIST[idx-1], self.PWM_LIST[idx]
-        k0, k1 = data_list[idx-1], data_list[idx]
-        weight = (input_pwm - p0) / (p1 - p0)
-        K = k0 + weight * (k1 - k0)
-        
-        return K
-
-    def __update_motor_speed(self, current_speed_pps, input_pwm, mode: SystemModel = SystemModel.Nonlinear):
-        '''
-            First Order System with Delay
-            
-            Input:
-                pwm (ticks)
-            Output:
-                speed (pulse per seconds)
-            
-            Transfer Function
-                        K * e^(-L * s)
-                G(s) = ----------------
-                        τ * s + 1
-            
-            Where:
-                K   = Gain          ((pulse per seconds)/ ticks)
-                τ   = Time Constant (seconds)
-                L   = Delay Time    (seconds)
-            
-            Discrete Form with sampling time dt: 
-                y[k] = a·y[k-1] + b·u[k-d-1]
-                
-                with:
-                    a = e^(-dt / τ)
-                    b = K * (1-a)
-                    d = time_delay
-        '''
-        
-        if mode == SystemModel.Linear:
-            ALPHA = self.ALPHA
-            BETA = self.BETA
-        elif mode == SystemModel.Nonlinear:
-            K_intrp     = self.__calculate_nonlinear(self.K_LIST, input_pwm)
-            ALPHA       = self.ALPHA
-            BETA        = K_intrp * (1 - ALPHA)
-        
-        new_speed_pps = (ALPHA * current_speed_pps) + (BETA * input_pwm)
-        
-        return new_speed_pps
-    
-    def simulate_pid_speed_control(self, pid_params, target_rpm, start_time, duration):
-        """
-            Target unit                 --> RPM
-            PID speed calculation unit  --> pulse per second
-            Speed output unit           --> RPM
-        """
-        
-        # Simulation Variable
-        target_rpm = np.clip(target_rpm, -self.MAX_SPEED_RPM, self.MAX_SPEED_RPM)
-            
-        target_pps  = target_rpm * self.PPS_PER_RPM
-        steps       = int(duration / self.DT_S)
-        time_axis   = np.linspace(0, duration, steps)
-        
-        current_speed_pps   = 0.0   # pulse per seconds
-        speed_list_rpm      = []    # RPM
-        setpoint_list_rpm   = []    # RPM
-        pwm_buffer          = [0.0] * self.L # Hardware Latency Buffer
-        
-        # PID Speed Handler
-        kp, ki, kd, i_limit = pid_params        
-        speed_control = PIDControl(kp, ki, kd, i_limit, self.MAX_PWM)
-        
-        for i in range(steps):
-            setpoint_pps = target_pps if time_axis[i] >= start_time else 0.0
-            speed_error = setpoint_pps - current_speed_pps
-            
-            pwm_out = speed_control.compute(speed_error)
-            
-            # Delay Handler
-            pwm_buffer.append(pwm_out)
-            delayed_pwm = pwm_buffer.pop(0)
-            
-            # Physical Response
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
-            
-            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
-            setpoint_list_rpm.append(setpoint_pps * self.RPM_PER_PPS)
-            
-        return time_axis, np.array(speed_list_rpm), np.array(setpoint_list_rpm)
-
-    def simulate_pid_pos_control(self, pid_pos_params, pid_speed_params, target_rotation, start_time, duration):
-        """
-            Target unit                 --> rotation
-            PID pos calculation unit    --> pulse
-            PID speed calculation unit  --> pulse per seconds
-            Speed output unit           --> RPM
-            Position output unit        --> rotation
-        """
-        
-        # Simulation Variable
-        target_pulse    = target_rotation * self.PULSE_PER_ROTATION
-        steps           = int(duration / self.DT_S)
-        time_axis       = np.linspace(0, duration, steps)
-        
-        current_speed_pps       = 0.0   # pulse per second
-        prev_speed_pps          = 0.0   # pulse per second
-        current_pos_pulse       = 0.0   # pulse 
-        pos_list_rotation       = []    # rotation
-        speed_list_rpm          = []    # rpm
-        setpoint_list_rotation  = []    # rotation
-        pwm_buffer              = [0.0] * self.L    # Hardware Latency Buffer
-        
-        # PID Handler
-        kp_speed, ki_speed, kd_speed, i_limit_speed = pid_speed_params
-        kp_pos, ki_pos, kd_pos, i_limit_pos = pid_pos_params
-
-        speed_control       = PIDControl(kp_speed, ki_speed, kd_speed, i_limit_speed, self.MAX_PWM)
-        position_control    = PIDControl(kp_pos, ki_pos, kd_pos, i_limit_pos, self.MAX_SPEED_RPS)
-        
-        for i in range(steps):
-            setpoint_pulse = target_pulse if time_axis[i] >= start_time else 0.0
-            
-            pos_error = setpoint_pulse - current_pos_pulse          # pulse
-            target_speed_pps = position_control.compute(pos_error)  # pulse per second
-            
-            speed_error = target_speed_pps - current_speed_pps      # pulse per second
-            pwm_out = speed_control.compute(speed_error)            # ticks
-            
-            # Delay Handler
-            pwm_buffer.append(pwm_out)
-            delayed_pwm = pwm_buffer.pop(0)
-            
-            # --- Physical Response ---
-            prev_speed_pps = current_speed_pps
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Linear)
-            
-            current_pos_pulse += ((prev_speed_pps + current_speed_pps)/2.0) * self.DT_S
-            
-            pos_list_rotation.append(current_pos_pulse * self.ROTATION_PER_PULSE)    # rotation
-            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)              # RPM
-            setpoint_list_rotation.append(setpoint_pulse * self.ROTATION_PER_PULSE)  # rotation
-            
-        return time_axis, np.array(pos_list_rotation), np.array(setpoint_list_rotation), np.array(speed_list_rpm)
-    
-    def simulate_open_loop_response(self, target_pwm, start_time, duration):
-        """
-            Target unit         --> pwm_ticks
-            Speed output unit   --> RPM
-        """
-        
-        # Simulation Variable
-        steps       = int(duration / self.DT_S)
-        time_axis   = np.linspace(0, duration, steps)
-        
-        current_speed_pps   = 0.0   # pulse per seconds
-        speed_list_rpm      = []    # RPM
-        setpoint_list_ticks = []    # RPM
-        pwm_buffer          = [0.0] * self.L # Hardware Latency Buffer
-        
-        target_pwm = np.clip(target_pwm, -self.MAX_PWM, self.MAX_PWM)
-        
-        for i in range(steps):
-            setpoint_pwm_ticks = target_pwm if time_axis[i] >= start_time else 0.0
-            
-            # Delay Handler
-            pwm_buffer.append(setpoint_pwm_ticks)
-            delayed_pwm = pwm_buffer.pop(0)
-            
-            # Physical Response
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
-            
-            speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
-            setpoint_list_ticks.append(setpoint_pwm_ticks)
-            
-        return time_axis, np.array(speed_list_rpm), np.array(setpoint_list_ticks)
 
 class MotorOptimization:
     def __init__(self, configfile):
-        self.config = configfile
-        self.motor = MotorSim(configfile)
-        self.__assets_dir = base_url[:-7] + "/assets/01_System_Identification/open-loop-responses/"
+        lower_bounds    = [0.01, 0.01, 0.00]
+        upper_bounds    = [0.50, 0.10, 0.05]
+        
+        self.config         = configfile
+        self.dt_s           = self.config.DT_S 
+        self.motor          = Tool.MotorSim.SimulateMotor(configfile)
+        self.optimize       = OptimizationMethod(lower_bounds, upper_bounds)
+        self.__assets_dir   = base_url[:-7] + "/assets/01_System_Identification/open-loop-responses/"
     
-    def __open_loop_response(self, params, u, dt):        
-        K, tau, L = params
-        
-        delay_samples = int(round(L / dt))
-        
-        # Shift the input signal u by 'delay_samples'
-        if delay_samples > 0:
-            u_delayed = np.zeros_like(u)
-            u_delayed[delay_samples:] = u[:-delay_samples]
-        else:
-            u_delayed = u
-
-        # Discrete-time coefficients
-        a = np.exp(-dt / tau)
-        b = K * (1 - a)
-        
-        # Simulate the first-order response
-        y_sim = lfilter([0, b], [1, -a], u_delayed)
-        return y_sim
-    
-    def run_system_identification(self):
-        files_data      = []
-        K_list          = []
-        tau_list        = []
-        L_list          = []
+    def run_system_identification(self, method="least_square"):
+        Params_List     = []
         success_count   = 0
         failed_count    = 0
         
         all_log_files = os.listdir(self.__assets_dir)
-        
-        dt_s = 0.005 # Default Time Sampling
         
         for filename in tqdm(all_log_files, desc="System Identification", unit="file"):
             if ".csv" not in filename: continue
             
             df = pd.read_csv(self.__assets_dir + filename)
             u_data = df["Commanded_PWM"].values
-            y_data = df["Motor_Speed(RPM)"].values/(60.0*self.config.ROTATION_PER_PULSE)
-            target = np.max(np.abs(u_data)) if u_data[0] > u_data[-1] else -np.max(np.abs(u_data))
+            y_data = df["Motor_Speed(RPM)"].values / (60.0 * self.config.ROTATION_PER_PULSE)
+            target = np.max(np.abs(u_data)) if u_data[0] < u_data[-10] else -np.max(np.abs(u_data))
             
-            files_data.append((u_data.astype(float), y_data.astype(float)))
-            
-            dt_s = (df["Timestamp(ms)"][1] - df["Timestamp(ms)"][0]) / 1000 # Update dt based on the actual log file
+            data = (u_data.astype(float), y_data.astype(float))
+            self.dt_s = (df["Timestamp(ms)"][1] - df["Timestamp(ms)"][0]) / 1000 
 
-            bounds =    [(0.01, 0.5),    # K
-                        (0.01, 0.1),   # tau
-                        (0.0, 0.05)]   # L
-
-            result = differential_evolution(
-                self.__system_identification_objective_function, 
-                bounds, 
-                args=(files_data, dt_s),
-                strategy='best1bin',
-                tol=0.01,
-                mutation=(0.5, 1),
-                polish=True
-            )
+            result = self.optimize.calculate(data, self.dt_s, method = method)
 
             if result.success:
                 K, tau, L = result.x
                 success_count += 1
-                K_list.append((K, target))
-                tau_list.append((tau, target))
-                L_list.append((L, target))
-
+                Params_List.append([target, K, tau, L])
             else:
-                failed_count +=1
+                failed_count += 1
         
         print_log("INFO", f"{success_count}/{success_count+failed_count} Success")
         
-        # Save the Result to CSV
-        K_list_csv, PWM_csv = map(list, zip(*K_list))
-        tau_list_csv, _ = map(list, zip(*tau_list))
-        L_list_csv, _ = map(list, zip(*L_list))
+        # Save the Result to CSV        
+        Sorted_Param_List = sorted(Params_List, key=lambda x: (x[0]))
         
-        filename = base_url+"/LOG/system_identification.csv"
+        filename = base_url+"/LOG/system_identification_"+method+"_"+time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))+".csv"
         columns = ["PWM", "K", "tau", "L"]
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             
             writer.writerow(columns)
-            
-            for row in zip(PWM_csv, K_list_csv, tau_list_csv, L_list_csv):
+            for row in Sorted_Param_List:
                 writer.writerow(row)
-        
-        
-        sorted_K = sorted(K_list, key=lambda x: (x[0], x[1]))
-        sorted_tau = sorted(tau_list, key=lambda x: (x[0], x[1]))
-        sorted_L = sorted(L_list, key=lambda x: (x[0], x[1]))
-        
-        K_list, PWM = map(list, zip(*sorted_K))
-        tau_list, _ = map(list, zip(*sorted_tau))
-        L_list, _ = map(list, zip(*sorted_L))
-        
-        final_K = np.median(K_list)
-        final_tau = np.median(tau_list)
-        final_L = np.median(L_list)
-        
-        print_log("INFO", f"Median K: {final_K}")
-        print_log("INFO", f"Median tau: {final_tau}")
-        print_log("INFO", f"Median L: {final_L}")
-        
-        return final_K, final_tau, final_L
-    
-    def __system_identification_objective_function(self, params, files_data, dt):
-        # Method: Root Mean Square Error (RMSE)
-        
-        K, tau, L = params
-        
-        # Filter Invalid Value
-        if K <= 0 or tau <= 0 or L < 0:
-            return 1e10 
-            
-        total_error = 0
-        for u, y_meas in files_data:
-            y_sim = self.__open_loop_response(params, u, dt)
-            
-            error = y_meas - y_sim
-            mse = np.mean(error**2)
-            rmse = np.sqrt(mse)
-            
-            target = np.max(np.abs(y_meas))
-            if target == 0: target = 1 
-            
-            total_error = rmse / target
-            
-        return total_error
 
     def plot_rmse(self, positive_axis_only=True):
         K, tau, L = self.run_system_identification()
@@ -540,3 +218,118 @@ class MotorOptimization:
             return 1e10
             
         return rmse * weight
+
+class OptimizationMethod:
+    def __init__(self, lower_bounds, upper_bounds):
+        self.lower_bounds = lower_bounds
+        self.upper_bounds = upper_bounds
+        
+    def calculate(self, data, dt_s, method="least_square"):
+        if method == "least_square":
+            return self.__run_least_square(data, dt_s)
+        elif method == "differential_evolution":
+            return self.__run_differential_evolution(data, dt_s)
+        else:
+            return None
+    
+    def __open_loop_response(self, params, u, dt):        
+        K, tau, L = params
+        
+        delay_samples = int(round(L / dt))
+        
+        if delay_samples > 0:
+            u_delayed = np.zeros_like(u)
+            u_delayed[delay_samples:] = u[:-delay_samples]
+        else:
+            u_delayed = u
+
+        a = np.exp(-dt / tau)
+        b = K * (1 - a)
+        
+        # Simulate the first-order response
+        y_sim = lfilter([0, b], [1, -a], u_delayed)
+        return y_sim
+    
+    def __run_least_square(self, data, dt_s):
+                
+        best_res = None
+        best_cost = np.inf
+        
+        max_data = int(self.upper_bounds[2] * 1000)
+
+        for L_candidate in range(0, max_data+1):
+            
+            lower_bounds    = self.lower_bounds
+            upper_bounds    = self.upper_bounds
+            initial_guess   = [0.25, 0.05, float(L_candidate) * dt_s]
+
+            result = least_squares(
+                self.__least_square_objective_function, 
+                x0=initial_guess, 
+                bounds=(lower_bounds, upper_bounds), 
+                args=(data, dt_s),
+                method='trf',
+                ftol=1e-3,
+                xtol=1e-3
+            )
+            
+            if result.success and result.cost < best_cost:
+                best_cost   = result.cost
+                best_res    = result
+        
+        return best_res
+    
+    def __least_square_objective_function(self, params, data, dt):
+
+        u, y_meas = data
+        
+        y_sim = self.__open_loop_response(params, u, dt)
+        
+        error = y_meas - y_sim
+        
+        target = np.max(np.abs(y_meas))
+        if target == 0: 
+            target = 1.0
+            
+        return error / target
+    
+    def __run_differential_evolution(self, data, dt_s):
+        bounds =[   (self.lower_bounds[0], self.upper_bounds[0]),   # K
+                    (self.lower_bounds[1], self.upper_bounds[1]),   # tau
+                    (self.lower_bounds[2], self.upper_bounds[2])    # L
+                ] 
+
+        result = differential_evolution(
+            self.__differential_evolution_objective_function, 
+            bounds, 
+            args=(data, dt_s),
+            strategy='best1bin',
+            tol=0.01,
+            mutation=(0.5, 1),
+            polish=True
+        )
+        
+        return result
+    
+    def __differential_evolution_objective_function(self, params, data, dt):
+        # Method: Root Mean Square Error (RMSE)
+        
+        K, tau, L = params
+        
+        # Filter Invalid Value
+        if K <= 0 or tau <= 0 or L < 0:
+            return 1e10 
+        
+        u, y_meas = data
+        y_sim = self.__open_loop_response(params, u, dt)
+        
+        error = y_meas - y_sim
+        mse = np.mean(error**2)
+        rmse = np.sqrt(mse)
+        
+        target = np.max(np.abs(y_meas))
+        if target == 0: target = 1 
+        
+        total_error = rmse / target
+            
+        return total_error    
