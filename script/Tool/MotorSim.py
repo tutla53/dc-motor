@@ -38,10 +38,11 @@ class SimulateMotor:
         self.config = configfile
         
         # System Parameter
-        self.K       = self.config.K                # Linear Gain
-        self.tau     = self.config.TAU_S            # Time Constant
-        self.L       = self.config.DELAY_STEPS      # Time Delay
-        self.DT_S    = self.config.DT_S             # Time Sampling
+        self.K_positive = self.config.K_POSITIVE       # Linear Gain
+        self.K_negative = self.config.K_NEGATIVE       # Linear Gain
+        self.tau        = self.config.TAU_S            # Time Constant
+        self.L          = self.config.DELAY_STEPS      # Time Delay
+        self.DT_S       = self.config.DT_S             # Time Sampling
         
         # Nonlinear Motor Gain
         self.K_LIST     =  self.config.K_LIST       # Nonlinear Gain Based on PWM Input
@@ -58,8 +59,9 @@ class SimulateMotor:
         self.MAX_SPEED_RPM          = self.config.MAX_SPEED_RPM
         
         # Linear Discrete Model System
-        self.ALPHA      = np.exp(-self.DT_S / self.tau)
-        self.BETA       = self.K * (1 - self.ALPHA)
+        self.ALPHA          = np.exp(-self.DT_S / self.tau)
+        self.BETA_POSITIVE  = self.K_positive * (1 - self.ALPHA)
+        self.BETA_NETAGIVE  = self.K_negative * (1 - self.ALPHA)
     
     def __calculate_nonlinear(self, data_list, input_pwm):    
         
@@ -107,10 +109,12 @@ class SimulateMotor:
         
         if mode == SystemModel.Linear:
             ALPHA = self.ALPHA
-            BETA = self.BETA
+            BETA = self.BETA_POSITIVE if input_pwm > 0 else self.BETA_NETAGIVE
+        
         elif mode == SystemModel.Nonlinear:
             K_intrp     = self.__calculate_nonlinear(self.K_LIST, input_pwm)
             tau_intrp   = self.__calculate_nonlinear(self.TAU_LIST, input_pwm)
+            
             ALPHA       = np.exp(-self.DT_S / tau_intrp)
             BETA        = K_intrp * (1 - ALPHA)
         
@@ -152,7 +156,7 @@ class SimulateMotor:
             delayed_pwm = pwm_buffer.pop(0)
             
             # Physical Response
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Linear)
             
             speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
             setpoint_list_rpm.append(setpoint_pps * self.RPM_PER_PPS)
@@ -238,7 +242,7 @@ class SimulateMotor:
             delayed_pwm = pwm_buffer.pop(0)
             
             # Physical Response
-            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Nonlinear)
+            current_speed_pps = self.__update_motor_speed(current_speed_pps, delayed_pwm, SystemModel.Linear)
             
             speed_list_rpm.append(current_speed_pps * self.RPM_PER_PPS)
             setpoint_list_ticks.append(setpoint_pwm_ticks)
