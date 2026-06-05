@@ -44,8 +44,14 @@ def __open_loop_response(self, params, u, dt):
 ```
 
 ## Result
+The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 25%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (L) has no significant changes. But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
+
+<div align="center"> 
+  <img src="../assets/01_System_Identification/System_Identification_Result.jpg" width="800"></img>
+</div>
+
 ### Motor Linearity
-Based on the open loop log, we can get the plot between the the motor speed and the voltage PWM input as shown on the graph below. From that graph we can see that the motor starting to move with the PWM input of 19% and saturated at the 85%.
+After we conver the data to PWM vs Motor Speed, we can see that there's 5 zones that can described the DC motor behaviour.
 
 <div align="center"> 
   <img src="../assets/01_System_Identification/Motor_Linearity.jpg" width="800"></img>
@@ -53,7 +59,7 @@ Based on the open loop log, we can get the plot between the the motor speed and 
 
 ## Verification
 
-The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed target from 17% to 98% of PWM ticks. We can see that the motor starting to move with the PWM input of 19%.
+The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed.
 
 <table>
   <tr align = "center">
