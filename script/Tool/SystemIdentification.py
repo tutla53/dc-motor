@@ -79,7 +79,7 @@ class MotorOptimization:
         
         DEADBAND_LIMIT          = 15    # PPS
         DELTA_K_LIMIT           = 0.025 # Percent
-        DELTA_SPEED_LIMIT       = 0.025 # Percent
+        DELTA_SPEED_LIMIT       = 0.020 # Percent
         
         dead_zone_pos_idx       = 0
         dead_zone_neg_idx       = 0
