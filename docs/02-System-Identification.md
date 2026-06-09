@@ -22,7 +22,7 @@
 import numpy as np
 from scipy.signal import lfilter
 
-def __open_loop_response(self, params, u, dt):        
+def open_loop_response(self, params, u, dt):        
     K, tau, L = params
     
     delay_samples = int(round(L / dt))
@@ -43,7 +43,7 @@ def __open_loop_response(self, params, u, dt):
     return y_sim
 ```
 
-## Result
+## Simulation Result
 The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 25%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (L) has no significant changes. But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
 
 <div align="center"> 
@@ -51,27 +51,107 @@ The graph below shows the result of the system identification process. We can se
 </div>
 
 ### Motor Linearity
-After we convert the data to PWM vs Motor Speed, we can see that the motor response is not linear for all the input range and not symmetric for different direction of the motor. Please note that the system that we mention here is the combination of the DC Motor and the motor driver.
+After we convert the data to PWM vs Motor Speed, we can see that the motor response is not linear for all the input range and not symmetric for different direction of the motor. Please note that the system that we mention here is the combination of the DC Motor and the motor driver. We used this criterion to identify the DC motor region.
 
-#### Deadband Zone
-At the low PWM input from 0 - 19% the motor is not moving because the current is not enough to overcome the static friction from the motor. Because of that we called this region as the `deadband`, because we cannot get the response. On the DC motor model we assume that the friction on the motor is only the viscous friction, but in reality the motor need to overcome the static coulomb friction from brush, bearing, and gear.
+<table>
+  <tr align = "center">
+    <th  align="center">Graph</th>
+    <th  align="center" width="400">Description</th>
+  </tr>
 
-#### Nonlinear Transition
-Just after the voltage input is increased, the current is strong enough to move the motor system. But during this transition, the friction constant is still not linear (see `Stribeck Effect`), which also makes the relationship between PWM input and motor speed is not linear. So, if we simulate the motor response on this region (19 - 30% of input) with the linear model, the the result may not accurate.
+  <tr align = "center">
+    <td  align="center">
+      <img src="../assets/01_System_Identification/Motor_Linearity.jpg" width="800"></img>
+    </td>
+    <td align="left">
+      <b>[1] Deadband Zone</b><br>
+      At the low PWM input from 0 - 19% the motor is not moving because the current is not enough to overcome the static friction from the motor. Because of that we called this region as the `deadband`, because we cannot get the response. On the DC motor model we assume that the friction on the motor is only the viscous friction, but in reality the motor need to overcome the static coulomb friction from brush, bearing, and gear.<br><br>
+      <!--  -->
+      <b>[2] Nonlinear Transition</b><br>
+      Just after the voltage input is increased, the current is strong enough to move the motor system. But during this transition, the friction constant is still not linear (see `Stribeck Effect`), which also makes the relationship between PWM input and motor speed is not linear. So, if we simulate the motor response on this region (19 - 30% of input) with the linear model, the the result may not accurate. <br><br>
+      <!--  -->
+    </td>
+    <tr>
+    <td colspan=2>
+      <b>[3] Linear Region</b><br>
+      In this region (30 - 75% of input) the friction is fully moved to viscous friction and has a constant value. We can predict the system accurately with linear model on this region. We can estimate the value of K (steady-state constant) of the DC motor by calculating the slope of this region to build the linear model. This is the sweet spot of the DC motor and very recommended to operate and tune the DC motor on this region.<br><br>
+      <!--  -->
+      <b>[4] Pre-saturation</b><br>
+      If we input voltage above 75%, some constant like the back-EMF constant starting to reach the limit and not give a linear response. Beside that, the H-bridge also almost reach the saturation region which resulting the output voltage is hardly to increase. This could also occur on the other components that begin sturate as the response to the temperature change. Because of that we can see that the speed changes is higher than the linear region as shown on the jump value of K on the Figure 1.<br><br>
+      <!--  -->
+      <b>[5] Saturation</b><br>
+      At this point, the input changes cannot increase the motor speed because many components is also saturating. 
+    </td>
+    </tr>
+  </tr>  
+</table>
 
-#### Linear Region
-In this region (30 - 75% of input) the friction is fully moved to viscous friction and has a constant value. We can predict the system accurately with linear model on this region. We can estimate the value of K (steady-state constant) of the DC motor by calculating the slope of this region to build the linear model. This is the sweet spot of the DC motor and very recommended to operate and tune the DC motor on this region.
 
-#### Pre-saturation
-If we input voltage above 75%, some constant like the back-EMF constant starting to reach the limit and not give a linear response. Beside that, the H-bridge also almost reach the saturation region which resulting the output voltage is hardly to increase. This could also occur on the other components that begin sturate as the response to the temperature change. Because of that we can see that the speed changes is higher than the linear region as shown on the jump value of K on the Figure 1. 
 
-#### Saturation
-At this point, the input changes cannot increase the motor speed because many components is also saturating. 
 
-<div align="center"> 
-  <img src="../assets/01_System_Identification/Motor_Linearity.jpg" width="800"></img>
-</div>
 
+## Motor Model
+Based on the result above we can build the motor model 
+
+### Linear Model
+```python
+import numpy as np
+
+def simulate_open_loop_response(self, params, target_pwm, start_time, duration):
+    # Motor Params
+    K, tau, L, DT_S = params
+
+    # Simulation Variable
+    d   = int(L / DT_S)                 # Time Delay (steps)
+    N   = int(duration / DT_S)          # Number of Data
+    t   = np.linspace(0, duration, N)   # Time Array    
+    y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
+    u   = [0.0] * N                     # Input: PWM (Ticks)
+
+    ALPHA = np.exp(-DT_S / tau)
+    BETA = K * (1 - ALPHA)
+    
+    for k in range(N):
+        if (k - d - 1) < 0:
+            continue
+        u[k] = target_pwm if t[k] >= start_time else 0.0
+        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
+    
+    return t, np.array(y) , np.array(u)
+
+```
+
+### Nonlinear Model
+```python
+import numpy as np
+
+def simulate_open_loop_response(self, params, target_pwm, start_time, duration):
+    # Motor Params
+    K, tau, L, DT_S = params
+
+    # Simulation Variable
+    d   = int(L / DT_S)                 # Time Delay (steps)
+    N   = int(duration / DT_S)          # Number of Data
+    t   = np.linspace(0, duration, N)   # Time Array    
+    y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
+    u   = [0.0] * N                     # Input: PWM (Ticks)
+
+    ALPHA = np.exp(-DT_S / tau)
+    BETA = K * (1 - ALPHA)
+    
+    for k in range(N):
+        if (k - d - 1) < 0:
+            continue
+        
+        K_intrp     = interpolate(K_LIST, u[k-d-1])         # Update Motor Gain based on the PWM Input
+        BETA        = K_intrp * (1 - ALPHA)
+
+        u[k] = target_pwm if t[k] >= start_time else 0.0
+        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
+    
+    return t, np.array(y) , np.array(u)
+
+```
 
 ## Verification
 
