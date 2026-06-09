@@ -56,7 +56,7 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
 <table>
   <tr align = "center">
     <th  align="center">Graph</th>
-    <th  align="center" width="400">Description</th>
+    <th  align="center" width="350">Description</th>
   </tr>
 
   <tr align = "center">
@@ -122,34 +122,16 @@ def simulate_open_loop_response(self, params, target_pwm, start_time, duration):
 ```
 
 ### Nonlinear Model
-```python
-import numpy as np
-
-def simulate_open_loop_response(self, params, target_pwm, start_time, duration):
-    # Motor Params
-    K, tau, L, DT_S = params
-
-    # Simulation Variable
-    d   = int(L / DT_S)                 # Time Delay (steps)
-    N   = int(duration / DT_S)          # Number of Data
-    t   = np.linspace(0, duration, N)   # Time Array    
-    y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
-    u   = [0.0] * N                     # Input: PWM (Ticks)
-
-    ALPHA = np.exp(-DT_S / tau)
-    BETA = K * (1 - ALPHA)
+```python    
+for k in range(N):
+    if (k - d - 1) < 0:
+        continue
     
-    for k in range(N):
-        if (k - d - 1) < 0:
-            continue
-        
-        K_intrp     = interpolate(K_LIST, u[k-d-1])         # Update Motor Gain based on the PWM Input
-        BETA        = K_intrp * (1 - ALPHA)
+    K_intrp     = interpolate(K_LIST, u[k-d-1])         # Update Motor Gain based on the PWM Input
+    BETA        = K_intrp * (1 - ALPHA)
 
-        u[k] = target_pwm if t[k] >= start_time else 0.0
-        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
-    
-    return t, np.array(y) , np.array(u)
+    u[k] = target_pwm if t[k] >= start_time else 0.0
+    y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
 
 ```
 
