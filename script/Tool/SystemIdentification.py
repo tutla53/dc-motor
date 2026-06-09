@@ -152,19 +152,20 @@ class MotorOptimization:
         
         x_region = PWM_LIST[linear_pos_start:linear_pos_stop+1]
         y_region = PPS_LIST[linear_pos_start:linear_pos_stop+1]
-
         slope_positive, c_pos, _, _, _ = stats.linregress(x_region, y_region, "greater")
+        K_POS = np.mean(K_LIST[linear_pos_start:linear_pos_stop+1])
         
         x_region = PWM_LIST[linear_neg_stop:linear_neg_start+1]
         y_region = PPS_LIST[linear_neg_stop:linear_neg_start+1]
         slope_negative, c_neg, _, _, _ = stats.linregress(x_region, y_region, "greater")
+        K_NEG = np.mean(K_LIST[linear_neg_stop:linear_neg_start+1])
         
         ###### PRINT RESUME ######
         printy("System Identification Result")
-        print_log("INFO", f"K_Positive: {slope_positive:.4f}")
-        print_log("INFO", f"K_Negative: {slope_negative:.4f}")
-        print_log("INFO", f"tau:        {np.mean(TAU_LIST[linear_pos_start:]):.4f}")
-        print_log("INFO", f"Time Delay: {np.mean(L_LIST[linear_pos_start:]):.3f}")
+        print_log("INFO", f"K_Positive: {K_POS:.4f}")
+        print_log("INFO", f"K_Negative: {K_NEG:.4f}")
+        print_log("INFO", f"tau:        {np.mean(TAU_LIST[linear_pos_start:linear_pos_stop+1]):.4f}")
+        print_log("INFO", f"Time Delay: {np.mean(L_LIST[linear_pos_start:linear_pos_stop+1]):.3f}")
         
         printy("Motor Limit")
         print_log("INFO", f"[Positive] Min Speed: {PPS_LIST[linear_pos_start]:.0f} PPS, Max Speed: {PPS_LIST[linear_pos_stop]:.0f} PPS")
@@ -185,8 +186,8 @@ class MotorOptimization:
         
         plt.figure(figsize=(10, 6))
         plt.plot((PWM_LIST/self.config.MAX_PWM_TICKS)*100, RPM_LIST, label='Motor Response', color="blue", marker=".")
-        plt.plot((PWM_LIST[linear_pos_start: linear_pos_stop+1]/self.config.MAX_PWM_TICKS)*100, (PWM_LIST[linear_pos_start: linear_pos_stop+1] * slope_positive + c_pos) * self.config.ROTATION_PER_PULSE * 60, color="red", label=f"K_pos: {slope_positive:.4f}")
-        plt.plot((PWM_LIST[linear_neg_stop: linear_neg_start+1]/self.config.MAX_PWM_TICKS)*100, (PWM_LIST[linear_neg_stop: linear_neg_start+1] * slope_negative + c_neg) * self.config.ROTATION_PER_PULSE * 60, color="red", label=f"K_neg: {slope_negative:.4f}")
+        plt.plot((PWM_LIST[linear_pos_start: linear_pos_stop+1]/self.config.MAX_PWM_TICKS)*100, (PWM_LIST[linear_pos_start: linear_pos_stop+1] * slope_positive + c_pos) * self.config.ROTATION_PER_PULSE * 60, color="red", label=f"K_pos: {K_POS:.4f}")
+        plt.plot((PWM_LIST[linear_neg_stop: linear_neg_start+1]/self.config.MAX_PWM_TICKS)*100, (PWM_LIST[linear_neg_stop: linear_neg_start+1] * slope_negative + c_neg) * self.config.ROTATION_PER_PULSE * 60, color="red", label=f"K_neg: {K_NEG:.4f}")
         
         plt.axhline(0, color="black")
         plt.axvline(0, color="black")
@@ -244,59 +245,6 @@ class MotorOptimization:
         try:
             log_dir = base_url+"/LOG/"
             image_name = "System_Identification_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))+".jpg"
-            plt.savefig(log_dir+image_name, dpi = 300)
-            
-            _, sep, after = log_dir.partition("/LOG/")
-            result = sep + after
-            print_log("INFO", "Graph has been saved on: ", end="")
-            printg(result+image_name)
-            
-        except Exception as e:
-            print(f"[ERROR] - {e}" )
-        plt.close()
-                
-    def plot_pwm(self):
-        # Generate PWM percentages from 0 to 100
-        pwm = np.linspace(0, 100, 500)
-        rpm = np.zeros_like(pwm)
-
-        for i, p in enumerate(pwm):
-            if p < 19:
-                # Zone 1: Deadband
-                rpm[i] = 0
-            elif p < 35:
-                # Zone 2: Breakout Burst (Stribeck + DCM) - modeled quadratically
-                rpm[i] = 35 * (p - 19)**1.2 
-            elif p < 70:
-                # Zone 3: Linear Sweet Spot
-                rpm[i] = 78 + 15 * (p - 35) + (35 * (35 - 19)**1.2)
-            elif p < 85:
-                # Zone 4: Windage & Heating (Logarithmic flattening)
-                linear_end = 78 + 15 * (70 - 35) + (35 * (35 - 19)**1.2)
-                rpm[i] = linear_end + 100 * np.log(1 + (p - 70) * 0.1)
-            else:
-                # Zone 5: Saturation ceiling
-                linear_end = 78 + 15 * (70 - 35) + (35 * (35 - 19)**1.2)
-                rpm[i] = linear_end + 100 * np.log(1 + (85 - 70) * 0.1)
-
-        # Plotting the real-world representation
-        plt.figure(figsize=(10, 6))
-        plt.plot(pwm, rpm, label='Real Motor Response', color='b', linewidth=2.5)
-        plt.axvspan(0, 19, color='red', alpha=0.1, label='Zone 1: Deadband')
-        plt.axvspan(19, 35, color='orange', alpha=0.1, label='Zone 2: Breakout Burst')
-        plt.axvspan(35, 70, color='green', alpha=0.1, label='Zone 3: Linear Sweet Spot')
-        plt.axvspan(70, 85, color='yellow', alpha=0.1, label='Zone 4: Windage/Heating')
-        plt.axvspan(85, 100, color='purple', alpha=0.1, label='Zone 5: Saturation')
-
-        plt.title('Realistic 0-100% PWM vs RPM Motor Curve', fontsize=14)
-        plt.xlabel('PWM Input (%)', fontsize=12)
-        plt.ylabel('Speed (RPM)', fontsize=12)
-        plt.grid(True, linestyle='--', alpha=0.5)
-        plt.legend(loc='upper left')
-        
-        try:
-            log_dir = base_url+"/LOG/"
-            image_name = "Illustration_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))+".jpg"
             plt.savefig(log_dir+image_name, dpi = 300)
             
             _, sep, after = log_dir.partition("/LOG/")
