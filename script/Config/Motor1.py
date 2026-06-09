@@ -22,8 +22,8 @@ FREQUENCY_SAMPLING_HZ   = 1000
 DT_S                    = 1/FREQUENCY_SAMPLING_HZ
 
 ## Linear Model Properties
-K_POSITIVE              = 0.24701175265964997   # (pulse per seconds)/PWM_TICKS
-K_NEGATIVE              = 0.23231920358388516   # (pulse per seconds)/PWM_TICKS
+K_POSITIVE              = 0.2058678594254962   # (pulse per seconds)/PWM_TICKS
+K_NEGATIVE              = 0.19629188012626667   # (pulse per seconds)/PWM_TICKS
 TAU_S                   = 0.026508300557422464  # seconds
 DELAY_TIME_S            = 0.013976871626348452  # seconds
 DELAY_STEPS             = int(DELAY_TIME_S / DT_S)
