@@ -16,35 +16,40 @@
 #
 
 ## Method
-### Simulation with `lfilter`
+Based on the difference equation of DC motor, we can simulate the motor model with the algorithm on the python code listing below. But on this stage we still don't know the exact value of the motor parameters: steady-state gain, time-constant, and time-delay. To get that parameters we need can `directly measured` the motor parameter like Kt, Kb, L, R, J, and B or if we dont interest on the individual parameters then we can perform `numerical optimization` from the motor's open loop response. On this repo we will perform numerical optimization with the `differential_evolution` method from `scipy.optimize`. We can compare the simulation result with the actual motor step response with differents K, tau, and L value, then select the most similar result. The similarity itself is defined by the `minimum Root Mean Squared Error` (RMSE) between the simulation and the actual data. Then we repeat the process for all the different PWM input values.
+
+### Simulation Model
 
 ```python
-import numpy as np
-from scipy.signal import lfilter
-
-def open_loop_response(self, params, u, dt):        
+def simulate_open_loop_response(self, params, u: list, dt):        
+    '''
+        Input u: PWM (Ticks)
+        Output y: Motor Speed (Pulse per Second)
+    '''
+    
     K, tau, L = params
     
-    delay_samples = int(round(L / dt))
+    # Simulation Variable
+    N     = len(u)        # Number of Data
+    d     = int(L / dt)   # Time Delay
+    y     = [0.0] * N     # Output: Motor Speed (Pulse per Second)
     
-    # Shift the input signal u by 'delay_samples'
-    if delay_samples > 0:
-        u_delayed = np.zeros_like(u)
-        u_delayed[delay_samples:] = u[:-delay_samples]
-    else:
-        u_delayed = u
+    # Motor Parameters
+    ALPHA = np.exp(-dt / tau)
+    BETA  = K * (1 - ALPHA)
+    
+    for k in range(N):
+        if (k - d - 1) < 0:
+            continue
+        # Difference Equation: Update Speed
+        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]
+        
+    return y
 
-    # Discrete-time coefficients
-    a = np.exp(-dt / tau)
-    b = K * (1 - a)
-    
-    # Simulate the first-order response
-    y_sim = lfilter([0, b], [1, -a], u_delayed)
-    return y_sim
 ```
 
 ## Simulation Result
-The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 25%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (L) has no significant changes. But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
+The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 25%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (L) has no significant changes. The average time-constant is 0.0265 seconds, while the average time delay is 0.014 second (14 steps). But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
 
 <div align="center"> 
   <img src="../assets/01_System_Identification/System_Identification_Result.jpg" width="800"></img>
@@ -86,52 +91,107 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
   </tr>  
 </table>
 
+The table below shows the summary of the system identification process:
+
+<div align="center">
+  <table>
+    <tr>
+      <th rowspan=2 width=150>Parameters</th>
+      <th rowspan=2 width=50>Symbol</th>
+      <th align="center" colspan=2 width=200>Linear Model</th>
+      <th align="center" rowspan=2 width=200>Noninear Model</th>
+    </tr>
+    <tr>
+      <th>Positive Direction</th>
+      <th>Negative Direction</th>
+    </tr>
+    <tr>
+      <td>Steady-state Gain (pps/ticks)</td>
+      <td align="center">K</td>
+      <td align="center">0.2059</td>
+      <td align="center">0.1963</td>
+      <td align="center">Interpolated from System Identification Result</td>       
+    </tr>
+    <tr>
+      <td>Time-constant (s)</td>
+      <td align="center">τ</td>
+      <td align="center" colspan=3> 0.0265 </td>
+    </tr>
+    <tr>
+      <td>Time-delay (s)</td>
+      <td align="center">L</td>
+      <td align="center" colspan=3> 0.014 </td>        
+    </tr>    
+  </table>
+</div>
+- Notes: pps = pulse per seconds
+
+Based on the linearity of the motor, we can get the motor zone based on the PWM and RPM on the table below:
+
+<div align="center">
+  <table>
+    <tr>
+      <th rowspan=2 width=150>Zone</th>
+      <th align="center" colspan=2>PWM (%)</th>
+      <th align="center" colspan=2>RPM</th>
+    </tr>
+    <tr>
+      <th>Min</th>
+      <th>Max</th>
+      <th>Min</th>
+      <th>Max</th>    
+    </tr>
+    <tr>
+      <td>Deadband</td>
+      <td>0</td>
+      <td>19</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Nonlinear Transition</td>
+      <td>19</td>
+      <td>30</td>
+      <td>0</td>
+      <td>450</td>      
+    </tr>
+    <tr>
+      <td>Linear</td>
+      <td>30</td>
+      <td>75</td>
+      <td>450</td>
+      <td>1100</td>      
+    </tr>
+    <tr>
+      <td>Pre-saturation</td>
+      <td>75</td>
+      <td>90</td>
+      <td>1100</td>
+      <td>1470</td>
+    </tr>
+    <tr>
+      <td>Saturation</td>
+      <td>90</td>
+      <td>100</td>
+      <td>1470</td>
+      <td>1470</td>
+    </tr>            
+  </table>
+</div>
 
 
-
-
-## Motor Model
-Based on the result above we can build the motor model 
-
-### Linear Model
-```python
-import numpy as np
-
-def simulate_open_loop_response(self, params, target_pwm, start_time, duration):
-    # Motor Params
-    K, tau, L, DT_S = params
-
-    # Simulation Variable
-    d   = int(L / DT_S)                 # Time Delay (steps)
-    N   = int(duration / DT_S)          # Number of Data
-    t   = np.linspace(0, duration, N)   # Time Array    
-    y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
-    u   = [0.0] * N                     # Input: PWM (Ticks)
-
-    ALPHA = np.exp(-DT_S / tau)
-    BETA = K * (1 - ALPHA)
-    
-    for k in range(N):
-        if (k - d - 1) < 0:
-            continue
-        u[k] = target_pwm if t[k] >= start_time else 0.0
-        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
-    
-    return t, np.array(y) , np.array(u)
-
-```
-
-### Nonlinear Model
+## Nonlinear Simulation Model
 ```python    
 for k in range(N):
     if (k - d - 1) < 0:
         continue
     
-    K_intrp     = interpolate(K_LIST, u[k-d-1])         # Update Motor Gain based on the PWM Input
-    BETA        = K_intrp * (1 - ALPHA)
-
-    u[k] = target_pwm if t[k] >= start_time else 0.0
-    y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
+    # Update Motor Gain based on the PWM Input
+    K_intrp = interpolate(K_LIST, u[k-d-1])
+    BETA    = K_intrp * (1 - ALPHA)
+    
+    # Difference Equation: Update Speed
+    y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]
 
 ```
 
@@ -139,64 +199,60 @@ for k in range(N):
 
 The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed.
 
-<table>
-  <tr align = "center">
-    <th  align="center" width=50>PWM Input (%)</th>
-    <th  align="center">Positive Direction</th>
-    <th  align="center">Negative Direction</th>
-  </tr>
-
-  <tr>
-    <td align="center"> 17 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_17.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_17.jpg">
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 19 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_19.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_19.jpg">
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 49 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_49.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_49.jpg">
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 85 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_85.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_85.jpg">
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"> 98 </td>
-    <td> 
-        <img src="../assets/01_System_Identification/A_98.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/01_System_Identification/B_98.jpg">
-    </td>
-  </tr>
-
-</table>
+<div align="center">
+  <table>
+    <tr align = "center">
+      <th  align="center" width=50>PWM Input (%)</th>
+      <th  align="center">Positive Direction</th>
+      <th  align="center">Negative Direction</th>
+    </tr>
+    <tr>
+      <td align="center"> 17 </td>
+      <td> 
+          <img src="../assets/01_System_Identification/A_17.jpg">
+      </td>
+      <td> 
+          <img  src="../assets/01_System_Identification/B_17.jpg">
+      </td>
+    </tr>
+    <tr>
+      <td align="center"> 19 </td>
+      <td> 
+          <img src="../assets/01_System_Identification/A_19.jpg">
+      </td>
+      <td> 
+          <img  src="../assets/01_System_Identification/B_19.jpg">
+      </td>
+    </tr>
+    <tr>
+      <td align="center"> 49 </td>
+      <td> 
+          <img src="../assets/01_System_Identification/A_49.jpg">
+      </td>
+      <td> 
+          <img  src="../assets/01_System_Identification/B_49.jpg">
+      </td>
+    </tr>
+    <tr>
+      <td align="center"> 85 </td>
+      <td> 
+          <img src="../assets/01_System_Identification/A_85.jpg">
+      </td>
+      <td> 
+          <img  src="../assets/01_System_Identification/B_85.jpg">
+      </td>
+    </tr>
+    <tr>
+      <td align="center"> 98 </td>
+      <td> 
+          <img src="../assets/01_System_Identification/A_98.jpg">
+      </td>
+      <td> 
+          <img  src="../assets/01_System_Identification/B_98.jpg">
+      </td>
+    </tr>
+  </table>
+</div>
 
 <div align="center">
   <a href="01-Control-Implementation.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
