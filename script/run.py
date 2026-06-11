@@ -9,6 +9,7 @@ import Config.Motor0 as Motor0Config
 import Config.Motor1 as Motor1Config
 import Tool.plotter
 import Tool.FileProcessing
+from Tool.MotorSim import SystemModel
 from Tool.visualize import *
 from base_url import *
 
@@ -94,7 +95,7 @@ def open_loop_test(motor_id, pwm, duration=3, time_sampling = 10):
     
     Tool.plotter.save_image_by_tag(file_tag)
 
-def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sampling = 5):
+def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sampling = 5, mode: SystemModel = SystemModel.Nonlinear):
     motor = None
     
     if motor_id == 0:
@@ -135,6 +136,7 @@ def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sam
                                                                 target_rotation     = position_rotation - motor_response["command_list"][0], 
                                                                 start_time          = motor_response["start_time_s"],
                                                                 duration            = motor_response["duration_s"],
+                                                                mode                = mode,
                                                                 )
         
         Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
@@ -154,7 +156,7 @@ def pos_test_with_simulation(motor_id, position_rotation, duration=1.5, time_sam
                                             simulation_commanded_label  = "Commanded Position"
                                             )
 
-def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
+def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5, mode: SystemModel = SystemModel.Nonlinear):
     motor = None
     
     if motor_id == 0:
@@ -191,7 +193,9 @@ def speed_test_with_simulation(motor_id, speed_rpm, time_sampling = 5):
                                                         pid_params=pid_params,
                                                         target_rpm=motor_response["target"], 
                                                         start_time=motor_response["start_time_s"], 
-                                                        duration=motor_response["duration_s"])
+                                                        duration=motor_response["duration_s"],
+                                                        mode=mode
+                                                        )
         
         Tool.plotter.create_simulation_plot(log_dir                 = log_dir, 
                                         pid_config                  = pid_params,
@@ -278,7 +282,7 @@ def simulate_pos_control(pos_rotation, start_time = 0.4, duration=1.5):
                                         simulation_commanded_label  = "Commanded Position"
                                         )
 
-def simulate_open_loop(target, start_time = 0.4, duration=1.5):
+def simulate_open_loop(target, start_time = 0.4, duration=1.5, mode:SystemModel = SystemModel.Nonlinear):
     
     pid_pos_config      = [0, 0, 0, 0]
     
@@ -290,7 +294,8 @@ def simulate_open_loop(target, start_time = 0.4, duration=1.5):
     simulation_time_list, simulation_speed_list, commanded_pwm_list = m0.sim.simulate_open_loop_response(
                                                                     target_pwm=target, 
                                                                     start_time=start_time, 
-                                                                    duration=duration
+                                                                    duration=duration,
+                                                                    mode=mode
                                                                     )
     
     Tool.plotter.create_simulation_plot(log_dir                     = log_dir, 
@@ -310,12 +315,12 @@ def simulate_open_loop(target, start_time = 0.4, duration=1.5):
                                         simulation_commanded_label  = "Input PWM"
                                         )
 
-def verify_open_loop():
+def verify_open_loop(mode: SystemModel = SystemModel.Linear):
     
     pid_pos_config      = [0, 0, 0, 0]
     
-    assets_dir = base_url + "/assets/open-loop-responses/"
-    saved_dir = base_url + "/assets/open-loop-plot/"
+    assets_dir = base_url[:-7] + "/assets/01_System_Identification/open-loop-responses/"
+    saved_dir = base_url[:-7] + "/assets/01_System_Identification/open-loop-plot/"
     
     all_log_files = os.listdir(assets_dir)
         
@@ -325,11 +330,16 @@ def verify_open_loop():
         if ".csv" not in filename: continue
         
         motor_response = Tool.FileProcessing.extract_firmware_log_data(assets_dir+filename, "Commanded_PWM", "Motor_Speed(RPM)")
-
+        
+        if motor_response["start_time_s"] is None:
+            motor_response["start_time_s"] = 0
+            motor_response["target"] = 0
+        
         simulation_time_list, simulation_speed_list, commanded_pwm_list = m0.sim.simulate_open_loop_response(
                                                                         target_pwm  =   motor_response["target"], 
                                                                         start_time  =   motor_response["start_time_s"], 
-                                                                        duration    =   motor_response["duration_s"]
+                                                                        duration    =   motor_response["duration_s"],
+                                                                        mode = mode,
                                                                         )
         
         percent_pwm = round((motor_response["target"]/m0.config.MAX_PWM_TICKS)*100)
@@ -342,7 +352,7 @@ def verify_open_loop():
                                             simulation_data_list        = simulation_speed_list, 
                                             simulation_commanded_list   = None,  
                                             actual_data_list            = motor_response["data_list"], 
-                                            actual_commanded_list       = motor_response["command_list"],
+                                            actual_commanded_list       = None,
                                             tag                         = file_tag,
                                             plot_title                  = f"PWM Input: {percent_pwm}%",
                                             y_label                     = "Motor Speed (RPM)",

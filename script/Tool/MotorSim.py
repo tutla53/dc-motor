@@ -132,9 +132,9 @@ class SimulateMotor:
                 if (k - d - 1) < 0:
                     continue
                 
-                K_intrp     = self.__interpolate__(self.K_LIST, u[k-d-1])
-                ALPHA       = self.ALPHA
-                BETA        = K_intrp * (1 - ALPHA)
+                K_intrp = self.__interpolate__(self.K_LIST, u[k-d-1])
+                ALPHA   = self.ALPHA
+                BETA    = K_intrp * (1 - ALPHA)
                 
                 u[k] = target_pwm if t[k] >= start_time else 0.0
                 y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
@@ -184,9 +184,9 @@ class SimulateMotor:
                 if (k - d - 1) < 0:
                     continue
                 
-                K_intrp     = self.__interpolate__(self.K_LIST, u[k-d-1])
-                ALPHA       = self.ALPHA
-                BETA        = K_intrp * (1 - ALPHA)
+                K_intrp = self.__interpolate__(self.K_LIST, u[k-d-1])
+                ALPHA   = self.ALPHA
+                BETA    = K_intrp * (1 - ALPHA)
                 
                 setpoint[k] = target_pps if t[k] >= start_time else 0.0
                 
@@ -251,9 +251,9 @@ class SimulateMotor:
                 if (k - d - 1) < 0:
                     continue
                 
-                K_intrp     = self.__interpolate__(self.K_LIST, u[k-d-1])
-                ALPHA       = self.ALPHA
-                BETA        = K_intrp * (1 - ALPHA)
+                K_intrp = self.__interpolate__(self.K_LIST, u[k-d-1])
+                ALPHA   = self.ALPHA
+                BETA    = K_intrp * (1 - ALPHA)
                 
                 setpoint[k] = target_pulse if t[k] >= start_time else 0.0
                 
