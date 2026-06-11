@@ -120,7 +120,8 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
       <td>19</td>
       <td>30</td>
       <td>0</td>
-      <td>450</td>      
+      <td>450</td>
+      <td></td>
     </tr>
     <tr>
       <td>Linear</td>
@@ -136,6 +137,7 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
       <td>90</td>
       <td>1100</td>
       <td>1470</td>
+      <td></td>
     </tr>
     <tr>
       <td>Saturation</td>
