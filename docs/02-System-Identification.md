@@ -61,7 +61,7 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
 <table>
   <tr align = "center">
     <th  align="center">Graph</th>
-    <th  align="center" width="350">Description</th>
+    <th  align="center" width="250">Description</th>
   </tr>
 
   <tr align = "center">
@@ -72,12 +72,12 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
       <b>[1] Deadband Zone</b><br>
       At the low PWM input from 0 - 19% the motor is not moving because the current is not enough to overcome the static friction from the motor. Because of that we called this region as the `deadband`, because we cannot get the response. On the DC motor model we assume that the friction on the motor is only the viscous friction, but in reality the motor need to overcome the static coulomb friction from brush, bearing, and gear.<br><br>
       <!--  -->
-      <b>[2] Nonlinear Transition</b><br>
-      Just after the voltage input is increased, the current is strong enough to move the motor system. But during this transition, the friction constant is still not linear (see `Stribeck Effect`), which also makes the relationship between PWM input and motor speed is not linear. So, if we simulate the motor response on this region (19 - 30% of input) with the linear model, the the result may not accurate. <br><br>
-      <!--  -->
     </td>
     <tr>
     <td colspan=2>
+    <b>[2] Nonlinear Transition</b><br>
+      Just after the voltage input is increased, the current is strong enough to move the motor system. But during this transition, the friction constant is still not linear (see `Stribeck Effect`), which also makes the relationship between PWM input and motor speed is not linear. So, if we simulate the motor response on this region (19 - 30% of input) with the linear model, the the result may not accurate. <br><br>
+      <!--  -->
       <b>[3] Linear Region</b><br>
       In this region (30 - 75% of input) the friction is fully moved to viscous friction and has a constant value. We can predict the system accurately with linear model on this region. We can estimate the value of K (steady-state constant) of the DC motor by calculating the slope of this region to build the linear model. This is the sweet spot of the DC motor and very recommended to operate and tune the DC motor on this region.<br><br>
       <!--  -->
