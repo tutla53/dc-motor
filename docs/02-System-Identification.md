@@ -126,14 +126,14 @@ The table below shows the summary of the system identification process:
 </div>
 - Notes: pps = pulse per seconds
 
-Based on the linearity of the motor, we can get the motor zone based on the PWM and RPM on the table below:
+<br>Based on the linearity of the motor, we can get the motor zone based on the PWM and RPM on the table below:
 
 <div align="center">
   <table>
     <tr>
-      <th rowspan=2 width=150>Zone</th>
-      <th align="center" colspan=2>PWM (%)</th>
-      <th align="center" colspan=2>RPM</th>
+      <th rowspan=2 width=200>Zone</th>
+      <th align="center" colspan=2 width=150>PWM (%)</th>
+      <th align="center" colspan=2 width=150>RPM</th>
     </tr>
     <tr>
       <th>Min</th>
