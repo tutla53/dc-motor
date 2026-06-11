@@ -91,6 +91,63 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
   </tr>  
 </table>
 
+<br>Based on the linearity of the motor, we can get the motor zone based on the PWM and RPM on the table below:
+
+<div align="center">
+  <table>
+    <tr>
+      <th rowspan=2 width=200>Zone</th>
+      <th align="center" colspan=2 width=150>PWM (%)</th>
+      <th align="center" colspan=2 width=150>RPM</th>
+      <th rowspan=2>Criterion</th>
+    </tr>
+    <tr>
+      <th>Min</th>
+      <th>Max</th>
+      <th>Min</th>
+      <th>Max</th>    
+    </tr>
+    <tr>
+      <td>Deadband</td>
+      <td>0</td>
+      <td>19</td>
+      <td>0</td>
+      <td>0</td>
+      <td>Motor Speed below 15 RPM</td>
+    </tr>
+    <tr>
+      <td>Nonlinear Transition</td>
+      <td>19</td>
+      <td>30</td>
+      <td>0</td>
+      <td>450</td>      
+    </tr>
+    <tr>
+      <td>Linear</td>
+      <td>30</td>
+      <td>75</td>
+      <td>450</td>
+      <td>1100</td>
+      <td>Steady-state Gain (K) changes is below 2.5%</td>      
+    </tr>
+    <tr>
+      <td>Pre-saturation</td>
+      <td>75</td>
+      <td>90</td>
+      <td>1100</td>
+      <td>1470</td>
+    </tr>
+    <tr>
+      <td>Saturation</td>
+      <td>90</td>
+      <td>100</td>
+      <td>1470</td>
+      <td>1470</td>
+      <td>Speed changes is below 2% </td>
+    </tr>            
+  </table>
+</div>
+
 The table below shows the summary of the system identification process:
 
 <div align="center">
@@ -126,61 +183,9 @@ The table below shows the summary of the system identification process:
 </div>
 - Notes: pps = pulse per seconds
 
-<br>Based on the linearity of the motor, we can get the motor zone based on the PWM and RPM on the table below:
-
-<div align="center">
-  <table>
-    <tr>
-      <th rowspan=2 width=200>Zone</th>
-      <th align="center" colspan=2 width=150>PWM (%)</th>
-      <th align="center" colspan=2 width=150>RPM</th>
-    </tr>
-    <tr>
-      <th>Min</th>
-      <th>Max</th>
-      <th>Min</th>
-      <th>Max</th>    
-    </tr>
-    <tr>
-      <td>Deadband</td>
-      <td>0</td>
-      <td>19</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <td>Nonlinear Transition</td>
-      <td>19</td>
-      <td>30</td>
-      <td>0</td>
-      <td>450</td>      
-    </tr>
-    <tr>
-      <td>Linear</td>
-      <td>30</td>
-      <td>75</td>
-      <td>450</td>
-      <td>1100</td>      
-    </tr>
-    <tr>
-      <td>Pre-saturation</td>
-      <td>75</td>
-      <td>90</td>
-      <td>1100</td>
-      <td>1470</td>
-    </tr>
-    <tr>
-      <td>Saturation</td>
-      <td>90</td>
-      <td>100</td>
-      <td>1470</td>
-      <td>1470</td>
-    </tr>            
-  </table>
-</div>
-
-
 ## Nonlinear Simulation Model
+To implement the Nonlinear model, we can use the `interpolation` from stead-state data gain. With this method we can create more accurate for all PWM input. The drawback is the computation process is slower because we need to interpolate the K based on the motor open loop response.
+
 ```python    
 for k in range(N):
     if (k - d - 1) < 0:
@@ -197,7 +202,7 @@ for k in range(N):
 
 ## Verification
 
-The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed.
+The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed. For the linear model, we can see that the most accurate model is on the linear region. Outside that, the motor model prediction may be higher or lower than the actual steady-state speed of the motor. But on the other hand, the nonlinear model can predict accurately the motor response from 0 to 100% of PWM input. That's inline with our analysis before and we can say the optimization process is correct.
 
 <div align="center">
   <table>
