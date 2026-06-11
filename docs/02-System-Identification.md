@@ -99,7 +99,7 @@ The table below shows the summary of the system identification process:
       <th rowspan=2 width=150>Parameters</th>
       <th rowspan=2 width=50>Symbol</th>
       <th align="center" colspan=2 width=200>Linear Model</th>
-      <th align="center" rowspan=2 width=200>Noninear Model</th>
+      <th align="center" rowspan=2 width=200>Nonlinear Model</th>
     </tr>
     <tr>
       <th>Positive Direction</th>
@@ -203,53 +203,53 @@ The table below shows the comparison between the DC Motor open loop firmware log
   <table>
     <tr align = "center">
       <th  align="center" width=50>PWM Input (%)</th>
-      <th  align="center">Positive Direction</th>
-      <th  align="center">Negative Direction</th>
+      <th  align="center" width=500>Linear Model</th>
+      <th  align="center"width=500>Nonlinear</th>
     </tr>
     <tr>
-      <td align="center"> 17 </td>
+      <td align="center"> Deadband (9%) </td>
       <td> 
-          <img src="../assets/01_System_Identification/A_17.jpg">
+          <img src="../assets/01_System_Identification/verification/Linear/A_9.jpg">
       </td>
       <td> 
-          <img  src="../assets/01_System_Identification/B_17.jpg">
-      </td>
-    </tr>
-    <tr>
-      <td align="center"> 19 </td>
-      <td> 
-          <img src="../assets/01_System_Identification/A_19.jpg">
-      </td>
-      <td> 
-          <img  src="../assets/01_System_Identification/B_19.jpg">
+          <img src="../assets/01_System_Identification/verification/Nonlinear/A_9.jpg">
       </td>
     </tr>
     <tr>
-      <td align="center"> 49 </td>
+      <td align="center"> Nonlinear Transition (24%) </td>
       <td> 
-          <img src="../assets/01_System_Identification/A_49.jpg">
+          <img src="../assets/01_System_Identification/verification/Linear/A_24.jpg">
       </td>
       <td> 
-          <img  src="../assets/01_System_Identification/B_49.jpg">
-      </td>
-    </tr>
-    <tr>
-      <td align="center"> 85 </td>
-      <td> 
-          <img src="../assets/01_System_Identification/A_85.jpg">
-      </td>
-      <td> 
-          <img  src="../assets/01_System_Identification/B_85.jpg">
+          <img src="../assets/01_System_Identification/verification/Nonlinear/A_24.jpg">
       </td>
     </tr>
     <tr>
-      <td align="center"> 98 </td>
+      <td align="center" rowspan=2> Linear </td>
+      <td><img src="../assets/01_System_Identification/verification/Linear/A_51.jpg"></td>
+      <td><img src="../assets/01_System_Identification/verification/Nonlinear/A_51.jpg"></td>
+    </tr>
+    <tr>
+      <td><img src="../assets/01_System_Identification/verification/Linear/A_70.jpg"></td>
+      <td><img src="../assets/01_System_Identification/verification/Nonlinear/A_70.jpg"></td>
+    </tr> 
+    <tr>
+      <td align="center"> Pre-saturation (81%) </td>
       <td> 
-          <img src="../assets/01_System_Identification/A_98.jpg">
+          <img src="../assets/01_System_Identification/verification/Linear/A_81.jpg">
       </td>
       <td> 
-          <img  src="../assets/01_System_Identification/B_98.jpg">
+          <img src="../assets/01_System_Identification/verification/Nonlinear/A_81.jpg">
       </td>
+    </tr>
+    <tr>
+      <td align="center" rowspan=2> Saturation </td>
+      <td><img src="../assets/01_System_Identification/verification/Linear/A_90.jpg"></td>
+      <td><img src="../assets/01_System_Identification/verification/Nonlinear/A_90.jpg"></td>
+    </tr>
+    <tr>
+      <td><img src="../assets/01_System_Identification/verification/Linear/A_98.jpg"></td>
+      <td><img src="../assets/01_System_Identification/verification/Nonlinear/A_98.jpg"></td>
     </tr>
   </table>
 </div>
