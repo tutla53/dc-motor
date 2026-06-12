@@ -15,12 +15,79 @@
     
 #
 
-## Block Diagram
-### Speed Control 
-### Position Control
-## Discrete-Time PID Control Model
-## Control Implementation on Firmware
-## PID Tuning
+## Algorithm
+
+### Discrete-Time PID Control Model
+The implementation of the PID on simulation is exactly the same with the PID implementation on the firmware. The code below shows the PID implementation on the Python. 
+
+```python
+import numpy as np
+
+class PIDControl():
+    def __init__(self, kp, ki, kd, i_limit, max_threshold):
+        self.kp             = kp
+        self.ki             = ki
+        self.kd             = kd
+        self.i_limit        = i_limit
+        self.integral       = 0
+        self.prev_error     = 0
+        self.max_threshold  = max_threshold
+        
+    def compute(self, error):
+        self.integral += error
+        self.integral = np.clip(self.integral, -self.i_limit, self.i_limit)
+        
+        derivative = error - self.prev_error
+        self.prev_error = error
+        
+        pwm_out = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+        pwm_out = np.clip(pwm_out, -self.max_threshold, self.max_threshold)
+        return pwm_out
+```
+### Integrating with Discrete Motor Model
+The code below shows how to integrate the PID calculation with our discrete motor model. 
+
+```python
+import numpy as np
+
+def simulate_pid_speed_control(motor_params, pid_params, target_speed, start_time, duration):
+    """
+        Target unit                 --> pulse per second
+        PID speed calculation unit  --> pulse per second
+        Speed output unit           --> pulse per second
+    """
+    
+    K, tau, L = motor_params
+
+    # Simulation Variable
+    d   = int(L / dt)                   # Time Delay
+    N   = int(duration / dt)            # Number of Data
+    t   = np.linspace(0, duration, N)   # Time Array    
+    y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
+    u   = [0.0] * N                     # Input: PWM (Ticks)
+    setpoint = [0.0] * N                # Setpoint List (Pulse per Second)
+    
+    # Limiting Speed Input Based on the Motor Top Speed
+    target_speed = np.clip(target_speed, -MAX_SPEED, MAX_SPEED)    
+    
+    # PID Speed Handler
+    kp, ki, kd, i_limit = pid_params        
+    speed_control = PIDControl(kp, ki, kd, i_limit, MAX_PWM)
+    
+    ALPHA   = np.exp(-dt / tau)
+    BETA    = K * (1 - ALPHA)
+    
+    for k in range(N):
+        if (k - d - 1) < 0:
+                continue
+        
+        setpoint[k] = target_pps if t[k] >= start_time else 0.0 # Create Step Setpoint
+        
+        error = setpoint[k] - y[k-1]
+        u[k] = speed_control.compute(error)         # Compute PID Control
+        y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]     # Difference Equation: Update Speed
+```
+
 ## Verification
 
 <table>
