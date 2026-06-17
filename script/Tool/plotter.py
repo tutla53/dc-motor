@@ -78,37 +78,71 @@ def create_simulation_plot( log_dir, pid_config,
                             actual_commanded_label = "Actual Command",
                             simulation_data_label = "Simulation Speed",
                             simulation_commanded_label = "Simulation Command",
+                            same_unit = True,
                             ):
     
     # TODO: Costumize the PID config on the left of the graph
     
-    plt.figure(figsize=(10, 5))
+    # plt.figure(figsize=(10, 5))
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+    lines = []
+    found_commanded = False
+    commanded_data = None
+    
+    commanded_axis = ax1
+    if not same_unit:
+        commanded_axis = ax1.twinx()
+        commanded_axis.set_ylabel("PWM Input (Ticks)")
     
     if actual_time_list is not None:
         if actual_commanded_list is not None:
-            plt.plot(actual_time_list, actual_commanded_list, label=actual_commanded_label, color = "black", linestyle='--')
+            line = commanded_axis.plot(actual_time_list, actual_commanded_list, label=actual_commanded_label, color = "black", linestyle='--')
+            lines += line
+            commanded_data = actual_commanded_list.tolist()
+            found_commanded = True
         
         if actual_data_list is not None:
-            plt.plot(actual_time_list, actual_data_list, label=actual_data_label, color="blue", linewidth=2)
+            line = ax1.plot(actual_time_list, actual_data_list, label=actual_data_label, color="blue", linewidth=2)
+            lines += line
     
     if simulation_time_list is not None:
-        if simulation_commanded_list is not None:
-            plt.plot(simulation_time_list, simulation_commanded_list, label=simulation_commanded_label, color = "black", linestyle='--')
+        if simulation_commanded_list is not None and not found_commanded:
+            line = commanded_axis.plot(simulation_time_list, simulation_commanded_list, label=simulation_commanded_label, color = "black", linestyle='--')
+            commanded_data = simulation_commanded_list.tolist()
+            lines += line
+            
         if simulation_data_list is not None:
-            plt.plot(simulation_time_list, simulation_data_list, label=simulation_data_label, color="red", linewidth=2)
+            line = ax1.plot(simulation_time_list, simulation_data_list, label=simulation_data_label, color="red", linewidth=2)
+            lines += line
     
     if plot_title == "":
         plt.title(f"Step Response (Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})")
     else:
         plt.title(plot_title)
+    
+    labels = [l.get_label() for l in lines]
+    
+    ax1.legend(lines, labels)
+    ax1.set_ylabel(y_label)
+    
+    if not same_unit and simulation_data_list is not None and commanded_data is not None:
+        going_positive = True if (commanded_data[-10]-commanded_data[0]) > 0 else False
+
+        low, up = ax1.get_ybound()
+        low_2, up_2 = commanded_axis.get_ybound()           
         
-    plt.ylabel(y_label)
-    plt.xlabel(x_label)
+        if going_positive:
+            new_scale = ((up - low) * (max(commanded_data)/max(simulation_data_list))) + low_2
+            commanded_axis.set_ybound(low_2, new_scale)
+        else:
+            new_scale = -(((up - low) * (min(commanded_data)/min(simulation_data_list))) - up_2)
+            commanded_axis.set_ybound(new_scale, up_2)            
+        
+    ax1.set_xlabel(x_label)
     plt.grid(True, alpha=0.3)
-    plt.legend()
     
     try:
-        image_name = tag + "simulation_graph_" + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + ".jpg"
+        image_name = tag + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + ".jpg"
         plt.savefig(log_dir+image_name, dpi = 300)
         
         _, sep, after = log_dir.partition("/LOG/")
