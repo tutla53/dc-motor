@@ -68,7 +68,7 @@ class SimulateMotor:
         self.K_positive = self.config.K_POSITIVE       # Linear Gain
         self.K_negative = self.config.K_NEGATIVE       # Linear Gain
         self.tau        = self.config.TAU_S            # Time Constant
-        self.L          = self.config.DELAY_STEPS      # Time Delay
+        self.L_STEP          = self.config.DELAY_STEPS      # Time Delay
         self.DT_S       = self.config.DT_S             # Time Sampling
         
         # Nonlinear Motor Gain
@@ -106,24 +106,23 @@ class SimulateMotor:
         
         return K
 
-    def simulate_open_loop_response(self, target_pwm, start_time, duration, mode: SystemModel = SystemModel.Linear):
+    def simulate_open_loop_response(self, target_pwm, u: list,  mode: SystemModel = SystemModel.Linear):
         # Simulation Variable
-        d   = self.L                        # Time Delay
-        N   = int(duration / self.DT_S)     # Number of Data
-        t   = np.linspace(0, duration, N)   # Time Array    
+        d   = self.L_STEP                        # Time Delay
+        N   = len(u)                        # Number of Data
         y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
-        u   = [0.0] * N                     # Input: PWM (Ticks)
+        t   = np.linspace(0, N * self.DT_S, N)   # Time Array    
         
         target_pwm = np.clip(target_pwm, -self.MAX_PWM, self.MAX_PWM)
         
-        if mode == SystemModel.Linear:
-            ALPHA = self.ALPHA
-            BETA = self.BETA_POSITIVE if target_pwm > 0 else self.BETA_NETAGIVE
-            
+        if mode == SystemModel.Linear:            
             for k in range(N):
                 if (k - d - 1) < 0:
                     continue
-                u[k] = target_pwm if t[k] >= start_time else 0.0
+                
+                ALPHA   = self.ALPHA
+                BETA    = self.BETA_POSITIVE if u[k-d-1] > 0 else self.BETA_NETAGIVE                
+                
                 y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
         
         elif mode == SystemModel.Nonlinear:
@@ -136,12 +135,11 @@ class SimulateMotor:
                 ALPHA   = self.ALPHA
                 BETA    = K_intrp * (1 - ALPHA)
                 
-                u[k] = target_pwm if t[k] >= start_time else 0.0
                 y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]             # Difference Equation: Update Speed
         
         return t, np.array(y)*self.RPM_PER_PPS , np.array(u)
     
-    def simulate_pid_speed_control(self, pid_params, target_rpm, start_time, duration, mode: SystemModel = SystemModel.Linear):
+    def simulate_pid_speed_control(self, pid_params, initial_speed, setpoint:list, mode: SystemModel = SystemModel.Linear):
         """
             Target unit                 --> RPM
             PID speed calculation unit  --> pulse per second
@@ -149,30 +147,24 @@ class SimulateMotor:
         """
         
         # Simulation Variable
-        d   = self.L                        # Time Delay
-        N   = int(duration / self.DT_S)     # Number of Data
-        t   = np.linspace(0, duration, N)   # Time Array    
-        y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
-        u   = [0.0] * N                     # Input: PWM (Ticks)
-        setpoint = [0.0] * N                # Setpoint List (Pulse per Second)
-        
-        target_rpm = np.clip(target_rpm, -self.MAX_SPEED_RPM, self.MAX_SPEED_RPM)    
-        target_pps  = target_rpm * self.PPS_PER_RPM
+        d   = self.L_STEP                            # Time Delay
+        N   = len(setpoint)                     # Number of Data
+        t   = np.linspace(0, N*self.DT_S, N)    # Time Array    
+        y   = [initial_speed] * N               # Output: Motor Speed (Pulse per Second)
+        u   = [0.0] * N                         # Input: PWM (Ticks)
         
         # PID Speed Handler
         kp, ki, kd, i_limit = pid_params        
         speed_control = PIDControl(kp, ki, kd, i_limit, self.MAX_PWM)
         
-        if mode == SystemModel.Linear:
-            ALPHA = self.ALPHA
-            BETA = self.BETA_POSITIVE if target_rpm > 0 else self.BETA_NETAGIVE
-            
+        if mode == SystemModel.Linear:            
             for k in range(N):
                 if (k - d - 1) < 0:
                         continue
                 
-                setpoint[k] = target_pps if t[k] >= start_time else 0.0
-                
+                ALPHA   = self.ALPHA
+                BETA    = self.BETA_POSITIVE if u[k-d-1] > 0 else self.BETA_NETAGIVE
+                                
                 error = setpoint[k] - y[k-1]
                 u[k] = speed_control.compute(error)         # Compute PID Control
                 
@@ -187,8 +179,6 @@ class SimulateMotor:
                 K_intrp = self.__interpolate__(self.K_LIST, u[k-d-1])
                 ALPHA   = self.ALPHA
                 BETA    = K_intrp * (1 - ALPHA)
-                
-                setpoint[k] = target_pps if t[k] >= start_time else 0.0
                 
                 error = setpoint[k] - y[k-1]
                 u[k] = speed_control.compute(error)         # Compute PID Control
@@ -197,7 +187,7 @@ class SimulateMotor:
                             
         return t, np.array(y)*self.RPM_PER_PPS, np.array(setpoint)*self.RPM_PER_PPS
 
-    def simulate_pid_pos_control(self, pid_pos_params, pid_speed_params, target_rotation, start_time, duration, mode: SystemModel = SystemModel.Linear):
+    def simulate_pid_pos_control(self, pid_pos_params, pid_speed_params, initial_pos, setpoint:list, mode: SystemModel = SystemModel.Linear):
         """
             Target unit                 --> rotation
             PID pos calculation unit    --> pulse
@@ -207,16 +197,12 @@ class SimulateMotor:
         """
 
         # Simulation Variable
-        d   = self.L                        # Time Delay
-        N   = int(duration / self.DT_S)     # Number of Data
-        t   = np.linspace(0, duration, N)   # Time Array    
+        d   = self.L_STEP                        # Time Delay
+        N   = len(setpoint)                        # Number of Data
+        t   = np.linspace(0, N*self.DT_S, N)   # Time Array    
         y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
         u   = [0.0] * N                     # Input: PWM (Ticks)
-        x   = [0.0] * N                     # Motor Position List (Pulse)
-        setpoint = [0.0] * N                # Setpoint List (Pulse)
-                
-        # Simulation Variable
-        target_pulse    = target_rotation * self.PULSE_PER_ROTATION
+        x   = [initial_pos] * N                     # Motor Position List (Pulse)        
         
         # PID Handler
         kp_speed, ki_speed, kd_speed, i_limit_speed = pid_speed_params
@@ -226,14 +212,13 @@ class SimulateMotor:
         position_control    = PIDControl(kp_pos, ki_pos, kd_pos, i_limit_pos, self.MAX_SPEED_PPS)
         
         if mode == SystemModel.Linear:
-            ALPHA = self.ALPHA
-            BETA = self.BETA_POSITIVE if target_pulse > 0 else self.BETA_NETAGIVE
             
             for k in range(N):
                 if (k - d - 1) < 0:
                         continue
                 
-                setpoint[k] = target_pulse if t[k] >= start_time else 0.0
+                ALPHA   = self.ALPHA
+                BETA    = self.BETA_POSITIVE if u[k-d-1] > 0 else self.BETA_NETAGIVE
                 
                 pos_error = setpoint[k] - x[k-1]
                 target_speed = position_control.compute(pos_error)  # Compute PID Position Control
@@ -254,8 +239,6 @@ class SimulateMotor:
                 K_intrp = self.__interpolate__(self.K_LIST, u[k-d-1])
                 ALPHA   = self.ALPHA
                 BETA    = K_intrp * (1 - ALPHA)
-                
-                setpoint[k] = target_pulse if t[k] >= start_time else 0.0
                 
                 pos_error = setpoint[k] - x[k-1]
                 target_speed = position_control.compute(pos_error)  # Compute PID Position Control
