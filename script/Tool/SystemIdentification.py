@@ -12,6 +12,7 @@ from scipy.optimize import differential_evolution
 from scipy.optimize import least_squares
 from base_url import *
 from Tool.visualize import *
+from Tool.MotorSim import SystemModel
 
 class MotorOptimization:
     def __init__(self, configfile):
@@ -71,7 +72,9 @@ class MotorOptimization:
         
         Tool.plotter.create_system_identification_graph(filename, self.config, log_dir, tag)
         
-    def run_tune_pid_speed(self):
+    def tune_pid_speed(self, mode=SystemModel.Nonlinear):
+        # TODO: Add u:list for the model input
+        
         TARGET_SPEED                = [-1200, -1100, -1000, -900, -800, -700, -600, -500, 500, 600, 700, 800, 900, 1000, 1100, 1200]
         START_TIME                  = 0.4
         DURATION                    = 1.0
@@ -98,7 +101,7 @@ class MotorOptimization:
             result = differential_evolution(
                 self.__pid_speed_objective_function,
                 bounds=bounds,
-                args=(target_speed, START_TIME, DURATION, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S),
+                args=(target_speed, START_TIME, DURATION, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S, mode),
                 strategy='best1bin',
                 maxiter=100,
                 popsize=15,
@@ -133,9 +136,9 @@ class MotorOptimization:
         
         return final_Kp, final_Ki, final_Kd, i_limit
     
-    def __pid_speed_objective_function(self, pid_params, target, start_time, duration, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S):
+    def __pid_speed_objective_function(self, pid_params, target, start_time, duration, MAXIMUM_OVERSHOOT_PERCENT, MAXIMUM_SETTLING_TIME_S, mode):
         
-        time_axis, speed, setpoint = self.motor.simulate_pid_speed_control(pid_params, target, start_time, duration)
+        time_axis, speed, setpoint = self.motor.simulate_pid_speed_control(pid_params, target, start_time, duration, mode=mode)
         
         # Check for Overshoot
         overshoot = (abs((abs(target) - max(abs(speed)))/target)) * 100
