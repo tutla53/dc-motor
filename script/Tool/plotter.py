@@ -83,7 +83,6 @@ def create_simulation_plot( log_dir, pid_config,
     
     # TODO: Costumize the PID config on the left of the graph
     
-    # plt.figure(figsize=(10, 5))
     fig, ax1 = plt.subplots(figsize=(10, 5))
     lines = []
     found_commanded = False
@@ -115,10 +114,10 @@ def create_simulation_plot( log_dir, pid_config,
             line = ax1.plot(simulation_time_list, simulation_data_list, label=simulation_data_label, color="red", linewidth=2)
             lines += line
     
-    if plot_title == "":
-        plt.title(f"Step Response (Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})")
-    else:
-        plt.title(plot_title)
+    if pid_config is not None:
+        plot_title += f"\n(Kp={pid_config[0]:.2f}, Ki={pid_config[1]:.2f}, Kd={pid_config[2]:.2f} I_Limit={pid_config[3]:.0f})"
+
+    plt.title(plot_title)
     
     labels = [l.get_label() for l in lines]
     
