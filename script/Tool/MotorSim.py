@@ -106,14 +106,12 @@ class SimulateMotor:
         
         return K
 
-    def simulate_open_loop_response(self, target_pwm, u: list,  mode: SystemModel = SystemModel.Linear):
+    def simulate_open_loop_response(self, u: list,  mode: SystemModel = SystemModel.Linear):
         # Simulation Variable
         d   = self.L_STEP                        # Time Delay
         N   = len(u)                        # Number of Data
         y   = [0.0] * N                     # Output: Motor Speed (Pulse per Second)
         t   = np.linspace(0, N * self.DT_S, N)   # Time Array    
-        
-        target_pwm = np.clip(target_pwm, -self.MAX_PWM, self.MAX_PWM)
         
         if mode == SystemModel.Linear:            
             for k in range(N):
