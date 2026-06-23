@@ -107,7 +107,7 @@ def printbllb(*args,**kargs):
 def print_log(label, *args, **kargs):
     # Pattern: [LABEL] in Grey, Message in 'color'
     
-    if label == "WARN":
+    if label == "WARN" or label=="ERROR":
         prefix = f"{cora.Fore.RED + cora.Style.DIM}[{label}]{cora.Style.RESET_ALL}"
         message_color = cora.Fore.RED + cora.Style.BRIGHT
     else:
