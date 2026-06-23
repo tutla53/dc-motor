@@ -125,18 +125,19 @@ def create_simulation_plot( log_dir, pid_config,
     ax1.set_ylabel(y_label)
     
     if not same_unit and simulation_data_list is not None and commanded_data is not None:
-        going_positive = True if (commanded_data[-10]-commanded_data[0]) > 0 else False
+        if max(abs(simulation_data_list)) != 0:
+            going_positive = True if (commanded_data[-10]-commanded_data[0]) > 0 else False
 
-        low, up = ax1.get_ybound()
-        low_2, up_2 = commanded_axis.get_ybound()           
-        
-        if going_positive:
-            new_scale = ((up - low) * (max(commanded_data)/max(simulation_data_list))) + low_2
-            commanded_axis.set_ybound(low_2, new_scale)
-        else:
-            new_scale = -(((up - low) * (min(commanded_data)/min(simulation_data_list))) - up_2)
-            commanded_axis.set_ybound(new_scale, up_2)            
-        
+            low, up = ax1.get_ybound()
+            low_2, up_2 = commanded_axis.get_ybound()           
+            
+            if going_positive:
+                new_scale = ((up - low) * (max(commanded_data)/max(simulation_data_list))) + low_2
+                commanded_axis.set_ybound(low_2, new_scale)
+            else:
+                new_scale = -(((up - low) * (min(commanded_data)/min(simulation_data_list))) - up_2)
+                commanded_axis.set_ybound(new_scale, up_2)            
+            
     ax1.set_xlabel(x_label)
     plt.grid(True, alpha=0.3)
     
