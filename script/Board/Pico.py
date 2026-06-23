@@ -5,9 +5,19 @@ import threading
 import queue
 import time
 import struct
+import sys
 from Tool.visualize import *
 from functools import partial
 
+class SimulationModeError(Exception): pass
+
+def silent_exception_handler(exctype, value, traceback):
+    if issubclass(exctype, SimulationModeError):
+        print_log("ERROR", value)
+    else:
+        sys.__excepthook__(exctype, value, traceback)
+
+sys.excepthook = silent_exception_handler
 class SThread:
     def __init__(self,func,daemon,*args,runimmidietly=True,withlock=True):
         self.func = func
@@ -16,6 +26,7 @@ class SThread:
         self.thread = None
         self.lock = threading.Lock()
         self.withlock = withlock
+        self.sim_mode = False
         if runimmidietly:self.run(*self.arg ,withlock=withlock)
         
     def run(self,*args,withlock=False):
@@ -70,6 +81,7 @@ class Pico:
         
         if status:
             self.__run()
+            self.sim_mode = False
             fw_version = self.get_firmware_version()
             self.fw_version = ".".join(map(str, fw_version.values()))
             
@@ -83,6 +95,7 @@ class Pico:
             if self.fw_version != self.toml_version:
                 print_log("WARN",  "Firmware Version and TOML Version is different")
         else:
+            self.sim_mode = True
             print_log("INFO", "Entering ", end="")
             printy("Simulation Mode")
             print_log("INFO",  "TOML Version: ", end="")
@@ -109,6 +122,9 @@ class Pico:
         self.__cmd_meta[op] = {'fmt': ret_fmt, 'size': ret_size, 'keys': list(ret_dict.keys())}
 
         def method(self, *values, _op=op, _send_fmt=send_fmt, _has_ret=(ret_size > 0)):
+            if self.sim_mode:
+                raise SimulationModeError("Motor is in Simulation Mode")
+            
             header_byte = self.__headers.get('COMMAND')
             
             if header_byte is None:
