@@ -222,10 +222,10 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   <tr>
 	<td align="center">Open Loop</td>
 	<td> 
-		<img src="assets/01_System_Identification/A_100.jpg">
+		<img src="assets/01_System_Identification/A_45.jpg">
 	</td>
 	<td> 
-		<img  src="assets/01_System_Identification/B_-100.jpg">
+		<img  src="assets/01_System_Identification/B_45.jpg">
 	</td>
   </tr>
 
