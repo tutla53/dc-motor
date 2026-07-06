@@ -222,6 +222,7 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
+                motor.set_move_done(false);
                 motor.set_motor_command(MotorCommand::PositionControl(Shape::Step(pos)));
 
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
@@ -330,6 +331,7 @@ impl<'a> CommandHandler<'a> {
                 if let (Some(target), Some(velocity), Some(acceleration)) =
                     (self.read_f32(), self.read_f32(), self.read_f32())
                 {
+                    motor.set_move_done(false);
                     motor.set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(
                         I32F32::from_num(target),
                         I32F32::from_num(velocity),

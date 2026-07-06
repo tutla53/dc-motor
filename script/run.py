@@ -24,3 +24,11 @@ m1 = MotorControl(move_motor = Motor.MoveMotor(device = p, configfile = Motor1Co
 
 # -------------------------------------- Playground -------------------------------------- #
 # TODO: Create the Information Guide
+
+# Direct Access API
+
+# Core Movement
+
+# Movement Sample
+
+# Movemnet and Simulation Sample

@@ -69,7 +69,6 @@ pub struct DCMotor<'d> {
     position_control: PIDcontrol<I32F32>,
     control_mode: ControlMode,
     motion_profile: Option<TrapezoidProfile<I32F32>>,
-    move_done: bool,
     command_just_received: bool,
     final_target_fixed: I32F32,
     current_settle_ticks: u32,
@@ -114,7 +113,6 @@ impl<'d> DCMotor<'d> {
             ),
             control_mode: ControlMode::Stop,
             motion_profile: None,
-            move_done: false,
             command_just_received: false,
             final_target_fixed: I32F32::from_num(0),
             current_settle_ticks: 0,
@@ -275,7 +273,7 @@ impl<'d> DCMotor<'d> {
             {
                 last_command = Some(motor_command);
                 current_active_cmd = motor_command;
-                self.move_done = false;
+                self.motor.set_move_done(false);
                 self.current_settle_ticks = 0;
                 self.command_just_received = true;
 
@@ -352,8 +350,8 @@ impl<'d> DCMotor<'d> {
                         self.current_settle_ticks = 0;
                         self.command_just_received = false;
                     }
-                    if self.current_settle_ticks >= SETTLE_TICKS && !self.move_done {
-                        self.move_done = true;
+                    if self.current_settle_ticks >= SETTLE_TICKS && !self.motor.get_move_done() {
+                        self.motor.set_move_done(true);
                         let _ = event_sender.try_send(EventList::MotorMoveDone(self.motor.id));
                     }
 

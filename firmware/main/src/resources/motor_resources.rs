@@ -51,6 +51,7 @@ pub struct MotorHandler {
     pub default_max_speed: i32,
     pub max_pwm_ticks: i32,
     pub max_speed_cps: AtomicI32,
+    pub move_done: AtomicBool,
     pub id: u8,
 }
 
@@ -70,6 +71,7 @@ impl MotorHandler {
             default_max_speed: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
             max_speed_cps: AtomicI32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
+            move_done: AtomicBool::new(false),
             id,
         }
     }
@@ -146,5 +148,13 @@ impl MotorHandler {
 
     pub fn get_max_speed(&self) -> i32 {
         self.max_speed_cps.load(Ordering::Relaxed)
+    }
+
+    pub fn set_move_done(&self, status: bool) {
+        self.move_done.store(status, Ordering::Relaxed);
+    }
+
+    pub fn get_move_done(&self) -> bool {
+        self.move_done.load(Ordering::Relaxed)
     }
 }
