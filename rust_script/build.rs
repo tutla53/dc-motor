@@ -42,6 +42,7 @@ fn main() {
 
     let mut generated_code = String::new();
     generated_code.push_str("use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};\n\n");
+    generated_code.push_str("#[allow(unused)] \n");
     generated_code.push_str("impl Pico {\n");
 
     if let Some(commands) = config.commands {
@@ -63,7 +64,7 @@ fn main() {
                 "    pub fn {}({}) -> Result<{}, String> {{\n",
                 cmd.command, arg_list.join(", "), ret_signature
             ));
-            
+
             if cmd.args.is_empty() {
                 generated_code.push_str("        let payload = Vec::new();\n");
             } else {
