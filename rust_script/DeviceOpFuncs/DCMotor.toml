@@ -14,7 +14,7 @@
 # ---------------------------------- Project -----------------------------------#
 [project]
 name        = "DCMotor"
-version     = "0.1.7"
+version     = "0.2.0"
 description = "RP2040 DC Motor Control"
 
 # ---------------------------------- Headers -----------------------------------#
@@ -85,7 +85,7 @@ desc    = "Get motor speed PID parameter(s)"
 [[commands]]
 command = "move_motor_speed"
 op      = 3
-args    = { motor_id = "u8", speed = "i32" }
+args    = { motor_id = "u8", vel = "i32" }
 ret     = {}
 desc    = "Motor Speed Control with Step Motion Profile in count per second (cps)"
 
@@ -99,7 +99,7 @@ desc    = "Motor Position Control with Step Motion Profile in count"
 [[commands]]
 command = "move_motor_abs_pos_trapezoid"
 op      = 10
-args    = { motor_id = "u8", target = "f32", vel = "f32", acc = "f32" }
+args    = { motor_id = "u8", target = "i32", vel = "i32", acc = "i32" }
 ret     = {}
 desc    = """
             Motor Position Control with Commanded Trapezoid Motion Profile
