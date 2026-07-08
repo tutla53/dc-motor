@@ -4,8 +4,14 @@ use super::*;
 
 #[derive(serde::Deserialize, Debug)]
 struct TomlConfig {
+    project: Option<ProjectDef>,
     headers: Option<HashMap<String, u8>>,
     commands: Option<Vec<CommandDef>>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct ProjectDef {
+    version: String,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -38,7 +44,8 @@ impl Pico {
         let toml_content = fs::read_to_string(toml_path).unwrap_or_default();
         let config: TomlConfig = toml::from_str(&toml_content)?;
         let headers = config.headers.unwrap_or_default();
-        
+        let toml_version = config.project.map(|p| p.version).unwrap_or_else(|| "0.0.0".to_string());
+
         let mut response_sizes = HashMap::new();
         if let Some(cmds) = config.commands {
             for cmd in cmds {
@@ -68,11 +75,17 @@ impl Pico {
         let shared_responses = Arc::new(Mutex::new(HashMap::new()));
         let shared_events = Arc::new(Mutex::new(HashMap::new())); 
 
+        println!("---------------------------------------------------");
+        
         let port_tx = if !sim_mode {
             let port_name = selected_port.unwrap();
             let port = serialport::new(port_name, 115_200)
                 .timeout(Duration::from_millis(10)) 
                 .open()?;
+            
+            if let Some(port_name) = port.name() {
+                println!("Connected to: {}", port_name.bright_green().bold());
+            }
             
             let port_rx = port.try_clone()?; 
             
@@ -88,17 +101,46 @@ impl Pico {
             
             Some(port as Box<dyn SerialPort + Send>)
         } else {
+            println!("{}", "Entering Simulation Mode".bright_yellow().bold());
             None
         };
 
-        Ok((Self {
+        let mut pico = Self {
             port_tx,
             headers,
             event_rx,
             shared_responses,
             shared_events, 
             sim_mode,
-        }, log_rx))
+        };
+
+        if !pico.sim_mode {
+            let fw_version: String = match pico.get_firmware_version() {
+                Ok((major, minor, patch)) => {
+                    format!("{}.{}.{}", major, minor, patch)
+                }
+                Err(_) => {
+                    "0.0.0".to_string()
+                }
+            };
+            
+            println!("Firmware Version: {}", fw_version.bright_yellow().bold());
+
+            if toml_version == fw_version {
+                println!("TOML Version: {} {}", toml_version.bright_yellow().bold(), "(matched with the FW version)".bright_green().bold());
+            }
+            else {
+                println!("TOML Version: {} {}", 
+                    toml_version.bright_red().bold(), 
+                    "(unmatched with the FW version)".bright_red().bold(),
+                );
+                println!("{}", "Entering Simulation Mode".bright_yellow().bold());
+                pico.sim_mode = true;                
+            }
+        }
+
+        println!("---------------------------------------------------\n");
+        Ok((pico, log_rx))
     }
 
     pub fn execute_command(
