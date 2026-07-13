@@ -14,11 +14,16 @@ struct ProjectDef {
     version: String,
 }
 
-#[derive(serde::Deserialize, Debug)]
-struct CommandDef {
-    op: u8,
+#[derive(serde::Deserialize, Debug, Clone)]
+pub struct CommandDef {
+    pub command: String,
+    pub op: u8,
+    
     #[serde(default)]
-    ret: HashMap<String, String>,
+    pub args: HashMap<String, String>,
+
+    #[serde(default)]
+    pub ret: HashMap<String, String>,
 }
 
 #[allow(unused)]
@@ -37,6 +42,7 @@ pub struct Pico {
     shared_responses: Arc<Mutex<HashMap<u8, Option<Vec<u8>>>>>,
     pub shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
     pub sim_mode: bool,
+    pub cmd_definitions: HashMap<String, CommandDef>,
 }
 
 impl Pico {
@@ -47,12 +53,16 @@ impl Pico {
         let toml_version = config.project.map(|p| p.version).unwrap_or_else(|| "0.0.0".to_string());
 
         let mut response_sizes = HashMap::new();
+        let mut cmd_definitions = HashMap::new();
+
         if let Some(cmds) = config.commands {
             for cmd in cmds {
                 let size: usize = cmd.ret.values().map(|t| match t.as_str() {
                     "u8" => 1, "u16" => 2, "u32" | "i32" | "f32" => 4, "u64" => 8, _ => 0
                 }).sum();
                 response_sizes.insert(cmd.op, size);
+
+                cmd_definitions.insert(cmd.command.clone(), cmd.clone());
             }
         }
 
@@ -112,6 +122,7 @@ impl Pico {
             shared_responses,
             shared_events, 
             sim_mode,
+            cmd_definitions,
         };
 
         if !pico.sim_mode {
