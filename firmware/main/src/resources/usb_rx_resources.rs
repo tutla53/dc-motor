@@ -337,8 +337,15 @@ impl<'a> CommandHandler<'a> {
                         I32F32::from_num(velocity.abs()),
                         I32F32::from_num(acceleration.abs()),
                     )));
-                    self.send_error_code(Some(op_code), ErrorCode::NoError)
-                        .await;
+
+                    if velocity == 0 || acceleration == 0 {
+                        // Unacceptable Velocity and Acceleration
+                        self.send_error_code(Some(op_code), ErrorCode::ZeroDivisionError)
+                            .await;
+                    } else {
+                        self.send_error_code(Some(op_code), ErrorCode::NoError)
+                            .await;
+                    }
                 } else {
                     self.send_error_code(Some(op_code), ErrorCode::NonFiniteFloat)
                         .await;

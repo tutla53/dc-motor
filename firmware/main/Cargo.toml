@@ -1,7 +1,7 @@
 [package]
 description = "DC Motor Control with Rotary Encoder"
 name        = "main"
-version     = "0.2.0"
+version     = "0.2.1"
 
 # General
 authors.workspace    = true

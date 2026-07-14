@@ -240,7 +240,6 @@ impl<'d> DCMotor<'d> {
         */
 
         let mut ticker = Ticker::every(Duration::from_micros(TIME_SAMPLING_US));
-        // self.enable();
 
         self.trapz_time_s_fixed = I32F32::from_num(0);
 
@@ -297,12 +296,21 @@ impl<'d> DCMotor<'d> {
                     let max_speed = I32F32::from_num(self.max_speed_cps);
                     let safe_vel_fixed = vel_fixed.clamp(-max_speed, max_speed);
                     self.trapz_time_s_fixed = I32F32::from_num(0);
-                    self.motion_profile = Some(TrapezoidProfile::new(
+
+                    self.motion_profile = match TrapezoidProfile::new(
                         self.current_pos_count_fixed,
                         final_pos_fixed,
                         safe_vel_fixed,
                         acc_fixed,
-                    ));
+                    ) {
+                        Ok(profile) => Some(profile),
+                        Err(()) => {
+                            current_active_cmd = MotorCommand::Stop;
+                            self.motor.set_move_done(true);
+                            let _ = event_sender.try_send(EventList::MotorMoveDone(self.motor.id));
+                            None
+                        }
+                    };
                 }
             }
 

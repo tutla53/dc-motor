@@ -23,7 +23,7 @@ enum ProfileType {
 }
 
 impl<T: FixedSigned + FastSqrt> TrapezoidProfile<T> {
-    pub fn new(initial_position: T, target_position: T, v_max: T, a_max: T) -> Self {
+    pub fn new(initial_position: T, target_position: T, v_max: T, a_max: T) -> Result<Self, ()> {
         let displacement = target_position - initial_position;
 
         let direction = if displacement >= T::from_num(0.0) {
@@ -38,23 +38,26 @@ impl<T: FixedSigned + FastSqrt> TrapezoidProfile<T> {
 
         let d_min = v_max_abs
             .saturating_mul(v_max_abs)
-            .saturating_div(a_max_abs);
+            .checked_div(a_max_abs)
+            .ok_or(())?;
 
         let (profile_type, t_acc, t_coast, t_total) = if displacement_abs >= d_min {
             // Trapezoidal profile
-            let t_acc = v_max_abs / a_max_abs;
-            let t_coast = (displacement_abs - d_min) / v_max_abs;
+            let t_acc = v_max_abs.checked_div(a_max_abs).ok_or(())?;
+            let t_coast = (displacement_abs - d_min)
+                .checked_div(v_max_abs)
+                .ok_or(())?;
             let t_total = T::from_num(2.0) * t_acc + t_coast;
             (ProfileType::Trapezoidal, t_acc, t_coast, t_total)
         } else {
             // Triangular profile
-            let t_acc = (displacement_abs / a_max_abs).sqrt();
+            let t_acc = (displacement_abs.checked_div(a_max_abs).ok_or(())?).sqrt();
             let t_coast = T::from_num(0.0);
             let t_total = T::from_num(2.0) * t_acc;
             (ProfileType::Triangular, t_acc, t_coast, t_total)
         };
 
-        Self {
+        Ok(Self {
             initial_position,
             target_position,
             v_max: v_max_abs,
@@ -64,7 +67,7 @@ impl<T: FixedSigned + FastSqrt> TrapezoidProfile<T> {
             t_total,
             profile_type,
             direction,
-        }
+        })
     }
 
     pub fn position(&self, t_fixed: T) -> T {

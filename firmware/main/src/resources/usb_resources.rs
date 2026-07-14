@@ -55,6 +55,7 @@ pub enum ErrorCode {
     InvalidHeaderCode = 5,
     InvalidTimeSampling = 6,
     FlashStorageError = 7,
+    ZeroDivisionError = 8,
 }
 
 /* --------------------------- Event List -------------------------- */
