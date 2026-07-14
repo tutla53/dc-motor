@@ -17,31 +17,41 @@ impl Motor {
     
     pub fn stop_motor(&self) {
         if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.stop_motor(self.motor_id);
+            if let Err(e) = pico.stop_motor(self.motor_id) {
+                println!("{}", e);
+            }
         }
     }
 
     pub fn move_motor_speed(&self, speed: Speed) {
         if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.move_motor_speed(self.motor_id, speed.cps);
+            if let Err(e) = pico.move_motor_speed(self.motor_id, speed.cps) {
+                println!("{}", e);
+            }
         }
     }
 
     pub fn move_motor_pos_step(&self, target: Position,) {
         if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.move_motor_abs_pos(self.motor_id, target.count);
+            if let Err(e) = pico.move_motor_abs_pos(self.motor_id, target.count) {
+                println!("{}", e);
+            }
         }
     }
 
     pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) {
         if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square);
+            if let Err(e) = pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square) {
+                println!("{}", e);
+            }
         }
     }
 
     pub fn move_motor_open_loop(&self, pwm: i32) {
         if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.move_motor_open_loop(self.motor_id, pwm);
+            if let Err(e) =pico.move_motor_open_loop(self.motor_id, pwm) {
+                println!("{}", e);
+            }
         }
     }    
 
