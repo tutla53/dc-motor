@@ -1,8 +1,12 @@
+#[macro_use]
+pub mod macros;
+
 mod apps;
 mod board;
 mod basic_function;
 mod logger;
 mod config;
+mod program;
 
 use crate::apps::editor::initialized_editor;
 use crate::basic_function::utility::safe_exit;
@@ -28,13 +32,18 @@ pub struct SharedResources {
     m0: Arc<Mutex<Motor>>, 
     logger: Arc<Mutex<Logger>>,
     available_commands: Vec<String>,
+    available_routines: Vec<String>,
 }
 
 impl SharedResources {
     fn new(motor_id: u8) -> Result<Self, Box<dyn std::error::Error>> {
         let (pico, log_rx) = Pico::new(env!("CONFIG_FILE"))?;
+
         let mut available_commands: Vec<String> = pico.cmd_definitions.keys().cloned().collect();
         available_commands.sort();
+
+        let mut available_routines: Vec<String> = PROGRAM_FUNCTIONS.iter().map(|s| s.to_string()).collect();
+        available_routines.sort();
 
         let shared_pico = Arc::new(Mutex::new(pico));
         let m0 = Motor::new(Arc::clone(&shared_pico), motor_id);
@@ -48,6 +57,7 @@ impl SharedResources {
             m0: shared_m0, 
             logger: shared_logger,
             available_commands,
+            available_routines,
             }
         )
     }
@@ -61,11 +71,11 @@ impl SharedResources {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let _ = SharedResources::initialized_resources(MOTOR_ID)?;
+    SharedResources::initialized_resources(MOTOR_ID)?;
     let mut editor = initialized_editor()?;
 
     let prompt = format!("{}> ", "rp2040".green());
-    println!("Type 'move' to run the function, or 'exit' to quit.");
+    println!("Type 'run' to run the function, or 'exit' to quit.");
 
     loop {
         let readline = editor.readline(&prompt);
@@ -80,11 +90,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match ReplCli::try_parse_from(&args) {
                     Ok(cli) => {
                         match cli.command {
-                            ReplCommands::Move => {
-                                CommandHandler::move_motor_handler()?;
-                            }
                             ReplCommands::Dev { all, command_name, args } => {
                                 CommandHandler::api_handler(all, command_name, args);
+                            },
+                            ReplCommands::Run { all, routine_name, args } => {
+                                CommandHandler::run_program_handler(all, routine_name, args);
                             },
                             ReplCommands::Exit => {
                                 println!("Exiting loop...");

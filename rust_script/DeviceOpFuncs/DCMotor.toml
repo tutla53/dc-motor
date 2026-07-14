@@ -14,7 +14,7 @@
 # ---------------------------------- Project -----------------------------------#
 [project]
 name        = "DCMotor"
-version     = "0.2.0"
+version     = "0.2.1"
 description = "RP2040 DC Motor Control"
 
 # ---------------------------------- Headers -----------------------------------#
@@ -36,6 +36,7 @@ LOGGER  = 0xFD
 5 = "InvalidHeaderCode"
 6 = "InvalidTimeSampling"
 7 = "FlashStorageError"
+8 = "ZeroDivisionError"
 
 # ---------------------------------- Firmware Logger ----------------------------------#
 [[commands]]
