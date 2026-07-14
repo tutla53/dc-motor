@@ -39,7 +39,7 @@ pub struct Pico {
     port_tx: Option<Box<dyn SerialPort + Send>>, 
     headers: HashMap<String, u8>,
     pub event_rx: Receiver<String>,
-    shared_responses: Arc<Mutex<HashMap<u8, Option<Vec<u8>>>>>,
+    shared_responses: Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>,
     pub shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
     pub sim_mode: bool,
     pub cmd_definitions: HashMap<String, CommandDef>,
@@ -154,20 +154,16 @@ impl Pico {
         Ok((pico, log_rx))
     }
 
-    pub fn execute_command(
+pub fn execute_command(
         &mut self,
         op: u8,
         payload: &[u8],
-        expect_response: bool,
     ) -> Result<Option<Vec<u8>>, String> {
         if self.sim_mode {
-            if expect_response {
-                return Ok(Some(vec![0; 64]));
-            }
-            return Ok(None);
+            return Ok(Some(vec![0; 64]));
         }
 
-        if expect_response {
+        {
             let mut responses = self.shared_responses.lock().unwrap();
             responses.remove(&op);
         }
@@ -182,29 +178,30 @@ impl Pico {
             port.flush().map_err(|e| e.to_string())?;
         }
 
-        if expect_response {
-            let timeout = Duration::from_secs(5);
-            let start = Instant::now();
-            
-            loop {
-                {
-                    let mut responses = self.shared_responses.lock().unwrap();
-                    if let Some(res) = responses.remove(&op) {
-                        return match res {
-                            Some(bytes) => Ok(Some(bytes)),
-                            None => Err("Pico returned a runtime error flag for this command".to_string()),
-                        };
-                    }
+        let timeout = Duration::from_secs(5);
+        let start = Instant::now();
+        
+        loop {
+            {
+                let mut responses = self.shared_responses.lock().unwrap();
+                if let Some(res) = responses.remove(&op) {
+                    return match res {
+                        Ok(bytes) => {
+                            Ok(Some(bytes))
+                        }
+                        Err(bytes) => {
+                            let err_msg = format!("{}: OP 0x{:02X} has returned error code of 0x{:02X}", "  [ERROR]".bright_red().bold(), op, bytes);
+                            Err(err_msg)
+                        }
+                    };
                 }
-                
-                if start.elapsed() > timeout {
-                    return Err(format!("Timeout waiting for response to OP code: 0x{:02X}", op));
-                }
-                thread::sleep(Duration::from_millis(5));
             }
+            
+            if start.elapsed() > timeout {
+                return Err(format!("Timeout waiting for response to OP code: 0x{:02X}", op));
+            }
+            thread::sleep(Duration::from_millis(5));
         }
-
-        Ok(None)
     }
 
     fn start_listener(
@@ -213,7 +210,7 @@ impl Pico {
         response_sizes: HashMap<u8, usize>,
         log_tx: mpsc::Sender<LogEntry>,
         event_tx: mpsc::Sender<String>,
-        shared_responses: Arc<Mutex<HashMap<u8, Option<Vec<u8>>>>>,
+        shared_responses: Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>,
         shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
     ) {
         let log_header = headers.get("LOGGER").copied().unwrap_or(0xFD);
@@ -275,7 +272,7 @@ impl Pico {
 
                                             if buffer.len() >= total_size {
                                                 let payload = buffer[3..total_size].to_vec();
-                                                shared_responses.lock().unwrap().insert(op_code, Some(payload));
+                                                shared_responses.lock().unwrap().insert(op_code, Ok(payload));
                                                 buffer.drain(..total_size);
                                             } else {
                                                 break; 
@@ -286,7 +283,7 @@ impl Pico {
                                     } else {
                                         if buffer.len() >= 3 {
                                             let op_code = buffer[2];
-                                            shared_responses.lock().unwrap().insert(op_code, None);
+                                            shared_responses.lock().unwrap().insert(op_code, Err(error_code));
                                             buffer.drain(..3);
                                         } else {
                                             break; 
