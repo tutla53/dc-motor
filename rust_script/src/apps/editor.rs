@@ -3,25 +3,40 @@ use super::*;
 #[derive(Helper)]
 pub struct CommandCompleter {
     pub commands: Vec<String>,
+    pub routines: Vec<String>,
+}
+
+impl CommandCompleter {
+    fn parse_line_context<'a>(&'a self, line: &str) -> Option<(&'static str, usize, &'a Vec<String>)> {
+        if line.starts_with("dev ") {
+            Some(("dev ", 4, &self.commands))
+        } else if line.starts_with("run ") {
+            Some(("run ", 4, &self.routines))
+        } else {
+            None
+        }
+    }
 }
 
 impl Completer for CommandCompleter {
     type Candidate = Pair;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> rustyline::Result<(usize, Vec<Pair>)> {
-        if line.starts_with("dev ") {
-            let sub_str = &line[4..pos];
-            let mut candidates = Vec::new();
+        if let Some((_prefix, offset, target_list)) = self.parse_line_context(line) {
+            if pos >= offset {
+                let sub_str = &line[offset..pos];
+                let mut candidates = Vec::new();
 
-            for cmd in &self.commands {
-                if cmd.starts_with(sub_str) {
-                    candidates.push(Pair {
-                        display: cmd.to_string(),
-                        replacement: cmd.to_string(),
-                    });
+                for item in target_list {
+                    if item.starts_with(sub_str) {
+                        candidates.push(Pair {
+                            display: item.to_string(),
+                            replacement: item.to_string(),
+                        });
+                    }
                 }
+                return Ok((offset, candidates));
             }
-            return Ok((4, candidates));
         }
         
         Ok((pos, Vec::new()))
@@ -32,18 +47,20 @@ impl Hinter for CommandCompleter {
     type Hint = String;
     
     fn hint(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Option<Self::Hint> {
-        if !line.starts_with("dev ") || pos < 4 {
+        let (_prefix, offset, target_list) = self.parse_line_context(line)?;
+        
+        if pos < offset {
             return None;
         }
 
-        let sub_str = &line[4..pos];
+        let sub_str = &line[offset..pos];
         if sub_str.is_empty() {
             return None;
         }
 
-        let matches: Vec<&String> = self.commands
+        let matches: Vec<&String> = target_list
             .iter()
-            .filter(|cmd| cmd.starts_with(sub_str))
+            .filter(|item| item.starts_with(sub_str))
             .collect();
 
         if matches.len() == 1 {
@@ -77,6 +94,7 @@ pub fn initialized_editor() -> Result<Editor<CommandCompleter, DefaultHistory>, 
 
     editor.set_helper(Some(CommandCompleter {
         commands: shared.available_commands.clone(),
+        routines: shared.available_routines.clone(),
     }));
 
     Ok(editor)
