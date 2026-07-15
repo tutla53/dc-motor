@@ -84,8 +84,7 @@ impl Validator for CommandCompleter {
     }
 }
 
-pub fn initialized_editor() -> Result<Editor<CommandCompleter, DefaultHistory>, Box<dyn std::error::Error>> {
-    let shared = SHARED.get().expect("Shared resources not initialized!");
+pub fn initialized_editor(available_commands: &Vec<String>, available_routines: &Vec<String>) -> Result<Editor<CommandCompleter, DefaultHistory>, Box<dyn std::error::Error>> {
     
     let config = Config::builder()
         .auto_add_history(false)
@@ -93,8 +92,8 @@ pub fn initialized_editor() -> Result<Editor<CommandCompleter, DefaultHistory>, 
     let mut editor = Editor::with_config(config)?;
 
     editor.set_helper(Some(CommandCompleter {
-        commands: shared.available_commands.clone(),
-        routines: shared.available_routines.clone(),
+        commands: available_commands.clone(),
+        routines: available_routines.clone(),
     }));
 
     Ok(editor)

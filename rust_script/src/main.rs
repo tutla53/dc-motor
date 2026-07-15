@@ -1,6 +1,3 @@
-#[macro_use]
-pub mod macros;
-
 mod apps;
 mod board;
 mod basic_function;
@@ -11,35 +8,36 @@ mod program;
 use crate::apps::editor::initialized_editor;
 use crate::basic_function::utility::safe_exit;
 use crate::board::rpi::Pico;
+use crate::board::rpi::CommandDef;
 use crate::basic_function::move_motor::Motor;
 use crate::logger::fwlogger::Logger;
 use crate::apps::cli::ReplCli;
 use crate::apps::cli::ReplCommands;
 use crate::apps::command_handler as CommandHandler;
+use crate::program::initialize_script;
 
-use std::sync::{Arc, Mutex, OnceLock};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use clap::Parser;
 use rustyline::error::ReadlineError;
 use colored::Colorize;
 
 const MOTOR_ID: u8 = 0;
-pub static SHARED: OnceLock<SharedResources> = OnceLock::new();
 
 include!(concat!(env!("OUT_DIR"), "/generated_commands.rs"));
 
+#[derive(Clone)]
 pub struct SharedResources {
     pico: Arc<Mutex<Pico>>,
     m0: Arc<Mutex<Motor>>, 
     logger: Arc<Mutex<Logger>>,
-    available_commands: Vec<String>,
-    available_routines: Vec<String>,
 }
 
 impl SharedResources {
-    fn new(motor_id: u8) -> Result<Self, Box<dyn std::error::Error>> {
-        let (pico, log_rx) = Pico::new(env!("CONFIG_FILE"))?;
+    fn new(motor_id: u8) -> Result<(Self, HashMap<String, CommandDef>, Vec<String>, Vec<String>), Box<dyn std::error::Error>> {
+        let (pico, log_rx, cmd_definitions) = Pico::new(env!("CONFIG_FILE"))?;
 
-        let mut available_commands: Vec<String> = pico.cmd_definitions.keys().cloned().collect();
+        let mut available_commands: Vec<String> = cmd_definitions.keys().cloned().collect();
         available_commands.sort();
 
         let mut available_routines: Vec<String> = PROGRAM_FUNCTIONS.iter().map(|s| s.to_string()).collect();
@@ -51,30 +49,23 @@ impl SharedResources {
 
         let shared_m0 = Arc::new(Mutex::new(m0));
         let shared_logger = Arc::new(Mutex::new(logger));
-        
-        Ok(SharedResources {
+
+        let shared = Self {
             pico: shared_pico, 
             m0: shared_m0, 
             logger: shared_logger,
-            available_commands,
-            available_routines,
-            }
-        )
-    }
+        };
 
-    fn initialized_resources(motor_id: u8) -> Result<(), Box<dyn std::error::Error>> {
-        let resources = Self::new(motor_id)?;
-        SHARED.set(resources).map_err(|_| "Shared resources already initialized!")?;
-        Ok(())
+        initialize_script(shared.clone())?;
+        Ok((shared, cmd_definitions, available_commands, available_routines))
     }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-    SharedResources::initialized_resources(MOTOR_ID)?;
-    let mut editor = initialized_editor()?;
-
+    let (shared, command_def, available_commands, available_routines) = SharedResources::new(MOTOR_ID)?;
+    let mut editor = initialized_editor(&available_commands, &available_routines)?;
     let prompt = format!("{}> ", "rp2040".green());
+
     println!("Type 'run' to run the function, or 'exit' to quit.");
 
     loop {
@@ -91,10 +82,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(cli) => {
                         match cli.command {
                             ReplCommands::Dev { all, command_name, args } => {
-                                CommandHandler::api_handler(all, command_name, args);
+                                CommandHandler::api_handler(
+                                    Arc::clone(&shared.pico), 
+                                    &available_commands,  
+                                    &command_def,
+                                    all, 
+                                    command_name, 
+                                    args
+                                );
                             },
                             ReplCommands::Run { all, routine_name, args } => {
-                                CommandHandler::run_program_handler(all, routine_name, args);
+                                CommandHandler::run_program_handler(
+                                    &available_routines,
+                                    all, 
+                                    routine_name, 
+                                    args
+                                );
                             },
                             ReplCommands::Exit => {
                                 println!("Exiting loop...");
@@ -108,7 +111,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-                safe_exit();
+                safe_exit(
+                    Arc::clone(&shared.pico),
+                    Arc::clone(&shared.m0), 
+                    Arc::clone(&shared.logger),
+                );
                 println!("\nSession terminated.");
                 break;
             }

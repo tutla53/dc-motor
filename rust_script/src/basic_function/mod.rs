@@ -1,5 +1,6 @@
-use crate::SHARED;
 use crate::board::rpi::Pico;
+use crate::basic_function::move_motor::Motor;
+use crate::logger::fwlogger::Logger;
 use crate::config::motor_config;
 
 use std::sync::{Arc, Mutex};

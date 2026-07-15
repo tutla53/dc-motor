@@ -1,18 +1,22 @@
 
 use super::*;
 
-pub fn api_handler(all: bool, command_name: Option<String>, args: Vec<String>) {
-    let shared = SHARED.get().expect("Shared resources not initialized!");
-
+pub fn api_handler(
+    pico: Arc<Mutex<Pico>>,
+    available_commands: &Vec<String>, 
+    command_def: &HashMap<String, CommandDef>, 
+    all: bool, command_name: Option<String>, 
+    args: Vec<String>
+) {
     if all {
         println!("{}", "Available hardware API commands:".cyan());
-        for cmd in &shared.available_commands {
+        for cmd in available_commands {
             println!("  dev {}", cmd);
         }        
     }
     else if let Some(cmd_name) = command_name {
 
-        if let Some(cmd_def) = with_lock!(shared, pico => |p| p.cmd_definitions.get(&cmd_name).cloned()).ok().flatten() {
+        if let Some(cmd_def) = command_def.get(&cmd_name) {
             if args.len() != cmd_def.args.len() {
                 println!("Error: Expected {} args, got {}.", cmd_def.args.len(), args.len());
                 println!("Expected arguments: {:?}", cmd_def.args);
@@ -43,34 +47,35 @@ pub fn api_handler(all: bool, command_name: Option<String>, args: Vec<String>) {
 
             println!("Sending: {} (Op: {}, Payload: {:?})", cmd_name, cmd_def.op, payload);
 
-            match with_lock!(shared, pico.execute_command(cmd_def.op, &payload)) {
-            // match pico_guard.execute_command(cmd_def.op, &payload) {
-                Ok(Some(response_bytes)) => {
-                    println!("Success! Response Bytes: {:?}", response_bytes);
-                    
-                    let mut offset = 0;
-                    for (field_name, ty) in &cmd_def.ret {
-                        match ty.as_str() {
-                            "u8" if offset + 1 <= response_bytes.len() => {
-                                println!("  {}: {}", field_name, response_bytes[offset]);
-                                offset += 1;
+            if let Ok(mut pico) = pico.lock() {
+                match pico.execute_command(cmd_def.op, &payload) {
+                    Ok(Some(response_bytes)) => {
+                        println!("Success! Response Bytes: {:?}", response_bytes);
+                        
+                        let mut offset = 0;
+                        for (field_name, ty) in &cmd_def.ret {
+                            match ty.as_str() {
+                                "u8" if offset + 1 <= response_bytes.len() => {
+                                    println!("  {}: {}", field_name, response_bytes[offset]);
+                                    offset += 1;
+                                }
+                                "i32" if offset + 4 <= response_bytes.len() => {
+                                    let val = i32::from_le_bytes(response_bytes[offset..offset+4].try_into().unwrap());
+                                    println!("  {}: {}", field_name, val);
+                                    offset += 4;
+                                }
+                                "f32" if offset + 4 <= response_bytes.len() => {
+                                    let val = f32::from_le_bytes(response_bytes[offset..offset+4].try_into().unwrap());
+                                    println!("  {}: {}", field_name, val);
+                                    offset += 4;
+                                }
+                                _ => {}
                             }
-                            "i32" if offset + 4 <= response_bytes.len() => {
-                                let val = i32::from_le_bytes(response_bytes[offset..offset+4].try_into().unwrap());
-                                println!("  {}: {}", field_name, val);
-                                offset += 4;
-                            }
-                            "f32" if offset + 4 <= response_bytes.len() => {
-                                let val = f32::from_le_bytes(response_bytes[offset..offset+4].try_into().unwrap());
-                                println!("  {}: {}", field_name, val);
-                                offset += 4;
-                            }
-                            _ => {}
                         }
                     }
+                    Ok(_) => println!("Success (No return data expected)."),
+                    Err(e) => println!("{}", e),
                 }
-                Ok(_) => println!("Success (No return data expected)."),
-                Err(e) => println!("{}", e),
             }
         } else {
             println!("Command '{}' not found in TOML.", cmd_name);
@@ -78,16 +83,19 @@ pub fn api_handler(all: bool, command_name: Option<String>, args: Vec<String>) {
     }
 }
 
-pub fn run_program_handler(all: bool, routine_name: Option<String>, args: Vec<String>) {
+pub fn run_program_handler(
+    available_routines: &Vec<String>, 
+    all: bool, 
+    routine_name: Option<String>, 
+    args: Vec<String>
+) {
     if all {
-        let shared = SHARED.get().expect("Shared resources not initialized!");
         println!("{}", "Available Program Script:".cyan());
-        for cmd in &shared.available_routines {
+        for cmd in available_routines {
             println!("  run {}", cmd);
         } 
     }
     else if let Some(name) = routine_name {
-        // Look up the exact expected argument count generated by build.rs
         if let Some(expected_len) = crate::get_routine_arg_count(&name) {
             if args.len() != expected_len {
                 println!(
@@ -97,7 +105,7 @@ pub fn run_program_handler(all: bool, routine_name: Option<String>, args: Vec<St
                     expected_len, 
                     args.len()
                 );
-                return; // Stop execution early
+                return;
             }
         } else {
             println!("{} - Routine '{}' not found.", "Execution Error".bright_red().bold(), name);
