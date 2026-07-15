@@ -24,20 +24,12 @@ macro_rules! with_lock {
         match $resources.$field.lock() {
             #[allow(unused_mut)]
             Ok(mut target) => {
-                use $crate::macros::IntoResult;
+                use $crate::program::macros::IntoResult;
                 match target.$method($($args),*).into_result() {
                     Ok(val) => Ok(val),
                     Err(e) => Err(Box::<dyn std::error::Error>::from(e)),
                 }
             },
-            Err(_) => Err(Box::<dyn std::error::Error>::from("Mutex poisoned")),
-        }
-    };
-
-    ($resources:expr, $field:ident => |$target:ident| $body:expr) => {
-        match $resources.$field.lock() {
-            #[allow(unused_mut)]
-            Ok(mut $target) => Ok($body),
             Err(_) => Err(Box::<dyn std::error::Error>::from("Mutex poisoned")),
         }
     };
