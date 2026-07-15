@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::*;
 
 pub struct Logger {

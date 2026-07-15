@@ -22,21 +22,19 @@ impl Completer for CommandCompleter {
     type Candidate = Pair;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> rustyline::Result<(usize, Vec<Pair>)> {
-        if let Some((_prefix, offset, target_list)) = self.parse_line_context(line) {
-            if pos >= offset {
-                let sub_str = &line[offset..pos];
-                let mut candidates = Vec::new();
+        if let Some((_prefix, offset, target_list)) = self.parse_line_context(line) && pos >= offset {
+            let sub_str = &line[offset..pos];
+            let mut candidates = Vec::new();
 
-                for item in target_list {
-                    if item.starts_with(sub_str) {
-                        candidates.push(Pair {
-                            display: item.to_string(),
-                            replacement: item.to_string(),
-                        });
-                    }
+            for item in target_list {
+                if item.starts_with(sub_str) {
+                    candidates.push(Pair {
+                        display: item.to_string(),
+                        replacement: item.to_string(),
+                    });
                 }
-                return Ok((offset, candidates));
             }
+            return Ok((offset, candidates));
         }
         
         Ok((pos, Vec::new()))
@@ -84,7 +82,7 @@ impl Validator for CommandCompleter {
     }
 }
 
-pub fn initialized_editor(available_commands: &Vec<String>, available_routines: &Vec<String>) -> Result<Editor<CommandCompleter, DefaultHistory>, Box<dyn std::error::Error>> {
+pub fn initialized_editor(available_commands: &[String], available_routines: &[String]) -> Result<Editor<CommandCompleter, DefaultHistory>, Box<dyn std::error::Error>> {
     
     let config = Config::builder()
         .auto_add_history(false)
@@ -92,8 +90,8 @@ pub fn initialized_editor(available_commands: &Vec<String>, available_routines: 
     let mut editor = Editor::with_config(config)?;
 
     editor.set_helper(Some(CommandCompleter {
-        commands: available_commands.clone(),
-        routines: available_routines.clone(),
+        commands: available_commands.to_owned(),
+        routines: available_routines.to_owned(),
     }));
 
     Ok(editor)

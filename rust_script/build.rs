@@ -125,30 +125,28 @@ fn main() {
 
     for line in program_content.lines() {
         let line = line.trim();
-        if line.starts_with("pub fn ") && line.contains('(') && line.contains(')') {
-            if let (Some(start_idx), Some(end_idx)) = (line.find('('), line.find(')')) {
-                let name = line["pub fn ".len()..start_idx].trim().to_string();
-                let args_blob = &line[start_idx + 1..end_idx].trim();
-                
-                let needs_motor = args_blob.contains("motor") || args_blob.contains("Motor");
-                // Check if the signature specifies a Result return type
-                let returns_result = line.contains("Result") || line.contains("->");
-                
-                let mut param_types = Vec::new();
-                if !args_blob.is_empty() {
-                    for arg in args_blob.split(',') {
-                        let parts: Vec<&str> = arg.split(':').collect();
-                        if parts.len() == 2 {
-                            let ty = parts[1].trim().to_string();
-                            if !ty.contains("Motor") && !ty.contains("motor") {
-                                param_types.push(ty);
-                            }
+        if line.starts_with("pub fn ") && line.contains('(') && line.contains(')') && let (Some(start_idx), Some(end_idx)) = (line.find('('), line.find(')')) {
+            let name = line["pub fn ".len()..start_idx].trim().to_string();
+            let args_blob = &line[start_idx + 1..end_idx].trim();
+            
+            let needs_motor = args_blob.contains("motor") || args_blob.contains("Motor");
+            // Check if the signature specifies a Result return type
+            let returns_result = line.contains("Result") || line.contains("->");
+            
+            let mut param_types = Vec::new();
+            if !args_blob.is_empty() {
+                for arg in args_blob.split(',') {
+                    let parts: Vec<&str> = arg.split(':').collect();
+                    if parts.len() == 2 {
+                        let ty = parts[1].trim().to_string();
+                        if !ty.contains("Motor") && !ty.contains("motor") {
+                            param_types.push(ty);
                         }
                     }
                 }
-                
-                functions.push((name, param_types, needs_motor, returns_result));
             }
+            
+            functions.push((name, param_types, needs_motor, returns_result));
         }
     }
 
@@ -159,6 +157,8 @@ fn main() {
     generated_code.push_str("];\n\n");
 
     generated_code.push_str("#[allow(unused_variables)]\n");
+    generated_code.push_str("#[allow(clippy::useless_format)]\n");
+    generated_code.push_str("#[allow(clippy::get_first)]\n"); 
     generated_code.push_str("pub fn execute_program_routine(name: &str, args: &[&str]) -> Result<(), String> {\n");
     generated_code.push_str("    match name {\n");
     

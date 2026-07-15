@@ -9,6 +9,7 @@ use crate::apps::editor::initialized_editor;
 use crate::basic_function::utility::safe_exit;
 use crate::board::rpi::Pico;
 use crate::board::rpi::CommandDef;
+use crate::board::rpi::LogEntry;
 use crate::basic_function::move_motor::Motor;
 use crate::logger::fwlogger::Logger;
 use crate::apps::cli::ReplCli;
@@ -18,9 +19,14 @@ use crate::program::initialize_script;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Receiver;
 use clap::Parser;
 use rustyline::error::ReadlineError;
 use colored::Colorize;
+
+type BoardOutput = (Pico, Receiver<LogEntry>, HashMap<String, CommandDef>);
+type SharedResponse = Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>;
+type ResourcesOutput = (SharedResources, HashMap<String, CommandDef>, Vec<String>, Vec<String>);
 
 const MOTOR_ID: u8 = 0;
 
@@ -34,7 +40,7 @@ pub struct SharedResources {
 }
 
 impl SharedResources {
-    fn new(motor_id: u8) -> Result<(Self, HashMap<String, CommandDef>, Vec<String>, Vec<String>), Box<dyn std::error::Error>> {
+    fn new(motor_id: u8) -> Result<ResourcesOutput, Box<dyn std::error::Error>> {
         let (pico, log_rx, cmd_definitions) = Pico::new(env!("CONFIG_FILE"))?;
 
         let mut available_commands: Vec<String> = cmd_definitions.keys().cloned().collect();

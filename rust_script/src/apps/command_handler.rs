@@ -55,7 +55,7 @@ pub fn api_handler(
                         let mut offset = 0;
                         for (field_name, ty) in &cmd_def.ret {
                             match ty.as_str() {
-                                "u8" if offset + 1 <= response_bytes.len() => {
+                                "u8" if offset < response_bytes.len() => {
                                     println!("  {}: {}", field_name, response_bytes[offset]);
                                     offset += 1;
                                 }

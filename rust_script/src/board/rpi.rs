@@ -1,5 +1,4 @@
 
-
 use super::*;
 
 #[derive(serde::Deserialize, Debug)]
@@ -33,27 +32,23 @@ struct EnumsDef {
     error_codes: Option<HashMap<u8, String>>,
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct LogEntry {
-    pub seq: u8,
     pub dt: u32,
     pub values: [i32; 5],
 }
 
-#[allow(unused)]
 pub struct Pico {
     port_tx: Option<Box<dyn SerialPort + Send>>, 
     headers: HashMap<String, u8>,
     error_codes: HashMap<u8, String>,
-    shared_responses: Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>,
-    pub shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
-    pub event_rx: Receiver<String>,
+    shared_responses: SharedResponse,
+    pub shared_events: Arc<Mutex<HashMap<u8, u8>>>,
     pub sim_mode: bool,
 }
 
 impl Pico {
-    pub fn new(toml_path: &str) -> Result<(Self, Receiver<LogEntry>, HashMap<String, CommandDef>), Box<dyn std::error::Error>> {
+    pub fn new(toml_path: &str) -> Result<BoardOutput, Box<dyn std::error::Error>> {
         let toml_content = fs::read_to_string(toml_path).unwrap_or_default();
         let config: TomlConfig = toml::from_str(&toml_content)?;
         let headers = config.headers.unwrap_or_default();
@@ -80,19 +75,15 @@ impl Pico {
         let ports = serialport::available_ports()?;
         let mut selected_port = None;
         for port in ports {
-            if let SerialPortType::UsbPort(usb_info) = &port.port_type {
-                if let Some(sn) = &usb_info.serial_number {
-                    if sn.starts_with("12345678") {
-                        selected_port = Some(port.port_name);
-                        break;
-                    }
-                }
+            if let SerialPortType::UsbPort(usb_info) = &port.port_type && let Some(sn) = &usb_info.serial_number && sn.starts_with("12345678") {
+                selected_port = Some(port.port_name);
+                break;
             }
         }
 
         let sim_mode = selected_port.is_none();
         let (log_tx, log_rx) = mpsc::channel();
-        let (event_tx, event_rx) = mpsc::channel();
+        let (event_tx, _event_rx) = mpsc::channel();
         let shared_responses = Arc::new(Mutex::new(HashMap::new()));
         let shared_events = Arc::new(Mutex::new(HashMap::new())); 
 
@@ -130,7 +121,6 @@ impl Pico {
             port_tx,
             headers,
             error_codes,
-            event_rx,
             shared_responses,
             shared_events, 
             sim_mode,
@@ -229,7 +219,7 @@ impl Pico {
         response_sizes: HashMap<u8, usize>,
         log_tx: mpsc::Sender<LogEntry>,
         event_tx: mpsc::Sender<String>,
-        shared_responses: Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>,
+        shared_responses: SharedResponse,
         shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
     ) {
         let log_header = headers.get("LOGGER").copied().unwrap_or(0xFD);
@@ -241,82 +231,81 @@ impl Pico {
             let mut temp_buf = [0u8; 1024];
 
             loop {
-                if let Ok(bytes_read) = port.read(&mut temp_buf) {
-                    if bytes_read > 0 {
-                        buffer.extend_from_slice(&temp_buf[..bytes_read]);
+                if let Ok(bytes_read) = port.read(&mut temp_buf) && bytes_read > 0 {
+                    buffer.extend_from_slice(&temp_buf[..bytes_read]);
 
-                        while !buffer.is_empty() {
-                            let header = buffer[0];
+                    while !buffer.is_empty() {
+                        let header = buffer[0];
 
-                            if header == log_header {
-                                if buffer.len() >= 26 {
-                                    let seq = buffer[1];
-                                    let dt = u32::from_le_bytes(buffer[2..6].try_into().unwrap());
-                                    
-                                    let mut values = [0i32; 5];
-                                    for i in 0..5 {
-                                        let start = 6 + (i * 4);
-                                        values[i] = i32::from_le_bytes(buffer[start..start + 4].try_into().unwrap());
-                                    }
-
-                                    let log_entry = LogEntry { seq, dt, values };
-                                    let _ = log_tx.send(log_entry);
-                                    buffer.drain(..26);
-                                } else {
-                                    break; 
+                        if header == log_header {
+                            if buffer.len() >= 26 {
+                                let _seq = buffer[1];
+                                let dt = u32::from_le_bytes(buffer[2..6].try_into().unwrap());
+                                
+                                let mut values = [0i32; 5];
+                                for (i, item) in values.iter_mut().enumerate() {
+                                    let start = 6 + (i * 4);
+                                    *item = i32::from_le_bytes(buffer[start..start + 4].try_into().unwrap());
                                 }
-                            }
-                            else if header == ev_header {
-                                if buffer.len() >= 3 {
-                                    let ev_code = buffer[1];
-                                    let m_id = buffer[2];
-                                    
-                                    shared_events.lock().unwrap().insert(m_id, ev_code);
 
-                                    let event_msg = format!("MOVE_MOTOR_DONE:{} {}", m_id, ev_code); 
-                                    let _ = event_tx.send(event_msg);
-                                    buffer.drain(..3);
-                                } else {
-                                    break; 
-                                }
+                                let log_entry = LogEntry { dt, values };
+                                let _ = log_tx.send(log_entry);
+                                buffer.drain(..26);
+                            } else {
+                                break; 
                             }
-                            else if header == cmd_header {
-                                if buffer.len() >= 2 {
-                                    let error_code = buffer[1];
-                                    if error_code == 0 { 
-                                        if buffer.len() >= 3 {
-                                            let op_code = buffer[2];
-                                            let payload_size = response_sizes.get(&op_code).copied().unwrap_or(0);
-                                            let total_size = 3 + payload_size;
-                                            
-                                            if buffer.len() >= total_size {
-                                                let payload = buffer[3..total_size].to_vec();
-                                                shared_responses.lock().unwrap().insert(op_code, Ok(payload));
-                                                buffer.drain(..total_size);
-                                            } else {
-                                                break; 
-                                            }
-                                        } else {
-                                            break;
-                                        }
-                                    } else {
-                                        if buffer.len() >= 3 {
-                                            let op_code = buffer[2];
-                                            shared_responses.lock().unwrap().insert(op_code, Err(error_code));
-                                            buffer.drain(..3);
+                        }
+                        else if header == ev_header {
+                            if buffer.len() >= 3 {
+                                let ev_code = buffer[1];
+                                let m_id = buffer[2];
+                                
+                                shared_events.lock().unwrap().insert(m_id, ev_code);
+
+                                let event_msg = format!("MOVE_MOTOR_DONE:{} {}", m_id, ev_code); 
+                                let _ = event_tx.send(event_msg);
+                                buffer.drain(..3);
+                            } else {
+                                break; 
+                            }
+                        }
+                        else if header == cmd_header {
+                            if buffer.len() >= 2 {
+                                let error_code = buffer[1];
+                                if error_code == 0 { 
+                                    if buffer.len() >= 3 {
+                                        let op_code = buffer[2];
+                                        let payload_size = response_sizes.get(&op_code).copied().unwrap_or(0);
+                                        let total_size = 3 + payload_size;
+                                        
+                                        if buffer.len() >= total_size {
+                                            let payload = buffer[3..total_size].to_vec();
+                                            shared_responses.lock().unwrap().insert(op_code, Ok(payload));
+                                            buffer.drain(..total_size);
                                         } else {
                                             break; 
                                         }
+                                    } else {
+                                        break;
                                     }
                                 } else {
-                                    break;
+                                    if buffer.len() >= 3 {
+                                        let op_code = buffer[2];
+                                        shared_responses.lock().unwrap().insert(op_code, Err(error_code));
+                                        buffer.drain(..3);
+                                    } else {
+                                        break; 
+                                    }
                                 }
-                            }
-                            else {
-                                buffer.drain(0..1);
+                            } else {
+                                break;
                             }
                         }
+                        else {
+                            buffer.drain(0..1);
+                        }
                     }
+                
                 }
                 thread::sleep(Duration::from_millis(1));
             }
