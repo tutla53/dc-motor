@@ -3,13 +3,13 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::basic_function::conversion::Acceleration;
+use crate::basic_function::conversion::Position;
+use crate::basic_function::conversion::Speed;
 use crate::basic_function::move_motor::Motor;
 use crate::board::rpi::Pico;
 use crate::config::motor_config;
 use crate::logger::fwlogger::Logger;
-use crate::basic_function::conversion::Acceleration;
-use crate::basic_function::conversion::Position;
-use crate::basic_function::conversion::Speed;
 
 /* ------------------------ Library --------------------------- */
 use std::sync::{Arc, Mutex};

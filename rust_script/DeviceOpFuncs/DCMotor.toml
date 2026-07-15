@@ -13,9 +13,9 @@
 
 # ---------------------------------- Project -----------------------------------#
 [project]
+description = "RP2040 DC Motor Control"
 name        = "DCMotor"
 version     = "0.2.1"
-description = "RP2040 DC Motor Control"
 
 # ---------------------------------- Headers -----------------------------------#
 [headers]
@@ -40,139 +40,139 @@ LOGGER  = 0xFD
 
 # ---------------------------------- Firmware Logger ----------------------------------#
 [[commands]]
-command = "start_logger"
-op      = 1
 args    = { motor_id = "u8", time_sampling = "u64" }
-ret     = {}
+command = "start_logger"
 desc    = "Start the firmware logger by set the time sampling in ms (min 1 ms)"
+op      = 1
+ret     = {}
 
 [[commands]]
-command = "stop_logger"
-op      = 2
 args    = { motor_id = "u8" }
-ret     = {}
+command = "stop_logger"
 desc    = "Stop the firmware logger"
+op      = 2
+ret     = {}
 
 # -------------------------------- Motor Config ---------------------------------#
 [[commands]]
+args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
 command = "set_pid_motor_pos"
-op      = 6
-args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
-ret     = {}
 desc    = "Set Motor PID parameters for Position Control"
-
-[[commands]]
-command = "set_pid_motor_speed"
-op      = 8
-args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+op      = 6
 ret     = {}
+
+[[commands]]
+args    = { motor_id = "u8", kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+command = "set_pid_motor_speed"
 desc    = "Set Motor PID parameters for Speed Control"
+op      = 8
+ret     = {}
 
 [[commands]]
+args    = { motor_id = "u8" }
 command = "get_pid_motor_pos"
-op      = 7
-args    = { motor_id = "u8" }
-ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
 desc    = "Get motor position PID parameter(s)"
+op      = 7
+ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
 
 [[commands]]
-command = "get_pid_motor_speed"
-op      = 9
 args    = { motor_id = "u8" }
-ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
+command = "get_pid_motor_speed"
 desc    = "Get motor speed PID parameter(s)"
+op      = 9
+ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
 
 # --------------------------------- Move Motor ----------------------------------#
 [[commands]]
-command = "move_motor_speed"
-op      = 3
 args    = { motor_id = "u8", vel = "i32" }
-ret     = {}
+command = "move_motor_speed"
 desc    = "Motor Speed Control with Step Motion Profile in count per second (cps)"
+op      = 3
+ret     = {}
 
 [[commands]]
-command = "move_motor_abs_pos"
-op      = 4
 args    = { motor_id = "u8", target = "i32" }
-ret     = {}
+command = "move_motor_abs_pos"
 desc    = "Motor Position Control with Step Motion Profile in count"
+op      = 4
+ret     = {}
 
 [[commands]]
+args = { motor_id = "u8", target = "i32", vel = "i32", acc = "i32" }
 command = "move_motor_abs_pos_trapezoid"
-op      = 10
-args    = { motor_id = "u8", target = "i32", vel = "i32", acc = "i32" }
-ret     = {}
-desc    = """
+desc = """
             Motor Position Control with Commanded Trapezoid Motion Profile
             Argument(s)
             - target: Position Target in Count
             - vel: Commanded Velocity in Count per Second (cps)
             - acc: Commanded Acceleration in Count per Second Square (cps^2)
         """
+op = 10
+ret = {}
 
 [[commands]]
+args = { motor_id = "u8", pwm = "i32" }
 command = "move_motor_open_loop"
-op      = 13
-args    = { motor_id = "u8", pwm = "i32" }
-ret     = {}
-desc    = """
+desc = """
             Motor Speed Control with Open Loop Mode
             Argument(s)
             - pwm: pwm duty cycle from 0 - 1000
         """
+op = 13
+ret = {}
 
 [[commands]]
+args    = { motor_id = "u8" }
 command = "stop_motor"
-op      = 5
-args    = { motor_id = "u8" }
-ret     = {}
 desc    = "Stop the motor"
+op      = 5
+ret     = {}
 
 [[commands]]
+args    = { motor_id = "u8" }
 command = "get_motor_pos"
-op      = 11
-args    = { motor_id = "u8" }
-ret     = { pos_count = "i32" }
 desc    = "Get motor position in Count"
+op      = 11
+ret     = { pos_count = "i32" }
 
 [[commands]]
+args    = { motor_id = "u8" }
 command = "get_motor_speed"
-op      = 12
-args    = { motor_id = "u8" }
-ret     = { speed_cps = "i32" }
 desc    = "Get motor speed in Count per Second (cps)"
+op      = 12
+ret     = { speed_cps = "i32" }
 
 [[commands]]
+args    = {}
 command = "save_configuration"
-op      = 14
-args    = {}
-ret     = {}
 desc    = "save PID parameter on the Flash memory"
+op      = 14
+ret     = {}
 
 [[commands]]
+args    = {}
 command = "reset_configuration"
-op      = 15
-args    = {}
-ret     = {}
 desc    = "reset PID parameter to default configuration"
-
-[[commands]]
-command = "get_firmware_version"
-op      = 16
-args    = {}
-ret     = { major = "u8", minor = "u8", patch = "u8" }
-desc    = "Get the compiled firmware version components (Major, Minor, Patch)"
-
-[[commands]]
-command = "get_motor_max_speed"
-op      = 17
-args    = { motor_id = "u8" }
-ret     = { motor_max_speed_cps = "i32" }
-desc    = "Get the motor maximum speed in cps"
-
-[[commands]]
-command = "set_motor_max_speed"
-op      = 18
-args    = {motor_id = "u8", motor_max_speed_cps = "i32" }
+op      = 15
 ret     = {}
+
+[[commands]]
+args    = {}
+command = "get_firmware_version"
+desc    = "Get the compiled firmware version components (Major, Minor, Patch)"
+op      = 16
+ret     = { major = "u8", minor = "u8", patch = "u8" }
+
+[[commands]]
+args    = { motor_id = "u8" }
+command = "get_motor_max_speed"
+desc    = "Get the motor maximum speed in cps"
+op      = 17
+ret     = { motor_max_speed_cps = "i32" }
+
+[[commands]]
+args    = { motor_id = "u8", motor_max_speed_cps = "i32" }
+command = "set_motor_max_speed"
 desc    = "Set the motor maximum speed in cps"
+op      = 18
+ret     = {}

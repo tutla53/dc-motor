@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Parser, Debug)]
-#[command(no_binary_name = true)] 
+#[command(no_binary_name = true)]
 pub struct ReplCli {
     #[command(subcommand)]
     pub command: ReplCommands,

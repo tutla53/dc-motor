@@ -51,7 +51,8 @@ impl SharedResources {
         let mut available_commands: Vec<String> = cmd_definitions.keys().cloned().collect();
         available_commands.sort();
 
-        let mut available_routines: Vec<String> = PROGRAM_FUNCTIONS.iter().map(|s| s.to_string()).collect();
+        let mut available_routines: Vec<String> =
+            PROGRAM_FUNCTIONS.iter().map(|s| s.to_string()).collect();
         available_routines.sort();
 
         let shared_pico = Arc::new(Mutex::new(pico));
