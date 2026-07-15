@@ -7,6 +7,7 @@ struct TomlConfig {
     project: Option<ProjectDef>,
     headers: Option<HashMap<String, u8>>,
     commands: Option<Vec<CommandDef>>,
+    enums: Option<EnumsDef>,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -26,6 +27,12 @@ pub struct CommandDef {
     pub ret: HashMap<String, String>,
 }
 
+#[derive(serde::Deserialize, Debug)]
+struct EnumsDef {
+    #[serde(rename = "ErrorCodes")]
+    error_codes: Option<HashMap<u8, String>>,
+}
+
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -38,15 +45,15 @@ pub struct LogEntry {
 pub struct Pico {
     port_tx: Option<Box<dyn SerialPort + Send>>, 
     headers: HashMap<String, u8>,
-    pub event_rx: Receiver<String>,
+    error_codes: HashMap<u8, String>,
     shared_responses: Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>,
     pub shared_events: Arc<Mutex<HashMap<u8, u8>>>, 
+    pub event_rx: Receiver<String>,
     pub sim_mode: bool,
-    pub cmd_definitions: HashMap<String, CommandDef>,
 }
 
 impl Pico {
-    pub fn new(toml_path: &str) -> Result<(Self, Receiver<LogEntry>), Box<dyn std::error::Error>> {
+    pub fn new(toml_path: &str) -> Result<(Self, Receiver<LogEntry>, HashMap<String, CommandDef>), Box<dyn std::error::Error>> {
         let toml_content = fs::read_to_string(toml_path).unwrap_or_default();
         let config: TomlConfig = toml::from_str(&toml_content)?;
         let headers = config.headers.unwrap_or_default();
@@ -65,6 +72,10 @@ impl Pico {
                 cmd_definitions.insert(cmd.command.clone(), cmd.clone());
             }
         }
+
+        let error_codes = config.enums
+            .and_then(|e| e.error_codes)
+            .unwrap_or_default();
 
         let ports = serialport::available_ports()?;
         let mut selected_port = None;
@@ -118,11 +129,11 @@ impl Pico {
         let mut pico = Self {
             port_tx,
             headers,
+            error_codes,
             event_rx,
             shared_responses,
             shared_events, 
             sim_mode,
-            cmd_definitions,
         };
 
         if !pico.sim_mode {
@@ -151,10 +162,10 @@ impl Pico {
         }
 
         println!("---------------------------------------------------\n");
-        Ok((pico, log_rx))
+        Ok((pico, log_rx, cmd_definitions))
     }
 
-pub fn execute_command(
+    pub fn execute_command(
         &mut self,
         op: u8,
         payload: &[u8],
@@ -190,7 +201,15 @@ pub fn execute_command(
                             Ok(Some(bytes))
                         }
                         Err(bytes) => {
-                            let err_msg = format!("{}: OP 0x{:02X} has returned error code of 0x{:02X}", "  [ERROR]".bright_red().bold(), op, bytes);
+                            let err_name = self.error_codes.get(&bytes)
+                                .map(|s| s.as_str())
+                                .unwrap_or("UnknownError");
+
+                            let err_msg = format!("{}: OP 0x{:02X} has returned error code of 0x{:02X} ({})", 
+                                                    "  [ERROR]".bright_red().bold(), 
+                                                    op, 
+                                                    bytes,
+                                                    err_name.bright_red().bold());
                             Err(err_msg)
                         }
                     };
@@ -269,7 +288,7 @@ pub fn execute_command(
                                             let op_code = buffer[2];
                                             let payload_size = response_sizes.get(&op_code).copied().unwrap_or(0);
                                             let total_size = 3 + payload_size;
-
+                                            
                                             if buffer.len() >= total_size {
                                                 let payload = buffer[3..total_size].to_vec();
                                                 shared_responses.lock().unwrap().insert(op_code, Ok(payload));
