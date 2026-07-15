@@ -9,13 +9,17 @@ pub trait IntoResult {
 impl<T, E> IntoResult for Result<T, E> {
     type OkType = T;
     type ErrType = E;
-    fn into_result(self) -> Result<T, E> { self }
+    fn into_result(self) -> Result<T, E> {
+        self
+    }
 }
 
 impl IntoResult for () {
     type OkType = ();
     type ErrType = &'static str;
-    fn into_result(self) -> Result<(), &'static str> { Ok(()) }
+    fn into_result(self) -> Result<(), &'static str> {
+        Ok(())
+    }
 }
 
 #[macro_export]

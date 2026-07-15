@@ -15,7 +15,7 @@ impl Logger {
 
         let logs_clone = Arc::clone(&collected_logs);
         let active_clone = Arc::clone(&is_logging_start);
-        
+
         thread::spawn(move || {
             let mut local_buffer = Vec::with_capacity(100);
             let mut last_flush = std::time::Instant::now();
@@ -38,7 +38,7 @@ impl Logger {
             }
         });
 
-        Self { 
+        Self {
             pico,
             mask: 0,
             collected_logs,
@@ -49,7 +49,10 @@ impl Logger {
 
     pub fn start(&mut self, mask: i32, sampling_rate_ms: u64) {
         if self.is_logging_start.load(Ordering::Relaxed) {
-            println!("  [WARN] - {}", "FW Logger is already started".bright_red().bold());
+            println!(
+                "  [WARN] - {}",
+                "FW Logger is already started".bright_red().bold()
+            );
             return;
         }
 
@@ -58,11 +61,11 @@ impl Logger {
         }
 
         if let Ok(mut logs) = self.collected_logs.lock() {
-            logs.clear(); 
+            logs.clear();
         }
 
         self.mask = mask;
-        
+
         self.is_logging_start.store(true, Ordering::Relaxed);
 
         if let Ok(mut pico) = self.pico.lock() {
@@ -72,7 +75,10 @@ impl Logger {
 
     pub fn stop(&mut self) {
         if !self.is_logging_start.load(Ordering::Relaxed) {
-            println!("  [WARN] - {}", "FW Logger has not been started".bright_red().bold());
+            println!(
+                "  [WARN] - {}",
+                "FW Logger has not been started".bright_red().bold()
+            );
             return;
         }
 
@@ -91,11 +97,14 @@ impl Logger {
             println!("{}", "No Data Collected".bright_red().bold());
             return;
         }
-        
+
         let folder_tag: &str = "TrapezoidRun";
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let tag = format!("{}", now);
-        
+
         let log_dir = if folder_tag.is_empty() {
             format!("LOG/{}", tag)
         } else {
@@ -126,7 +135,7 @@ impl Logger {
             for &idx in &selected_data {
                 if idx < data_line.values.len() {
                     let scale = logger_config::SCALE_OFFSET_MOTOR[idx][0];
-                    let offset = logger_config::SCALE_OFFSET_MOTOR[idx][1]; 
+                    let offset = logger_config::SCALE_OFFSET_MOTOR[idx][1];
                     let processed_value = (data_line.values[idx] as f64 * scale) + offset;
                     row.push(format!("{:.4}", processed_value));
                 }
@@ -135,6 +144,10 @@ impl Logger {
         }
 
         let _ = writer.flush();
-        println!("  [INFO] {} {}", "- Firmware Logger has been saved on:".bright_yellow(), file_path);    
+        println!(
+            "  [INFO] {} {}",
+            "- Firmware Logger has been saved on:".bright_yellow(),
+            file_path
+        );
     }
 }

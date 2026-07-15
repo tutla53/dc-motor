@@ -1,7 +1,13 @@
+/*
+* board hub
+*/
 
+/* ------------------------- Crate ---------------------------- */
 use crate::BoardOutput;
 use crate::SharedResponse;
 
+/* ------------------------ Library --------------------------- */
+use colored::Colorize;
 use serialport::{SerialPort, SerialPortType};
 use std::collections::HashMap;
 use std::fs;
@@ -10,6 +16,6 @@ use std::sync::mpsc::{self};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use colored::Colorize;
 
+/* --------------------- Declare Modules ---------------------- */
 pub mod rpi;

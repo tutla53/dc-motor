@@ -1,4 +1,3 @@
-
 use super::*;
 
 #[derive(Parser, Debug)]
@@ -30,7 +29,7 @@ pub enum ReplCommands {
         /// List all available dynamic TOML commands
         #[arg(short, long)]
         all: bool,
-        
+
         /// Name of Program
         #[arg(required_unless_present = "all")]
         routine_name: Option<String>,

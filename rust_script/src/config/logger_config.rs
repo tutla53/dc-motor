@@ -1,4 +1,3 @@
-
 use super::*;
 
 pub const N_ENUM: usize = 5;

@@ -29,6 +29,7 @@ fn map_type(t: &str) -> (&'static str, &'static str, &'static str) {
         "u32" => ("u32", "write_u32::<LittleEndian>({arg})", "read_u32::<LittleEndian>()"),
         "i32" => ("i32", "write_i32::<LittleEndian>({arg})", "read_i32::<LittleEndian>()"),
         "f32" => ("f32", "write_f32::<LittleEndian>({arg})", "read_f32::<LittleEndian>()"),
+        "f64" => ("f64", "write_f64::<LittleEndian>({arg})", "read_f64::<LittleEndian>()"),
         "u64" => ("u64", "write_u64::<LittleEndian>({arg})", "read_u64::<LittleEndian>()"),
         _ => panic!("Unsupported type in TOML: {}", t),
     }
@@ -116,25 +117,32 @@ fn main() {
     }
     generated_code.push_str("}\n\n");
 
-    // =========================================================================
-    // PART 2: Generate CLI Menu Routines from script.rs (With Strict Type Guards)
+// =========================================================================
+    // PART 2: Generate CLI Menu Routines from script.rs (Handles Multi-line Signatures)
     // =========================================================================
     let program_content = fs::read_to_string(PROGRAM_FILE).unwrap_or_else(|_| "".to_string());
-    // Stores: (Function Name, Vec<Argument Type Strings>, Needs Motor Flag, Returns Result Flag)
     let mut functions: Vec<(String, Vec<String>, bool, bool)> = Vec::new();
 
-    for line in program_content.lines() {
-        let line = line.trim();
-        if line.starts_with("pub fn ") && line.contains('(') && line.contains(')') && let (Some(start_idx), Some(end_idx)) = (line.find('('), line.find(')')) {
-            let name = line["pub fn ".len()..start_idx].trim().to_string();
-            let args_blob = &line[start_idx + 1..end_idx].trim();
+    // Instead of processing line-by-line, split by "pub fn " keyword blocks
+    for block in program_content.split("pub fn ") {
+        let block = block.trim();
+        if block.is_empty() {
+            continue;
+        }
+
+        // Ensure this block contains a complete function signature boundary
+        if let (Some(start_idx), Some(end_idx)) = (block.find('('), block.find(')')) {
+            let name = block[..start_idx].trim().to_string();
+            let args_blob = &block[start_idx + 1..end_idx].replace("\n", " "); // Clean up line breaks
+            
+            // Get the text following the parameters to safely inspect return layout context
+            let post_args = &block[end_idx + 1..].split('{').next().unwrap_or("");
+            let returns_result = post_args.contains("Result") || post_args.contains("->");
             
             let needs_motor = args_blob.contains("motor") || args_blob.contains("Motor");
-            // Check if the signature specifies a Result return type
-            let returns_result = line.contains("Result") || line.contains("->");
             
             let mut param_types = Vec::new();
-            if !args_blob.is_empty() {
+            if !args_blob.trim().is_empty() {
                 for arg in args_blob.split(',') {
                     let parts: Vec<&str> = arg.split(':').collect();
                     if parts.len() == 2 {
@@ -158,7 +166,7 @@ fn main() {
 
     generated_code.push_str("#[allow(unused_variables)]\n");
     generated_code.push_str("#[allow(clippy::useless_format)]\n");
-    generated_code.push_str("#[allow(clippy::get_first)]\n"); 
+    generated_code.push_str("#[allow(clippy::get_first)]\n");
     generated_code.push_str("pub fn execute_program_routine(name: &str, args: &[&str]) -> Result<(), String> {\n");
     generated_code.push_str("    match name {\n");
     

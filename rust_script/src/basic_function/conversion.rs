@@ -9,21 +9,15 @@ pub struct Position {
 
 impl Position {
     pub fn from_count(count: i32) -> Self {
-        let rotation = (count as f64 *motor_config::ROTATION_PER_COUNT);
+        let rotation = (count as f64 * motor_config::ROTATION_PER_COUNT);
 
-        Self {
-            count,
-            rotation
-        }
+        Self { count, rotation }
     }
 
     pub fn from_rotation(rotation: f64) -> Self {
         let count = (rotation * motor_config::COUNT_PER_ROTATION) as i32;
 
-        Self {
-            count,
-            rotation,
-        }
+        Self { count, rotation }
     }
 }
 
@@ -36,19 +30,13 @@ impl Speed {
     pub fn from_cps(cps: i32) -> Self {
         let rpm = cps as f64 * motor_config::ROTATION_PER_COUNT * 60.0;
 
-        Self {
-            cps,
-            rpm
-        }
+        Self { cps, rpm }
     }
-    
-    pub fn from_rpm(rpm: f64) -> Self {
-        let cps = ((rpm * motor_config::COUNT_PER_ROTATION) / 60.0 ) as i32;
 
-        Self {  
-            cps,
-            rpm,
-        }
+    pub fn from_rpm(rpm: f64) -> Self {
+        let cps = ((rpm * motor_config::COUNT_PER_ROTATION) / 60.0) as i32;
+
+        Self { cps, rpm }
     }
 }
 
@@ -59,15 +47,11 @@ pub struct Acceleration {
 #[allow(unused)]
 impl Acceleration {
     pub fn from_cps_sq(cps_square: i32) -> Self {
-        Self {
-            cps_square
-        }
+        Self { cps_square }
     }
-    
+
     pub fn from_rpm_per_sec(rpm_square: f64) -> Self {
-        let cps_square = (rpm_square * motor_config::COUNT_PER_ROTATION * 60.0 ) as i32;
-        Self {
-            cps_square
-        }
+        let cps_square = (rpm_square * motor_config::COUNT_PER_ROTATION * 60.0) as i32;
+        Self { cps_square }
     }
 }

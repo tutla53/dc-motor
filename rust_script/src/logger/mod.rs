@@ -1,15 +1,21 @@
+/*
+* logger hub
+*/
 
+/* ------------------------- Crate ---------------------------- */
 use crate::board::rpi::LogEntry;
 use crate::board::rpi::Pico;
 use crate::config::logger_config;
 
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::Receiver;
+/* ------------------------ Library --------------------------- */
+use colored::Colorize;
+use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
-use std::fs;
-use colored::Colorize;
 
+/* --------------------- Declare Modules ---------------------- */
 pub mod fwlogger;
