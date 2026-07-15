@@ -21,8 +21,9 @@ use clap::Parser;
 use colored::Colorize;
 use rustyline::error::ReadlineError;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex};
 
 type BoardOutput = (Pico, Receiver<LogEntry>, HashMap<String, CommandDef>);
 type SharedResponse = Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>;

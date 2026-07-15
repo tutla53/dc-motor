@@ -12,9 +12,11 @@ use crate::config::motor_config;
 use crate::logger::fwlogger::Logger;
 
 /* ------------------------ Library --------------------------- */
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 /* --------------------- Declare Modules ---------------------- */
 pub mod conversion;

@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use super::*;
 
 pub fn wait_ms(duration_ms: u64) {
@@ -5,7 +7,7 @@ pub fn wait_ms(duration_ms: u64) {
 }
 
 pub fn safe_exit(pico: Arc<Mutex<Pico>>, m0: Arc<Mutex<Motor>>, logger: Arc<Mutex<Logger>>) {
-    println!("Perfroming Safe Exit!");
+    println!("{}", "Perfroming Safe Exit!".bright_green().bold());
 
     let is_sim = {
         if let Ok(pico) = pico.lock() {
