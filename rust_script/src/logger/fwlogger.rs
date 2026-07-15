@@ -1,7 +1,6 @@
 #![allow(unused)]
 
 use super::*;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct Logger {
     pico: Arc<Mutex<Pico>>,
