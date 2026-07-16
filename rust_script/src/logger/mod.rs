@@ -3,9 +3,9 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::LogMask;
 use crate::board::rpi::LogEntry;
 use crate::board::rpi::Pico;
-use crate::config::logger_config::LogMask;
 
 /* ------------------------ Library --------------------------- */
 use colored::Colorize;

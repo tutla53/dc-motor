@@ -8,6 +8,19 @@ const CONFIG_FILE: &str = "DeviceOpFuncs/DCMotor.toml";
 const PROGRAM_FILE: &str = "src/program/script.rs";
 
 #[derive(Deserialize, Debug)]
+struct TelemetryFlag {
+    name: String,
+    label: String,
+    scale: String,
+    offset: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct TelemetryConfig {
+    flags: Vec<TelemetryFlag>,
+}
+
+#[derive(Deserialize, Debug)]
 struct CommandDef {
     command: String,
     op: u8,
@@ -19,6 +32,7 @@ struct CommandDef {
 
 #[derive(Deserialize, Debug)]
 struct Config {
+    telemetry: Option<TelemetryConfig>,
     commands: Option<Vec<CommandDef>>,
 }
 
@@ -66,11 +80,69 @@ fn main() {
 
     let mut generated_code = String::new();
 
-    // PART 1: Generate Pico Command Implementations from TOML
     let toml_content = fs::read_to_string(CONFIG_FILE)
         .unwrap_or_else(|_| panic!("Failed to read {}", CONFIG_FILE));
     let config: Config = toml::from_str(&toml_content).expect("Failed to parse TOML");
 
+    // PART 0: Generate Telemetry Bitflags, Name Lookups, and scale/offset maps
+    if let Some(telemetry_cfg) = config.telemetry {
+        generated_code.push_str("use bitflags::bitflags;\n\n");
+        generated_code.push_str("bitflags! {\n");
+        generated_code.push_str("    #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n");
+        generated_code.push_str("    pub struct LogMask: u32 {\n");
+        generated_code.push_str("        const NoLog = 0;\n");
+
+        for (i, flag) in telemetry_cfg.flags.iter().enumerate() {
+            generated_code.push_str(&format!("        const {} = 1 << {};\n", flag.name, i));
+        }
+        generated_code.push_str("    }\n}\n\n");
+
+        // Generate ALL_FLAGS
+        generated_code.push_str("pub const ALL_FLAGS: &[(LogMask, &str)] = &[\n");
+        for flag in &telemetry_cfg.flags {
+            generated_code.push_str(&format!(
+                "    (LogMask::{}, \"{}\"),\n",
+                flag.name, flag.label
+            ));
+        }
+        generated_code.push_str("];\n\n");
+
+        // Generate LOG_CONFIG_MAP utilizing the raw formula strings directly
+        generated_code.push_str("pub const LOG_CONFIG_MAP: &[(LogMask, f64, f64)] = &[\n");
+        for flag in &telemetry_cfg.flags {
+            generated_code.push_str(&format!(
+                "    (LogMask::{}, {}, {}),\n",
+                flag.name, flag.scale, flag.offset
+            ));
+        }
+        generated_code.push_str("];\n\n");
+
+        generated_code.push_str(
+            r#"impl LogMask {
+            pub fn get_active_names(&self) -> Vec<&'static str> {
+                let mut names = vec!["Timestamp(ms)"];
+                for &(flag, name) in ALL_FLAGS {
+                    if self.contains(flag) {
+                        names.push(name);
+                    }
+                }
+                names
+            }
+
+            pub fn get_scale_offset(&self) -> (f64, f64) {
+                LOG_CONFIG_MAP
+                    .iter()
+                    .find(|&&(flag, _, _)| flag == *self)
+                    .map(|&(_, scale, offset)| (scale, offset))
+                    .unwrap_or((1.0, 0.0))
+            }
+        }
+
+        "#,
+        );
+    }
+
+    // PART 1: Generate Pico Command Implementations from TOML
     generated_code.push_str("use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};\n\n");
     generated_code.push_str("#[allow(unused)] \n");
     generated_code.push_str("impl Pico {\n");

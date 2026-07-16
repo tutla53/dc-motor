@@ -38,6 +38,15 @@ LOGGER  = 0xFD
 7 = "FlashStorageError"
 8 = "ZeroDivisionError"
 
+[telemetry]
+flags = [
+    { name = "MotorPosition", label = "Motor_Position(rotation)", scale = "1.0 / (4.4 * 11.0)", offset = "0.0" },
+    { name = "MotorSpeed", label = "Motor_Speed(RPM)", scale = "60.0 / (4.4 * 11.0)", offset = "0.0" },
+    { name = "CommandedPosition", label = "Commanded_Position(rotation)", scale = "1.0 / (4.4 * 11.0)", offset = "0.0" },
+    { name = "CommandedSpeed", label = "Commanded_Speed(RPM)", scale = "60.0 / (4.4 * 11.0)", offset = "0.0" },
+    { name = "CommandedPwm", label = "Commanded_PWM", scale = "1.0", offset = "0.0" },
+]
+
 # ---------------------------------- Firmware Logger ----------------------------------#
 [[commands]]
 args    = { motor_id = "u8", time_sampling = "u64" }
