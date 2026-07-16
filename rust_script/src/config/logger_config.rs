@@ -9,11 +9,27 @@ const ALL_FLAGS: &[(LogMask, &str)] = &[
 ];
 
 const LOG_CONFIG_MAP: &[(LogMask, f64, f64)] = &[
-    (LogMask::MotorPosition,     motor_config::ROTATION_PER_COUNT,      0.0),
-    (LogMask::MotorSpeed,        60.0 * motor_config::ROTATION_PER_COUNT, 0.0),
-    (LogMask::CommandedPosition, motor_config::ROTATION_PER_COUNT,      0.0),
-    (LogMask::CommandedSpeed,    60.0 * motor_config::ROTATION_PER_COUNT, 0.0),
-    (LogMask::CommandedPwm,      1.0,                                   0.0),
+    (
+        LogMask::MotorPosition,
+        motor_config::ROTATION_PER_COUNT,
+        0.0,
+    ),
+    (
+        LogMask::MotorSpeed,
+        60.0 * motor_config::ROTATION_PER_COUNT,
+        0.0,
+    ),
+    (
+        LogMask::CommandedPosition,
+        motor_config::ROTATION_PER_COUNT,
+        0.0,
+    ),
+    (
+        LogMask::CommandedSpeed,
+        60.0 * motor_config::ROTATION_PER_COUNT,
+        0.0,
+    ),
+    (LogMask::CommandedPwm, 1.0, 0.0),
 ];
 
 bitflags! {
@@ -47,4 +63,3 @@ impl LogMask {
             .unwrap_or((1.0, 0.0))
     }
 }
-

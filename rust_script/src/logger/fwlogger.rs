@@ -146,7 +146,7 @@ impl Logger {
             for config in &active_configs {
                 let raw_val = data_line.values[config.data_idx] as f64;
                 let processed_value = (raw_val * config.scale) + config.offset;
-                
+
                 let _ = writer.write_field(format!("{:.4}", processed_value));
             }
 
