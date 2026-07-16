@@ -1,5 +1,9 @@
 use super::*;
 
+// Clear the invalid initial timestamp if the initial 
+// Timestamp is more than the TIME_THRESHOLD_MS
+const TIME_THRESHOLD_MS: u32 = 200;
+
 struct ActiveFlagConfig {
     data_idx: usize,
     scale: f64,
@@ -25,9 +29,27 @@ impl Logger {
         thread::spawn(move || {
             let mut local_buffer = Vec::with_capacity(100);
             let mut last_flush = std::time::Instant::now();
+            let mut was_active = false;
+            let mut is_first_packet_of_session = false;
 
             while let Ok(entry) = log_rx.recv() {
                 if active_clone.load(Ordering::Relaxed) {
+                    if !was_active {
+                        was_active = true;
+                        is_first_packet_of_session = true;
+                        local_buffer.clear(); 
+                        while log_rx.try_recv().is_ok() {} // Draining the log
+                        continue; 
+                    }
+
+                    if is_first_packet_of_session {
+                        is_first_packet_of_session = false;
+                        
+                        if entry.dt > TIME_THRESHOLD_MS {
+                            continue; 
+                        }
+                    }
+
                     local_buffer.push(entry);
 
                     if last_flush.elapsed().as_millis() >= 50 || local_buffer.len() >= 100 {
@@ -37,6 +59,7 @@ impl Logger {
                         last_flush = std::time::Instant::now();
                     }
                 } else {
+                    was_active = false;
                     if !local_buffer.is_empty() {
                         local_buffer.clear();
                     }
