@@ -1,6 +1,29 @@
 use super::*;
 
-pub fn move_trapezoid(
+pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
+    let shared = SHARED.get().expect("Shared resources not initialized!");
+
+    let log_mask = LogMask::CommandedPwm | LogMask::MotorSpeed;
+    let time_sampling = 1;
+
+    with_lock!(shared, m0.clear_motor_event())?;
+
+    with_lock!(shared, logger.start(log_mask, time_sampling))?;
+    wait_ms(300);
+
+    with_lock!(shared, m0.move_motor_open_loop(pwm))?;
+
+    wait_ms(1500);
+
+    with_lock!(shared, logger.stop())?;
+    wait_ms(300);
+
+    with_lock!(shared, m0.stop_motor())?;
+
+    Ok(())
+}
+
+pub fn pos_trapezoid_move(
     target_rotation: f64,
     speed_rpm: f64,
     acc_cps2: i32,
@@ -47,7 +70,7 @@ pub fn move_trapezoid(
     Ok(())
 }
 
-pub fn move_speed(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
+pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     let current_pos = with_lock!(shared, m0.get_motor_pos())?;
@@ -55,6 +78,39 @@ pub fn move_speed(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
         "Initial Pos: {} count, {:.2} rotation",
         current_pos.count, current_pos.rotation
     );
+
+    let log_mask = LogMask::CommandedPosition | LogMask::MotorPosition;
+    let time_sampling = 1;
+
+    with_lock!(shared, m0.clear_motor_event())?;
+
+    with_lock!(shared, logger.start(log_mask, time_sampling))?;
+    wait_ms(300);
+
+    with_lock!(
+        shared,
+        m0.move_motor_pos_step(Position::from_rotation(target_rotation))
+    )?;
+
+    with_lock!(shared, m0.wait_move_done(Duration::from_secs(20)))?;
+    wait_ms(300);
+
+    with_lock!(shared, logger.stop())?;
+    wait_ms(300);
+
+    with_lock!(shared, m0.stop_motor())?;
+
+    let current_pos = with_lock!(shared, m0.get_motor_pos())?;
+    println!(
+        "Final Pos: {} count, {:.2} rotation",
+        current_pos.count, current_pos.rotation
+    );
+
+    Ok(())
+}
+
+pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
+    let shared = SHARED.get().expect("Shared resources not initialized!");
 
     let log_mask = LogMask::CommandedSpeed | LogMask::MotorSpeed;
     let time_sampling = 1;
@@ -72,12 +128,6 @@ pub fn move_speed(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     wait_ms(300);
 
     with_lock!(shared, m0.stop_motor())?;
-
-    let current_pos = with_lock!(shared, m0.get_motor_pos())?;
-    println!(
-        "Final Pos: {} count, {:.2} rotation",
-        current_pos.count, current_pos.rotation
-    );
 
     Ok(())
 }
