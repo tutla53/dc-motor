@@ -8,6 +8,7 @@ use crate::basic_function::conversion::Acceleration;
 use crate::basic_function::conversion::Position;
 use crate::basic_function::conversion::Speed;
 use crate::basic_function::utility::wait_ms;
+use crate::config::logger_config::LogMask;
 use crate::with_lock;
 
 /* ------------------------ Library --------------------------- */

@@ -1,8 +1,14 @@
 use super::*;
 
+struct ActiveFlagConfig {
+    data_idx: usize,
+    scale: f64,
+    offset: f64,
+}
+
 pub struct Logger {
     pico: Arc<Mutex<Pico>>,
-    mask: i32,
+    mask: LogMask,
     collected_logs: Arc<Mutex<Vec<LogEntry>>>,
     motor_id: u8,
     is_logging_start: Arc<AtomicBool>,
@@ -40,14 +46,14 @@ impl Logger {
 
         Self {
             pico,
-            mask: 0,
+            mask: LogMask::NoLog,
             collected_logs,
             motor_id,
             is_logging_start,
         }
     }
 
-    pub fn start(&mut self, mask: i32, sampling_rate_ms: u64) {
+    pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) {
         if self.is_logging_start.load(Ordering::Relaxed) {
             println!(
                 "  [WARN] - {}",
@@ -88,6 +94,8 @@ impl Logger {
             let _ = pico.stop_logger(self.motor_id);
         }
 
+        let active_mask = self.mask;
+
         let collected_logs = match self.collected_logs.lock() {
             Ok(mut logs) => std::mem::take(&mut *logs),
             Err(_) => Vec::new(),
@@ -114,33 +122,35 @@ impl Logger {
         let _ = fs::create_dir_all(&log_dir);
         let file_path = format!("{}/log_{}.csv", log_dir, tag);
 
-        let mut selected_data = Vec::new();
-        let mut columns = vec!["Timestamp(ms)".to_string()];
-
-        for bit in 0..logger_config::N_ENUM {
-            let flag = 1 << bit;
-            if (self.mask & flag) != 0 {
-                selected_data.push(bit);
-                columns.push(logger_config::LOG_MASK_NAMES[bit].to_string());
-            }
-        }
+        let columns_name = active_mask.get_active_names();
+        let active_configs: Vec<ActiveFlagConfig> = active_mask
+            .iter()
+            .map(|flag| {
+                let idx = flag.bits().trailing_zeros() as usize;
+                let scale_offset = flag.get_scale_offset();
+                ActiveFlagConfig {
+                    data_idx: idx,
+                    scale: scale_offset.0,
+                    offset: scale_offset.1,
+                }
+            })
+            .collect();
 
         let file = fs::File::create(&file_path).unwrap();
         let mut writer = csv::Writer::from_writer(file);
-        let _ = writer.write_record(&columns);
+        let _ = writer.write_record(&columns_name);
 
         for data_line in collected_logs {
-            let mut row = vec![data_line.dt.to_string()];
+            let _ = writer.write_field(data_line.dt.to_string());
 
-            for &idx in &selected_data {
-                if idx < data_line.values.len() {
-                    let scale = logger_config::SCALE_OFFSET_MOTOR[idx][0];
-                    let offset = logger_config::SCALE_OFFSET_MOTOR[idx][1];
-                    let processed_value = (data_line.values[idx] as f64 * scale) + offset;
-                    row.push(format!("{:.4}", processed_value));
-                }
+            for config in &active_configs {
+                let raw_val = data_line.values[config.data_idx] as f64;
+                let processed_value = (raw_val * config.scale) + config.offset;
+                
+                let _ = writer.write_field(format!("{:.4}", processed_value));
             }
-            let _ = writer.write_record(&row);
+
+            let _ = writer.write_record(None::<&[u8]>);
         }
 
         let _ = writer.flush();
