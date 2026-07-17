@@ -1,7 +1,9 @@
 use super::*;
 
-// Clear the invalid initial timestamp if the initial 
-// Timestamp is more than the TIME_THRESHOLD_MS
+/*
+    Clear the invalid initial timestamp if the initial
+    timestamp is more than the TIME_THRESHOLD_MS
+*/
 const TIME_THRESHOLD_MS: u32 = 200;
 
 struct ActiveFlagConfig {
@@ -37,16 +39,16 @@ impl Logger {
                     if !was_active {
                         was_active = true;
                         is_first_packet_of_session = true;
-                        local_buffer.clear(); 
+                        local_buffer.clear();
                         while log_rx.try_recv().is_ok() {} // Draining the log
-                        continue; 
+                        continue;
                     }
 
                     if is_first_packet_of_session {
                         is_first_packet_of_session = false;
-                        
+
                         if entry.dt > TIME_THRESHOLD_MS {
-                            continue; 
+                            continue;
                         }
                     }
 
@@ -79,7 +81,8 @@ impl Logger {
     pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) {
         if self.is_logging_start.load(Ordering::Relaxed) {
             println!(
-                "  [WARN] - {}",
+                "{} - {}",
+                "  [WARN]".bright_yellow().bold(),
                 "FW Logger is already started".bright_red().bold()
             );
             return;
@@ -105,8 +108,8 @@ impl Logger {
     pub fn stop(&mut self) {
         if !self.is_logging_start.load(Ordering::Relaxed) {
             println!(
-                "  [WARN] - {}",
-                "FW Logger has not been started".bright_red().bold()
+                "{} - FW Logger has not been started",
+                "  [WARN]".bright_yellow().bold(),
             );
             return;
         }
@@ -163,7 +166,29 @@ impl Logger {
         let mut writer = csv::Writer::from_writer(file);
         let _ = writer.write_record(&columns_name);
 
+        let mut first_data = false;
+        let mut normal_timestamp = false;
+
         for data_line in collected_logs {
+            if !normal_timestamp {
+                // check unusual timestamp at the beginning
+                if data_line.dt > TIME_THRESHOLD_MS {
+                    // skip and print the unusual time untill it's normal again
+                    if !first_data {
+                        first_data = true;
+                        println!(
+                            "{} - {} {} ticks",
+                            "  [WARN]".bright_yellow().bold(),
+                            "Found timestamp error at:".bright_red(),
+                            data_line.dt,
+                        );
+                    }
+                    continue;
+                }
+
+                normal_timestamp = true;
+            }
+
             let _ = writer.write_field(data_line.dt.to_string());
 
             for config in &active_configs {
