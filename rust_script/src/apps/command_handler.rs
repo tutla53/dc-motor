@@ -65,12 +65,11 @@ pub fn api_handler(
                 "Sending: {} (Op: {}, Payload: {:?})",
                 cmd_name, cmd_def.op, payload
             );
-
-            if let Ok(mut pico) = pico.lock() {
-                match pico.execute_command(cmd_def.op, &payload) {
+            
+            if let Ok(response) = run_with_lock!(pico => execute_command(cmd_def.op, &payload)) {
+                match response {
                     Ok(Some(response_bytes)) => {
                         println!("Success! Response Bytes: {:?}", response_bytes);
-
                         let mut offset = 0;
                         for (field_name, ty) in &cmd_def.ret {
                             match ty.as_str() {

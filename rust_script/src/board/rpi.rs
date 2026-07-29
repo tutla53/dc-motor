@@ -43,7 +43,7 @@ pub struct Pico {
     error_codes: HashMap<u8, String>,
     shared_responses: SharedResponse,
     pub shared_events: Arc<Mutex<HashMap<u8, u8>>>,
-    pub sim_mode: bool,
+    sim_mode: bool,
 }
 
 impl Pico {
@@ -166,6 +166,10 @@ impl Pico {
 
         println!("---------------------------------------------------\n");
         Ok((pico, log_rx, cmd_definitions))
+    }
+
+    pub fn is_sim_mode(&self) -> bool {
+        self.sim_mode
     }
 
     pub fn execute_command(&mut self, op: u8, payload: &[u8]) -> Result<Option<Vec<u8>>, String> {

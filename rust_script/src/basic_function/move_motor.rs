@@ -12,65 +12,62 @@ impl Motor {
     }
 
     pub fn stop_motor(&self) {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Err(e) = pico.stop_motor(self.motor_id)
-        {
+        if let Err(e) = run_with_lock!(self.pico => stop_motor(self.motor_id)) {
             println!("{}", e);
-        }
+        }        
     }
 
     pub fn move_motor_speed(&self, speed: Speed) {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Err(e) = pico.move_motor_speed(self.motor_id, speed.cps)
-        {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_speed(self.motor_id, speed.cps)) {
             println!("{}", e);
         }
     }
 
     pub fn move_motor_pos_step(&self, target: Position) {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Err(e) = pico.move_motor_abs_pos(self.motor_id, target.count)
-        {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos(self.motor_id, target.count)) {
             println!("{}", e);
-        }
+        }        
     }
 
     pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Err(e) = pico.move_motor_abs_pos_trapezoid(
-                self.motor_id,
-                target.count,
-                speed.cps,
-                acc.cps_square,
-            )
-        {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square,)) {
             println!("{}", e);
         }
     }
 
     pub fn move_motor_open_loop(&self, pwm: i32) {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Err(e) = pico.move_motor_open_loop(self.motor_id, pwm)
-        {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_open_loop(self.motor_id, pwm)) {
             println!("{}", e);
-        }
+        }        
     }
 
     pub fn get_motor_pos(&self) -> Result<Position, String> {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Ok(count) = pico.get_motor_pos(self.motor_id)
-        {
-            return Ok(Position::from_count(count));
+        if let Ok(count) = run_with_lock!(self.pico => get_motor_pos(self.motor_id)) {
+            match count {
+                Ok(value) => {
+                    return Ok(Position::from_count(value));
+                },
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         }
+
         Err("Pico returned a runtime error flag for this command".to_string())
     }
 
     pub fn get_motor_speed(&self) -> Result<Speed, String> {
-        if let Ok(mut pico) = self.pico.lock()
-            && let Ok(cps) = pico.get_motor_speed(self.motor_id)
-        {
-            return Ok(Speed::from_cps(cps));
+        if let Ok(cps) = run_with_lock!(self.pico => get_motor_speed(self.motor_id)) {
+            match cps {
+                Ok(value) => {
+                    return Ok(Speed::from_cps(value));
+                },
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         }
+        
         Err("Pico returned a runtime error flag for this command".to_string())
     }
 
@@ -84,7 +81,7 @@ impl Motor {
 
     pub fn wait_move_done(&self, timeout: Duration) -> Result<u8, String> {
         if let Ok(pico) = self.pico.lock() {
-            if pico.sim_mode {
+            if pico.is_sim_mode() {
                 thread::sleep(Duration::from_millis(500));
                 return Ok(0);
             }

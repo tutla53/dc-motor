@@ -6,6 +6,8 @@
 use crate::LogMask;
 use crate::board::rpi::LogEntry;
 use crate::board::rpi::Pico;
+use crate::program::macros::MutexExt;
+use crate::run_with_lock;
 
 /* ------------------------ Library --------------------------- */
 use colored::Colorize;

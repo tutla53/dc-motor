@@ -10,6 +10,8 @@ use crate::basic_function::move_motor::Motor;
 use crate::board::rpi::Pico;
 use crate::config::motor_config;
 use crate::logger::fwlogger::Logger;
+use crate::program::macros::MutexExt;
+use crate::run_with_lock;
 
 /* ------------------------ Library --------------------------- */
 use std::sync::Arc;

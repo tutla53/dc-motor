@@ -1,40 +1,26 @@
 // src/macros.rs
 
-pub trait IntoResult {
-    type OkType;
-    type ErrType;
-    fn into_result(self) -> Result<Self::OkType, Self::ErrType>;
+use super::*;
+
+pub trait MutexExt<T> {
+    fn with<F, R>(&self, f: F) -> Result<R, Box<dyn std::error::Error>>
+    where
+        F: FnOnce(&mut MutexGuard<'_, T>) -> R;
 }
 
-impl<T, E> IntoResult for Result<T, E> {
-    type OkType = T;
-    type ErrType = E;
-    fn into_result(self) -> Result<T, E> {
-        self
-    }
-}
-
-impl IntoResult for () {
-    type OkType = ();
-    type ErrType = &'static str;
-    fn into_result(self) -> Result<(), &'static str> {
-        Ok(())
+impl<T> MutexExt<T> for Mutex<T> {
+    fn with<F, R>(&self, f: F) -> Result<R, Box<dyn std::error::Error>>
+    where
+        F: FnOnce(&mut MutexGuard<'_, T>) -> R,
+    {
+        let mut guard = self.lock().map_err(|_| "Mutex poisoned")?;
+        Ok(f(&mut guard))
     }
 }
 
 #[macro_export]
-macro_rules! with_lock {
-    ($resources:expr, $field:ident . $method:ident ( $($args:expr),* $(,)? )) => {
-        match $resources.$field.lock() {
-            #[allow(unused_mut)]
-            Ok(mut target) => {
-                use $crate::program::macros::IntoResult;
-                match target.$method($($args),*).into_result() {
-                    Ok(val) => Ok(val),
-                    Err(e) => Err(Box::<dyn std::error::Error>::from(e)),
-                }
-            },
-            Err(_) => Err(Box::<dyn std::error::Error>::from("Mutex poisoned")),
-        }
-    };
+macro_rules! run_with_lock {
+    ($target:expr => $method:ident ( $($args:tt)* )) => {{
+        (*$target).with(|guard| guard.$method($($args)*))
+    }};
 }

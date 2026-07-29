@@ -78,47 +78,30 @@ impl Logger {
         }
     }
 
-    pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) {
+    pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) -> Result<(), Box<dyn std::error::Error>> {
         if self.is_logging_start.load(Ordering::Relaxed) {
-            println!(
-                "{} - {}",
-                "  [WARN]".bright_yellow().bold(),
-                "FW Logger is already started".bright_red().bold()
-            );
-            return;
+            return Err(Box::from("FW Logger has been started"));
         }
-
-        if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.stop_logger(self.motor_id);
-        }
-
-        if let Ok(mut logs) = self.collected_logs.lock() {
-            logs.clear();
-        }
-
+        
+        run_with_lock!(self.pico => stop_logger(self.motor_id))??;
+        
+        run_with_lock!(self.collected_logs => clear())?;
         self.mask = mask;
-
         self.is_logging_start.store(true, Ordering::Relaxed);
+        
+        run_with_lock!(self.pico => start_logger(self.motor_id, sampling_rate_ms))??;
 
-        if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.start_logger(self.motor_id, sampling_rate_ms);
-        }
+        Ok(())
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&mut self) -> Result<String, Box<dyn std::error::Error>> {
         if !self.is_logging_start.load(Ordering::Relaxed) {
-            println!(
-                "{} - FW Logger has not been started",
-                "  [WARN]".bright_yellow().bold(),
-            );
-            return;
+            return Err(Box::from("FW Logger has not been started"));
         }
 
         self.is_logging_start.store(false, Ordering::Relaxed);
 
-        if let Ok(mut pico) = self.pico.lock() {
-            let _ = pico.stop_logger(self.motor_id);
-        }
+        run_with_lock!(self.pico => stop_logger(self.motor_id))??;
 
         let active_mask = self.mask;
 
@@ -128,8 +111,7 @@ impl Logger {
         };
 
         if collected_logs.is_empty() {
-            println!("{}", "No Data Collected".bright_red().bold());
-            return;
+            return Err(Box::from("No Data Collected"));
         }
 
         let folder_tag: &str = "TrapezoidRun";
@@ -207,5 +189,7 @@ impl Logger {
             "- Firmware Logger has been saved on:".bright_yellow(),
             file_path
         );
+        
+        Ok(log_dir)
     }
 }
