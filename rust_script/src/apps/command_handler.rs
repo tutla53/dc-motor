@@ -65,7 +65,7 @@ pub fn api_handler(
                 "Sending: {} (Op: {}, Payload: {:?})",
                 cmd_name, cmd_def.op, payload
             );
-            
+
             if let Ok(response) = run_with_lock!(pico => execute_command(cmd_def.op, &payload)) {
                 match response {
                     Ok(Some(response_bytes)) => {

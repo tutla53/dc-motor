@@ -7,15 +7,15 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
 
     let log_mask = LogMask::CommandedPwm | LogMask::MotorSpeed;
     let time_sampling = 1;
-    
+
     run_with_lock!(shared.m0 => clear_motor_event())?;
 
     let _ = run_with_lock!(shared.logger => start(log_mask, time_sampling))?;
     wait_ms(300);
 
-    run_with_lock!(shared.m0 => move_motor_open_loop(pwm))?;    
+    run_with_lock!(shared.m0 => move_motor_open_loop(pwm))?;
     wait_ms(1500);
-    
+
     let output = run_with_lock!(shared.logger => stop())??;
     println!("{}", output);
     wait_ms(300);
@@ -47,7 +47,7 @@ pub fn pos_trapezoid_move(
     wait_ms(300);
 
     run_with_lock!(
-        shared.m0 => 
+        shared.m0 =>
         move_motor_pos_trapezoid(
             Position::from_rotation(target_rotation),
             Speed::from_rpm(speed_rpm),

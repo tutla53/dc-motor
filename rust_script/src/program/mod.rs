@@ -5,16 +5,15 @@
 /* ------------------------- Crate ---------------------------- */
 use crate::LogMask;
 use crate::SharedResources;
-use crate::program::macros::MutexExt;
 use crate::basic_function::conversion::Acceleration;
 use crate::basic_function::conversion::Position;
 use crate::basic_function::conversion::Speed;
 use crate::basic_function::utility::wait_ms;
-// use crate::with_lock;
+use crate::program::macros::MutexExt;
 use crate::run_with_lock;
 
 /* ------------------------ Library --------------------------- */
-use std::sync::Mutex; 
+use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::OnceLock;
 use std::time::Duration;

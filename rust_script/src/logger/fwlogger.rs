@@ -78,17 +78,21 @@ impl Logger {
         }
     }
 
-    pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn start(
+        &mut self,
+        mask: LogMask,
+        sampling_rate_ms: u64,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.is_logging_start.load(Ordering::Relaxed) {
             return Err(Box::from("FW Logger has been started"));
         }
-        
+
         run_with_lock!(self.pico => stop_logger(self.motor_id))??;
-        
+
         run_with_lock!(self.collected_logs => clear())?;
         self.mask = mask;
         self.is_logging_start.store(true, Ordering::Relaxed);
-        
+
         run_with_lock!(self.pico => start_logger(self.motor_id, sampling_rate_ms))??;
 
         Ok(())
@@ -189,7 +193,7 @@ impl Logger {
             "- Firmware Logger has been saved on:".bright_yellow(),
             file_path
         );
-        
+
         Ok(log_dir)
     }
 }

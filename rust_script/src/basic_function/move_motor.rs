@@ -14,7 +14,7 @@ impl Motor {
     pub fn stop_motor(&self) {
         if let Err(e) = run_with_lock!(self.pico => stop_motor(self.motor_id)) {
             println!("{}", e);
-        }        
+        }
     }
 
     pub fn move_motor_speed(&self, speed: Speed) {
@@ -24,13 +24,15 @@ impl Motor {
     }
 
     pub fn move_motor_pos_step(&self, target: Position) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos(self.motor_id, target.count)) {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos(self.motor_id, target.count))
+        {
             println!("{}", e);
-        }        
+        }
     }
 
     pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square,)) {
+        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square,))
+        {
             println!("{}", e);
         }
     }
@@ -38,7 +40,7 @@ impl Motor {
     pub fn move_motor_open_loop(&self, pwm: i32) {
         if let Err(e) = run_with_lock!(self.pico => move_motor_open_loop(self.motor_id, pwm)) {
             println!("{}", e);
-        }        
+        }
     }
 
     pub fn get_motor_pos(&self) -> Result<Position, String> {
@@ -46,7 +48,7 @@ impl Motor {
             match count {
                 Ok(value) => {
                     return Ok(Position::from_count(value));
-                },
+                }
                 Err(e) => {
                     return Err(e);
                 }
@@ -61,13 +63,13 @@ impl Motor {
             match cps {
                 Ok(value) => {
                     return Ok(Speed::from_cps(value));
-                },
+                }
                 Err(e) => {
                     return Err(e);
                 }
             }
         }
-        
+
         Err("Pico returned a runtime error flag for this command".to_string())
     }
 
