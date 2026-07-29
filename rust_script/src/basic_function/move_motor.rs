@@ -31,7 +31,7 @@ impl Motor {
     }
 
     pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square,))
+        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square))
         {
             println!("{}", e);
         }
