@@ -222,30 +222,30 @@ We have two main directories: `firmware` and `script` as shown on the graph belo
   <tr>
 	<td align="center">Open Loop</td>
 	<td> 
-		<img src="assets/01_System_Identification/A_45.jpg">
+		<img src="assets/01_System_Identification/open-loop-positive.png">
 	</td>
 	<td> 
-		<img  src="assets/01_System_Identification/B_45.jpg">
+		<img  src="assets/01_System_Identification/open-loop-negative.png">
 	</td>
   </tr>
 
   <tr>
 	<td align="center">Speed Control</td>
 	<td> 
-		<img src="assets/02_Speed_Control/A_600.jpg">
+		<img src="assets/01_System_Identification/speed-close-loop-positive.png">
 	</td>
 	<td> 
-		<img  src="assets/02_Speed_Control/B_600.jpg">
+		<img  src="assets/01_System_Identification/speed-close-loop-negative.png">
 	</td>
   </tr>
 
   <tr>
 	<td align="center">Position Control</td>
 	<td> 
-		<img src="assets/03_Position_Control/A_5.jpg">
+		<img src="assets/01_System_Identification/position-close-loop-positive.png">
 	</td>
 	<td> 
-		<img  src="assets/03_Position_Control/B_5.jpg">
+		<img  src="assets/01_System_Identification/position-close-loop-negative.png">
 	</td>
   </tr>
 </table>
