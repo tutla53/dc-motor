@@ -98,7 +98,7 @@ impl Logger {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn stop(&mut self) -> Result<(String, String), Box<dyn std::error::Error>> {
         if !self.is_logging_start.load(Ordering::Relaxed) {
             return Err(Box::from("FW Logger has not been started"));
         }
@@ -190,6 +190,6 @@ impl Logger {
             file_path
         );
 
-        Ok(log_dir)
+        Ok((log_dir, file_path))
     }
 }

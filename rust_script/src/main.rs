@@ -3,6 +3,7 @@ mod basic_function;
 mod board;
 mod config;
 mod logger;
+mod plotter;
 mod program;
 
 use crate::apps::cli::ReplCli;
