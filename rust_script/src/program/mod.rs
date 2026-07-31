@@ -13,6 +13,7 @@ use crate::program::macros::MutexExt;
 use crate::run_with_lock;
 
 /* ------------------------ Library --------------------------- */
+use std::fs;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::OnceLock;

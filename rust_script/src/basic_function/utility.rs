@@ -7,7 +7,7 @@ pub fn wait_ms(duration_ms: u64) {
 }
 
 pub fn safe_exit(pico: Arc<Mutex<Pico>>, m0: Arc<Mutex<Motor>>, logger: Arc<Mutex<Logger>>) {
-    println!("{}", "Perfroming Safe Exit!".bright_green().bold());
+    println!("\n{}", "Perfroming Safe Exit!".bright_green().bold());
 
     let is_sim = run_with_lock!(pico => is_sim_mode()).unwrap_or(false);
 

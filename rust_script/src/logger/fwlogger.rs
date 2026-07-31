@@ -118,21 +118,16 @@ impl Logger {
             return Err(Box::from("No Data Collected"));
         }
 
-        let folder_tag: &str = "TrapezoidRun";
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let tag = format!("{}", now);
-
-        let log_dir = if folder_tag.is_empty() {
-            format!("LOG/{}", tag)
-        } else {
-            format!("LOG/{}", folder_tag)
-        };
+        
+        let time_tag = format!("{}", now);
+        let log_dir = format!("LOG/log_{}", time_tag);
 
         let _ = fs::create_dir_all(&log_dir);
-        let file_path = format!("{}/log_{}.csv", log_dir, tag);
+        let file_path = format!("{}/log_{}.csv", log_dir, time_tag);
 
         let columns_name = active_mask.get_active_names();
         let active_configs: Vec<ActiveFlagConfig> = active_mask
@@ -147,8 +142,9 @@ impl Logger {
                 }
             })
             .collect();
-
-        let file = fs::File::create(&file_path).unwrap();
+        
+        fs::create_dir_all(&log_dir)?;
+        let file = fs::File::create(&file_path)?;
         let mut writer = csv::Writer::from_writer(file);
         let _ = writer.write_record(&columns_name);
 

@@ -10,17 +10,27 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
 
     run_with_lock!(shared.m0 => clear_motor_event())?;
 
-    let _ = run_with_lock!(shared.logger => start(log_mask, time_sampling))?;
+    run_with_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
     run_with_lock!(shared.m0 => move_motor_open_loop(pwm))?;
     wait_ms(1500);
 
-    let output = run_with_lock!(shared.logger => stop())??;
-    println!("{}", output);
+    let output_dir = run_with_lock!(shared.logger => stop())??;
+
     wait_ms(300);
 
     run_with_lock!(shared.m0 => stop_motor())?;
+
+    let entries = fs::read_dir(output_dir)?;
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            println!("Found file: {:?}", path);
+        }
+    }
 
     Ok(())
 }
@@ -43,7 +53,7 @@ pub fn pos_trapezoid_move(
 
     run_with_lock!(shared.m0 => clear_motor_event())?;
 
-    let _ = run_with_lock!(shared.logger => start(log_mask, time_sampling))?;
+    run_with_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
     run_with_lock!(
@@ -61,7 +71,7 @@ pub fn pos_trapezoid_move(
 
     wait_ms(300);
 
-    let _ = run_with_lock!(shared.logger => stop())?;
+    run_with_lock!(shared.logger => stop())??;
     wait_ms(300);
 
     run_with_lock!(shared.m0 => stop_motor())?;
@@ -89,7 +99,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
 
     run_with_lock!(shared.m0 => clear_motor_event())?;
 
-    let _ = run_with_lock!(shared.logger=> start(log_mask, time_sampling))?;
+    run_with_lock!(shared.logger=> start(log_mask, time_sampling))??;
     wait_ms(300);
 
     run_with_lock!(
@@ -101,7 +111,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     }
     wait_ms(300);
 
-    let _ = run_with_lock!(shared.logger => stop())?;
+    run_with_lock!(shared.logger => stop())??;
     wait_ms(300);
 
     run_with_lock!(shared.m0 => stop_motor())?;
@@ -123,14 +133,14 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
 
     run_with_lock!(shared.m0 => clear_motor_event())?;
 
-    let _ = run_with_lock!(shared.logger => start(log_mask, time_sampling))?;
+    run_with_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
     run_with_lock!(shared.m0 => move_motor_speed(Speed::from_rpm(target_speed)))?;
 
     wait_ms(1500);
 
-    let _ = run_with_lock!(shared.logger => stop())?;
+    run_with_lock!(shared.logger => stop())??;
     wait_ms(300);
 
     run_with_lock!(shared.m0 => stop_motor())?;
