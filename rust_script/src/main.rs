@@ -18,7 +18,6 @@ use crate::logger::fwlogger::Logger;
 use crate::program::initialize_script;
 
 use clap::Parser;
-use colored::Colorize;
 use rustyline::error::ReadlineError;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -84,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         SharedResources::new(MOTOR_ID)?;
 
     let mut editor = initialized_editor(&available_commands, &available_routines)?;
-    let prompt = format!("{}> ", "rp2040".green());
+    let prompt = "rp2040> ".to_string();
 
     println!("Type 'run' to run the function, or 'exit' to quit.");
 

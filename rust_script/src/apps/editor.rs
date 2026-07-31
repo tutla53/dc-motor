@@ -84,7 +84,22 @@ impl Hinter for CommandCompleter {
     }
 }
 
-impl Highlighter for CommandCompleter {}
+impl Highlighter for CommandCompleter {
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        default: bool,
+    ) -> Cow<'b, str> {
+        if default && prompt.starts_with("rp2040") {
+            let colored_prefix = "rp2040".green();
+            let remainder = &prompt["rp2040".len()..];
+            
+            Cow::Owned(format!("{}{}", colored_prefix, remainder))
+        } else {
+            Cow::Borrowed(prompt)
+        }
+    }
+}
 
 impl Validator for CommandCompleter {
     fn validate(
