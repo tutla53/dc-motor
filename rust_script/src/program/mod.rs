@@ -9,7 +9,7 @@ use crate::basic_function::conversion::Acceleration;
 use crate::basic_function::conversion::Position;
 use crate::basic_function::conversion::Speed;
 use crate::basic_function::utility::wait_ms;
-use crate::plotter::plotter;
+use crate::plotter::plot;
 use crate::program::macros::MutexExt;
 use crate::run_with_lock;
 

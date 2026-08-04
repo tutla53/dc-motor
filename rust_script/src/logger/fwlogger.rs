@@ -122,7 +122,7 @@ impl Logger {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         let time_tag = format!("{}", now);
         let log_dir = format!("LOG/log_{}", time_tag);
 
@@ -142,7 +142,7 @@ impl Logger {
                 }
             })
             .collect();
-        
+
         fs::create_dir_all(&log_dir)?;
         let file = fs::File::create(&file_path)?;
         let mut writer = csv::Writer::from_writer(file);

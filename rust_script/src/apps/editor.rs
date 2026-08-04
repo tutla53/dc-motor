@@ -93,7 +93,7 @@ impl Highlighter for CommandCompleter {
         if default && prompt.starts_with("rp2040") {
             let colored_prefix = "rp2040".green();
             let remainder = &prompt["rp2040".len()..];
-            
+
             Cow::Owned(format!("{}{}", colored_prefix, remainder))
         } else {
             Cow::Borrowed(prompt)

@@ -22,7 +22,12 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
 
     run_with_lock!(shared.m0 => stop_motor())?;
 
-    plotter::plot_csv(&log_dir, &file_dir, "Open Loop Response", "PWM (ticks), Velocity (RPM)")?;
+    plot::plot_csv(
+        &log_dir,
+        &file_dir,
+        "Open Loop Response",
+        "PWM (ticks), Velocity (RPM)",
+    )?;
 
     Ok(())
 }
@@ -74,7 +79,12 @@ pub fn pos_trapezoid_move(
         current_pos.count, current_pos.rotation
     );
 
-    plotter::plot_csv(&log_dir, &file_dir, "Trapezoid Position Control", "Position (rotation)")?;
+    plot::plot_csv(
+        &log_dir,
+        &file_dir,
+        "Trapezoid Position Control",
+        "Position (rotation)",
+    )?;
 
     Ok(())
 }
@@ -116,7 +126,12 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
         current_pos.count, current_pos.rotation
     );
 
-    plotter::plot_csv(&log_dir, &file_dir, "Step Position Response", "Position (rotation)")?;
+    plot::plot_csv(
+        &log_dir,
+        &file_dir,
+        "Step Position Response",
+        "Position (rotation)",
+    )?;
 
     Ok(())
 }
@@ -141,7 +156,12 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
 
     run_with_lock!(shared.m0 => stop_motor())?;
 
-    plotter::plot_csv(&log_dir, &file_dir, "Closed Loop Velocity Response", "Velocity (RPM)")?;
+    plot::plot_csv(
+        &log_dir,
+        &file_dir,
+        "Closed Loop Velocity Response",
+        "Velocity (RPM)",
+    )?;
 
     Ok(())
 }
