@@ -20,3 +20,6 @@ run-uf2 = [
     "--release",
     "--package",
 ]
+
+[future-incompat-report]
+frequency = "never"
