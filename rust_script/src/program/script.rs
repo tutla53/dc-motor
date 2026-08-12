@@ -31,12 +31,7 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
     run_with_lock!(shared.m0 => stop_motor())?;
 
     // Plot Firmware Log
-    plot::plot_csv(
-        &log_dir,
-        &file_dir,
-        &chart_title,
-        &y_label,
-    )?;
+    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
 }
@@ -47,7 +42,7 @@ pub fn pos_trapezoid_move(
     acc_cps2: i32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
-    
+
     // Position Control Config
     let log_mask = LogMask::CommandedPosition | LogMask::MotorPosition;
     let time_sampling = 1;
@@ -98,13 +93,8 @@ pub fn pos_trapezoid_move(
         current_pos.count, current_pos.rotation
     );
 
-    // Plot Firmware Log    
-    plot::plot_csv(
-        &log_dir,
-        &file_dir,
-        &chart_title,
-        &y_label,
-    )?;
+    // Plot Firmware Log
+    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
 }
@@ -117,7 +107,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     let time_sampling = 1;
     let chart_title = "Step Position Response";
     let y_label = "Position (rotation)";
-    
+
     // Get Current Pos
     let current_pos = run_with_lock!(shared.m0 => get_motor_pos())??;
     println!(
@@ -137,7 +127,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
         shared.m0 => move_motor_pos_step(Position::from_rotation(target_rotation))
     )?;
 
-     // Wait Motor to Reach the Target Position
+    // Wait Motor to Reach the Target Position
     if let Err(e) = run_with_lock!(shared.m0 => wait_move_done(Duration::from_secs(20)))? {
         println!("{}", e);
     }
@@ -158,12 +148,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     );
 
     // Plot Firmware Log
-    plot::plot_csv(
-        &log_dir,
-        &file_dir,
-        &chart_title,
-        &y_label,
-    )?;
+    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
 }
@@ -197,12 +182,7 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     run_with_lock!(shared.m0 => stop_motor())?;
 
     // Plot Firmware Logger
-    plot::plot_csv(
-        &log_dir,
-        &file_dir,
-        &chart_title,
-        &y_label,
-    )?;
+    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
 }

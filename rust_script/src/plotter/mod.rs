@@ -15,7 +15,9 @@ use crate::plotter::plotter_config::Y_AXIS_OFFSET;
 use crate::tool::csv_processing::CsvProcessing;
 
 /* ------------------------ Library --------------------------- */
+use plotters::element::DashedPathElement;
 use plotters::prelude::*;
+use plotters::series::DashedLineSeries;
 
 /* --------------------- Declare Modules ---------------------- */
 pub mod plot;

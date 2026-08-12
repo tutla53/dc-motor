@@ -341,12 +341,7 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     run_with_lock!(shared.m0 => stop_motor())?;
 
     // Plot Firmware Logger
-    plot::plot_csv(
-        &log_dir,
-        &file_dir,
-        &chart_title,
-        &y_label,
-    )?;
+    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
 }

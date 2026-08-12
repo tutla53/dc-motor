@@ -49,7 +49,7 @@ pub fn plot_csv(
         .label_style((font_style, font_size.axis_label).into_font())
         .draw()?;
 
-    for col_idx in (0..csv_log.n_col).rev() {
+    for col_idx in 0..csv_log.n_col {
         if col_idx == TIMESTAMP_INDEX {
             continue;
         }
@@ -61,10 +61,6 @@ pub fn plot_csv(
             .collect();
 
         let color = color_config.pallete[(col_idx - 1) % color_config.pallete.len()];
-        let line_style = color.filled().stroke_width(chart_config.line_stroke_width);
-        let legend_line_style = color
-            .filled()
-            .stroke_width(chart_config.line_stroke_width * 5);
 
         let label_name = csv_log
             .header_names
@@ -73,16 +69,44 @@ pub fn plot_csv(
             .cloned()
             .unwrap_or_else(|| format!("Column {}", col_idx));
 
-        chart
-            .draw_series(LineSeries::new(series_data.iter().copied(), line_style))?
-            .label(label_name)
-            .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], legend_line_style));
+        if csv_log.header_names[col_idx].contains("Commanded") {
+            let line_style = BLACK
+                .filled()
+                .stroke_width(chart_config.line_stroke_width * 6);
+            let legend_line_style = BLACK
+                .filled()
+                .stroke_width(chart_config.line_stroke_width * 5);
 
-        chart.draw_series(
-            series_data
-                .iter()
-                .map(|&(x, y)| Circle::new((x, y), chart_config.circle_size, color.filled())),
-        )?;
+            chart
+                .draw_series(DashedLineSeries::new(
+                    series_data.iter().copied(),
+                    30,
+                    30,
+                    line_style,
+                ))?
+                .label(&label_name)
+                .legend(move |(x, y)| {
+                    DashedPathElement::new(vec![(x, y), (x + 20, y)], 5, 5, legend_line_style)
+                });
+        } else {
+            let line_style = color.filled().stroke_width(chart_config.line_stroke_width);
+            let legend_line_style = color
+                .filled()
+                .stroke_width(chart_config.line_stroke_width * 5);
+
+            chart
+                .draw_series(LineSeries::new(series_data.iter().copied(), line_style))?
+                .label(&label_name)
+                .legend(move |(x, y)| {
+                    PathElement::new(vec![(x, y), (x + 20, y)], legend_line_style)
+                });
+
+            chart.draw_series(
+                series_data
+                    .iter()
+                    .map(|&(x, y)| Circle::new((x, y), chart_config.circle_size, color.filled())),
+            )?;
+        }
     }
 
     chart
