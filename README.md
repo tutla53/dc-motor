@@ -15,7 +15,6 @@
 DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `rust` application from the desktop as the host to communicate with the firmware API via serial communication. The graph below shows the communication diagram between host and firmware. All the firmware commands is stored on a toml file as the API between the host and firmware. The host is designed to automatically creates all the commands on the toml file as a rust function with it's argument and return value at compile time.
 
 <p align="center">
-    <br>
     <img src="assets/diagram/Communication Diagram.jpg" width="500">
 </p>
 
@@ -105,6 +104,7 @@ The table below shows the firmware features:
 <p align="center">
     <br>
     <img src="assets/00_Preview/motor_setup.jpg" width="500">
+	<br>Picture 1. Hardware Setup
 </p>
 
 ### Specification
@@ -250,9 +250,9 @@ To build the firmware you can choose to use the `probe-rs` if you use the debugg
 
 <table>
   <tr>
-			<th width = "300" align="center"> Notes</th>
-			<th width = "520" align="center"> probe-rs</th>
-      <th width = "520" align="center"> elf2uf2-rs</th>
+	<th width = "300" align="center"> Notes</th>
+	<th width = "520" align="center"> probe-rs</th>
+    <th width = "520" align="center"> elf2uf2-rs</th>
   </tr>
   <tr>
     <td> General commmand structure</td>
@@ -276,16 +276,37 @@ The uf2 file can be found on this directory:
 firmware\target\thumbv6m-none-eabi\release\
 ```
 
+For more detail on the development of firmware, you can go to this section: [Firmware Documentation](firmware/README.md).
+
 #### Desktop Script
-- Move the active directory to `rust-script`
+- Move the active directory to `rust_script`
 	```
-	cd rust-script
+	cd rust_script
 	```
 
 - Then build the script by using this command:
 	```
 	cargo run --release
 	```
+
+On the desktop script we can try using two useful commands:
+
+- Handling API by using `dev`
+	- `dev -a` : list all avaliable commands from the toml file
+	- `dev <command> <arguments>` : call a commands with it's arguments
+
+- Run specific script by using `script`
+	- `script -a` : list all avaliable function on `rust_script/src/program/script.rs`
+	- `script <function> <arguments>` : call a function with it's arguments
+
+The list of commands from toml and script from the rust code is automatically generated at a compile time with the `build.rs` script. So, for the development we only need to changet the toml file and the script file. No need to update major rust_script code. The image below shows the interface of the rust_script on the host side.
+
+<p align="center">
+    <img src="assets/00_Preview/rust-script.jpg" width="600">
+	<br>Picture 2. Desktop App Interface
+</p>
+
+For more detail on the development of rust_script, you can go to this section: [Desktop Apps Documentation](rust_script/README.md).
 
 ## Project Example
 <!-- - On `script/run.py` you can create custom code to command the RP2040. We have created the example such as: -->
