@@ -10,6 +10,12 @@ edition.workspace    = true
 license.workspace    = true
 repository.workspace = true
 
+[[bin]]
+bench = false
+name  = "usb_communication"
+path  = "src/main.rs"
+test  = false
+
 [dependencies]
 # Cortex
 cortex-m-rt.workspace = true

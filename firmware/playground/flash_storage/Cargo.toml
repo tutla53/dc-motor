@@ -10,6 +10,11 @@ edition.workspace    = true
 license.workspace    = true
 repository.workspace = true
 
+[[bin]]
+bench = false
+name  = "flash_storage"
+path  = "src/main.rs"
+test  = false
 
 [dependencies]
 # Cortex
