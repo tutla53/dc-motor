@@ -99,8 +99,11 @@ impl MotorHandler {
         self.current_commanded_speed.load(Ordering::Relaxed)
     }
 
-    pub fn set_motor_command(&self, speed: MotorCommand) {
-        let _ = self.motor_command.try_send(speed);
+    pub fn try_set_motor_command(
+        &self,
+        speed: MotorCommand,
+    ) -> Result<(), TrySendError<MotorCommand>> {
+        self.motor_command.try_send(speed)
     }
 
     pub fn get_motor_command(&self) -> Option<MotorCommand> {

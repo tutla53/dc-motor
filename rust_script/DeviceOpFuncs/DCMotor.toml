@@ -15,7 +15,7 @@
 [project]
 description = "RP2040 DC Motor Control"
 name        = "DCMotor"
-version     = "0.2.1"
+version     = "0.2.2"
 
 # ---------------------------------- Headers -----------------------------------#
 [headers]
@@ -37,6 +37,7 @@ LOGGER  = 0xFD
 6 = "InvalidTimeSampling"
 7 = "FlashStorageError"
 8 = "ZeroDivisionError"
+9 = "MotorCommandChannelFull"
 
 [telemetry]
 flags = [

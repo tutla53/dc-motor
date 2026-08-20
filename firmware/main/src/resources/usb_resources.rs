@@ -56,6 +56,7 @@ pub enum ErrorCode {
     InvalidTimeSampling = 6,
     FlashStorageError = 7,
     ZeroDivisionError = 8,
+    MotorCommandChannelFull = 9,
 }
 
 /* --------------------------- Event List -------------------------- */

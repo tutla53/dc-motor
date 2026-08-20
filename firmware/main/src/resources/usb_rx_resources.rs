@@ -207,7 +207,14 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
-                motor.set_motor_command(MotorCommand::SpeedControl(speed));
+                if motor
+                    .try_set_motor_command(MotorCommand::SpeedControl(speed))
+                    .is_err()
+                {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorCommandChannelFull)
+                        .await;
+                    return;
+                }
 
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
                     .await;
@@ -222,15 +229,28 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
+                if motor
+                    .try_set_motor_command(MotorCommand::PositionControl(Shape::Step(pos)))
+                    .is_err()
+                {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorCommandChannelFull)
+                        .await;
+                    return;
+                }
+                
                 motor.set_move_done(false);
-                motor.set_motor_command(MotorCommand::PositionControl(Shape::Step(pos)));
 
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
                     .await;
             }
             OpCode::StopMotor => {
                 /* stop_motor */
-                motor.set_motor_command(MotorCommand::Stop);
+                if motor.try_set_motor_command(MotorCommand::Stop).is_err() {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorCommandChannelFull)
+                        .await;
+                    return;
+                }
+
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
                     .await;
             }
@@ -331,25 +351,35 @@ impl<'a> CommandHandler<'a> {
                 if let (Some(target), Some(velocity), Some(acceleration)) =
                     (self.read::<i32>(), self.read::<i32>(), self.read::<i32>())
                 {
-                    motor.set_move_done(false);
-                    motor.set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(
-                        I32F32::from_num(target),
-                        I32F32::from_num(velocity.abs()),
-                        I32F32::from_num(acceleration.abs()),
-                    )));
-
                     if velocity == 0 || acceleration == 0 {
                         // Unacceptable Velocity and Acceleration
                         self.send_error_code(Some(op_code), ErrorCode::ZeroDivisionError)
                             .await;
-                    } else {
-                        self.send_error_code(Some(op_code), ErrorCode::NoError)
-                            .await;
+                        return;
                     }
-                } else {
-                    self.send_error_code(Some(op_code), ErrorCode::NonFiniteFloat)
+
+                    if motor
+                        .try_set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(
+                            I32F32::from_num(target),
+                            I32F32::from_num(velocity.abs()),
+                            I32F32::from_num(acceleration.abs()),
+                        )))
+                        .is_err()
+                    {
+                        self.send_error_code(Some(op_code), ErrorCode::MotorCommandChannelFull)
+                            .await;
+                        return;
+                    }
+
+                    motor.set_move_done(false);
+
+                    self.send_error_code(Some(op_code), ErrorCode::NoError)
                         .await;
+                    return;
                 }
+
+                self.send_error_code(Some(op_code), ErrorCode::NonFiniteFloat)
+                    .await;
             }
             OpCode::GetMotorPos => {
                 /* get_motor_pos */
@@ -385,7 +415,15 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
-                motor.set_motor_command(MotorCommand::OpenLoop(pwm));
+                if motor
+                    .try_set_motor_command(MotorCommand::OpenLoop(pwm))
+                    .is_err()
+                {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorCommandChannelFull)
+                        .await;
+                    return;
+                }
+
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
                     .await;
             }

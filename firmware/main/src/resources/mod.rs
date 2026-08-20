@@ -29,6 +29,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::channel::Sender as ChannelSender;
+use embassy_sync::channel::TrySendError;
 use embassy_sync::mutex::Mutex;
 use embassy_usb::class::cdc_acm::State;
 use fixed::types::I32F32;
