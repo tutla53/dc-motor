@@ -1,10 +1,8 @@
 /*
-* Control Hub
+* Motor Control Hub
 */
-use defmt_rtt as _;
-use panic_probe as _;
 
-use crate::resources::PIDConfig;
+#![no_std]
 
 use core::ops::Neg;
 use fixed::traits::Fixed;

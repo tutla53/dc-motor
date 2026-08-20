@@ -1,0 +1,12 @@
+[formatting]
+# Align the '=' signs for dependencies
+align_entries = true
+
+# Automatically sort [dependencies] alphabetically
+reorder_keys = true
+
+# Put a comma after the last item in a multi-line array
+array_trailing_comma = true
+
+# Use 4 spaces for indentation
+indent_string = "    "

@@ -5,7 +5,16 @@
 use super::*;
 
 /* --------------------------- Code -------------------------- */
-pub struct PIDcontrol<T: Fixed> {
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy)]
+pub struct PIDConfig {
+    pub kp: f32,
+    pub ki: f32,
+    pub kd: f32,
+    pub i_limit: f32, // Symmetric for negative and positive
+}
+
+pub struct PIDController<T: Fixed> {
     kp: T,
     ki: T,
     kd: T,
@@ -15,7 +24,7 @@ pub struct PIDcontrol<T: Fixed> {
     max_output: i32,
 }
 
-impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
+impl<T: Fixed + Neg<Output = T>> PIDController<T> {
     pub fn new(config: PIDConfig, max_output: i32) -> Self {
         Self {
             kp: T::from_num(config.kp),
@@ -45,7 +54,9 @@ impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
     }
 
     #[inline(always)]
-    pub fn compute(&mut self, error: T) -> i32 {
+    pub fn compute(&mut self, command: i32, feedback: T) -> i32 {
+        let error = T::from_num(command) - feedback;
+
         let next_integral = self.integral.saturating_add(error);
         self.integral = next_integral.clamp(-self.i_limit, self.i_limit);
 

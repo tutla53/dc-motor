@@ -1,0 +1,15 @@
+[package]
+edition = "2024"
+name    = "motor-control"
+version = "0.1.0"
+
+[features]
+default = []
+serde   = ["dep:serde"]
+
+[dependencies]
+fixed = "1.31.0"
+fixed-sqrt = "0.3.0"
+serde = { version = "1.0.228", default-features = false, features = [
+    "derive",
+], optional = true }

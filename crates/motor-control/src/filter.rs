@@ -33,3 +33,9 @@ impl<const WINDOW: usize> MovingAverageFilter<WINDOW> {
         I16F16::from_num(window_sum)
     }
 }
+
+impl<const WINDOW: usize> Default for MovingAverageFilter<WINDOW> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
