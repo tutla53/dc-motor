@@ -2,7 +2,7 @@
 build   = "build.rs"
 edition = "2024"
 name    = "rust_script"
-version = "0.2.1"
+version = "0.2.3"
 
 [dependencies]
 bitflags   = { version = "2.13.1" }

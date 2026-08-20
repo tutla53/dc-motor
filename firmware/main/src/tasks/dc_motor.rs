@@ -361,6 +361,18 @@ impl<'d> DCMotor<'d> {
         loop {
             ticker.next().await;
 
+            if !self.motor.is_enable() {
+                self.move_motor(0);
+                self.current_active_cmd = MotorCommand::Stop;
+                self.control_mode = ControlMode::Stop;
+                self.motion_profile = None;
+                self.speed_control.reset();
+                self.position_control.reset();
+
+                while self.motor.get_motor_command().is_some() {}
+                continue;
+            }
+
             let current_pos_ticks = self.motor.get_current_pos();
             let current_speed_ticks = self.filter.calculate_speed(current_pos_ticks);
 

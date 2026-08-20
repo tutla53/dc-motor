@@ -44,6 +44,7 @@ pub struct MotorHandler {
     pub max_speed_cps: AtomicI32,
     pub move_done: AtomicBool,
     pub id: u8,
+    enable: AtomicBool,
 }
 
 impl MotorHandler {
@@ -64,6 +65,7 @@ impl MotorHandler {
             max_speed_cps: AtomicI32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
             move_done: AtomicBool::new(false),
             id,
+            enable: AtomicBool::new(false),
         }
     }
 
@@ -150,5 +152,13 @@ impl MotorHandler {
 
     pub fn get_move_done(&self) -> bool {
         self.move_done.load(Ordering::Relaxed)
+    }
+    
+    pub fn is_enable(&self) -> bool {
+        self.enable.load(Ordering::Relaxed)
+    }
+
+    pub fn set_motor_enable(&self, status: bool) {
+        self.enable.store(status, Ordering::Relaxed);
     }
 }

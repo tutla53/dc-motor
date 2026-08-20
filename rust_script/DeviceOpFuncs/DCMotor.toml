@@ -15,7 +15,7 @@
 [project]
 description = "RP2040 DC Motor Control"
 name        = "DCMotor"
-version     = "0.2.2"
+version     = "0.2.3"
 
 # ---------------------------------- Headers -----------------------------------#
 [headers]
@@ -38,6 +38,7 @@ LOGGER  = 0xFD
 7 = "FlashStorageError"
 8 = "ZeroDivisionError"
 9 = "MotorCommandChannelFull"
+10 = "MotorIsDisabled"
 
 [telemetry]
 flags = [
@@ -186,3 +187,24 @@ command = "set_motor_max_speed"
 desc    = "Set the motor maximum speed in cps"
 op      = 18
 ret     = {}
+
+[[commands]]
+args    = { motor_id = "u8" }
+command = "set_motor_enable"
+desc    = "Enable the Motor"
+op      = 19
+ret     = {}
+
+[[commands]]
+args    = { motor_id = "u8" }
+command = "set_motor_disable"
+desc    = "Disable the Motor"
+op      = 20
+ret     = {}
+
+[[commands]]
+args    = { motor_id = "u8" }
+command = "get_motor_enable"
+desc    = "Get motor enable status"
+op      = 21
+ret     = { motor_enable = "u8" }

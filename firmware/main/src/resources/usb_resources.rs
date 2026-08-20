@@ -41,6 +41,9 @@ create_opcode_enum! {
         GetFirmwareVersion = 16,
         GetMotorMaxSpeed = 17,
         SetMotorMaxSpeed = 18,
+        SetMotorEnable = 19,
+        SetMotorDisable = 20,
+        GetMotorEnable = 21,
     }
 }
 
@@ -57,6 +60,7 @@ pub enum ErrorCode {
     FlashStorageError = 7,
     ZeroDivisionError = 8,
     MotorCommandChannelFull = 9,
+    MotorIsDisabled = 10,
 }
 
 /* --------------------------- Event List -------------------------- */
