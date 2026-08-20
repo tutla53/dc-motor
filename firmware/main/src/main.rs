@@ -2,7 +2,6 @@
 #![no_main]
 
 // Mod
-mod control;
 mod resources;
 mod tasks;
 

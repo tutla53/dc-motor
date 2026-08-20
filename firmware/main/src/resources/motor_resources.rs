@@ -27,15 +27,6 @@ pub enum ControlMode {
     Stop,
 }
 
-/* --------------------------- PID Config -------------------------- */
-#[derive(Serialize, Deserialize, Clone, Copy)]
-pub struct PIDConfig {
-    pub kp: f32,
-    pub ki: f32,
-    pub kd: f32,
-    pub i_limit: f32, // Symmetric for negative and positive
-}
-
 /* --------------------------- Motor Struct -------------------------- */
 pub struct MotorHandler {
     current_pos: AtomicI32,

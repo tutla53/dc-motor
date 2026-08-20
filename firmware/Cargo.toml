@@ -9,6 +9,9 @@ license    = "MIT OR Apache-2.0"
 repository = "https://github.com/tutla53/dc-motor"
 
 [workspace.dependencies]
+# Motor Control
+motor-control = { path = "../crates/motor-control", features = ["serde"]}
+
 # Cortex 
 cortex-m-rt = { version = "0.7.5" }
 

@@ -8,9 +8,6 @@ use panic_probe as _;
 
 use crate::LOGGER;
 use crate::MOTOR;
-use crate::control::MovingAverageFilter;
-use crate::control::PIDcontrol;
-use crate::control::TrapezoidProfile;
 use crate::resources::ConfigType;
 use crate::resources::DATA_CHANNEL_SIZE;
 use crate::resources::DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS;
@@ -72,6 +69,9 @@ use embassy_usb::class::cdc_acm::Receiver;
 use embassy_usb::class::cdc_acm::Sender as CdcAcmSender;
 use fixed::types::I16F16;
 use fixed::types::I32F32;
+use motor_control::MovingAverageFilter;
+use motor_control::PIDController;
+use motor_control::TrapezoidProfile;
 
 pub mod dc_motor;
 pub mod heartbeat;
