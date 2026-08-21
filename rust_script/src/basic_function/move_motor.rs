@@ -11,40 +11,61 @@ impl Motor {
         Self { pico, motor_id }
     }
 
-    pub fn stop_motor(&self) {
-        if let Err(e) = run_with_lock!(self.pico => stop_motor(self.motor_id)) {
-            println!("{}", e);
+    pub fn enable(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.set_motor_enable(self.motor_id).map_err(std::io::Error::other)?;
+        Ok(())
+    }
+
+    pub fn disable(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.set_motor_disable(self.motor_id).map_err(std::io::Error::other)?;
+        Ok(())
+    }
+    
+    pub fn is_enabled(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        let result = pico.get_motor_enable(self.motor_id).map_err(std::io::Error::other)?;
+
+        match result {
+            0 => Ok(false),
+            1 => Ok(true),
+            value => Err(std::io::Error::other(format!("Invalid motor-enable value from firmware: {value} (expected 0 or 1)")).into()),
         }
     }
 
-    pub fn move_motor_speed(&self, speed: Speed) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_speed(self.motor_id, speed.cps)) {
-            println!("{}", e);
-        }
+    pub fn stop_motor(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.stop_motor(self.motor_id).map_err(std::io::Error::other)?;
+        Ok(())
     }
 
-    pub fn move_motor_pos_step(&self, target: Position) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos(self.motor_id, target.count))
-        {
-            println!("{}", e);
-        }
+    pub fn move_motor_speed(&self, speed: Speed) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.move_motor_speed(self.motor_id, speed.cps).map_err(std::io::Error::other)?;
+        Ok(())        
     }
 
-    pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square))
-        {
-            println!("{}", e);
-        }
+    pub fn move_motor_pos_step(&self, target: Position) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.move_motor_abs_pos(self.motor_id, target.count).map_err(std::io::Error::other)?;
+        Ok(())        
     }
 
-    pub fn move_motor_open_loop(&self, pwm: i32) {
-        if let Err(e) = run_with_lock!(self.pico => move_motor_open_loop(self.motor_id, pwm)) {
-            println!("{}", e);
-        }
+    pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square).map_err(std::io::Error::other)?;
+        Ok(())        
+    }
+
+    pub fn move_motor_open_loop(&self, pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+        pico.move_motor_open_loop(self.motor_id, pwm).map_err(std::io::Error::other)?;
+        Ok(())
     }
 
     pub fn get_motor_pos(&self) -> Result<Position, String> {
-        if let Ok(count) = run_with_lock!(self.pico => get_motor_pos(self.motor_id)) {
+        if let Ok(count) = try_lock!(self.pico => get_motor_pos(self.motor_id)) {
             match count {
                 Ok(value) => {
                     return Ok(Position::from_count(value));
@@ -59,7 +80,7 @@ impl Motor {
     }
 
     pub fn get_motor_speed(&self) -> Result<Speed, String> {
-        if let Ok(cps) = run_with_lock!(self.pico => get_motor_speed(self.motor_id)) {
+        if let Ok(cps) = try_lock!(self.pico => get_motor_speed(self.motor_id)) {
             match cps {
                 Ok(value) => {
                     return Ok(Speed::from_cps(value));
