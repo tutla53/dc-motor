@@ -7,7 +7,7 @@ use crate::board::rpi::CommandDef;
 use crate::board::rpi::Pico;
 use crate::execute_program_routine;
 use crate::program::macros::MutexExt;
-use crate::run_with_lock;
+use crate::try_lock;
 
 /* ------------------------ Library --------------------------- */
 use clap::Parser;

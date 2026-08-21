@@ -87,13 +87,13 @@ impl Logger {
             return Err(Box::from("FW Logger has been started"));
         }
 
-        run_with_lock!(self.pico => stop_logger(self.motor_id))??;
+        try_lock!(self.pico => stop_logger(self.motor_id))??;
 
-        run_with_lock!(self.collected_logs => clear())?;
+        try_lock!(self.collected_logs => clear())?;
         self.mask = mask;
         self.is_logging_start.store(true, Ordering::Relaxed);
 
-        run_with_lock!(self.pico => start_logger(self.motor_id, sampling_rate_ms))??;
+        try_lock!(self.pico => start_logger(self.motor_id, sampling_rate_ms))??;
 
         Ok(())
     }
@@ -105,7 +105,7 @@ impl Logger {
 
         self.is_logging_start.store(false, Ordering::Relaxed);
 
-        run_with_lock!(self.pico => stop_logger(self.motor_id))??;
+        try_lock!(self.pico => stop_logger(self.motor_id))??;
 
         let active_mask = self.mask;
 

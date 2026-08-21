@@ -19,7 +19,7 @@ impl<T> MutexExt<T> for Mutex<T> {
 }
 
 #[macro_export]
-macro_rules! run_with_lock {
+macro_rules! try_lock {
     ($target:expr => $method:ident ( $($args:tt)* )) => {{
         (*$target).with(|guard| guard.$method($($args)*))
     }};

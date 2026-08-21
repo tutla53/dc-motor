@@ -11,7 +11,7 @@ use crate::basic_function::conversion::Speed;
 use crate::basic_function::utility::wait_ms;
 use crate::plotter::plot;
 use crate::program::macros::MutexExt;
-use crate::run_with_lock;
+use crate::try_lock;
 
 /* ------------------------ Library --------------------------- */
 use std::sync::Mutex;
