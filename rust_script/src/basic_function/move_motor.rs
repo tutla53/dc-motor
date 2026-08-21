@@ -12,55 +12,104 @@ impl Motor {
     }
 
     pub fn enable(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.set_motor_enable(self.motor_id).map_err(std::io::Error::other)?;
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.set_motor_enable(self.motor_id)
+            .map_err(std::io::Error::other)?;
         Ok(())
     }
 
     pub fn disable(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.set_motor_disable(self.motor_id).map_err(std::io::Error::other)?;
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.set_motor_disable(self.motor_id)
+            .map_err(std::io::Error::other)?;
         Ok(())
     }
-    
+
     pub fn is_enabled(&self) -> Result<bool, Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        let result = pico.get_motor_enable(self.motor_id).map_err(std::io::Error::other)?;
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        let result = pico
+            .get_motor_enable(self.motor_id)
+            .map_err(std::io::Error::other)?;
 
         match result {
             0 => Ok(false),
             1 => Ok(true),
-            value => Err(std::io::Error::other(format!("Invalid motor-enable value from firmware: {value} (expected 0 or 1)")).into()),
+            value => Err(std::io::Error::other(format!(
+                "Invalid motor-enable value from firmware: {value} (expected 0 or 1)"
+            ))
+            .into()),
         }
     }
 
     pub fn stop_motor(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.stop_motor(self.motor_id).map_err(std::io::Error::other)?;
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.stop_motor(self.motor_id)
+            .map_err(std::io::Error::other)?;
         Ok(())
     }
 
     pub fn move_motor_speed(&self, speed: Speed) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.move_motor_speed(self.motor_id, speed.cps).map_err(std::io::Error::other)?;
-        Ok(())        
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.move_motor_speed(self.motor_id, speed.cps)
+            .map_err(std::io::Error::other)?;
+        Ok(())
     }
 
     pub fn move_motor_pos_step(&self, target: Position) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.move_motor_abs_pos(self.motor_id, target.count).map_err(std::io::Error::other)?;
-        Ok(())        
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.move_motor_abs_pos(self.motor_id, target.count)
+            .map_err(std::io::Error::other)?;
+        Ok(())
     }
 
-    pub fn move_motor_pos_trapezoid(&self, target: Position, speed: Speed, acc: Acceleration) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square).map_err(std::io::Error::other)?;
-        Ok(())        
+    pub fn move_motor_pos_trapezoid(
+        &self,
+        target: Position,
+        speed: Speed,
+        acc: Acceleration,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square)
+            .map_err(std::io::Error::other)?;
+        Ok(())
     }
 
     pub fn move_motor_open_loop(&self, pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
-        let mut pico = self.pico.lock().map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
-        pico.move_motor_open_loop(self.motor_id, pwm).map_err(std::io::Error::other)?;
+        let mut pico = self
+            .pico
+            .lock()
+            .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
+
+        pico.move_motor_open_loop(self.motor_id, pwm)
+            .map_err(std::io::Error::other)?;
         Ok(())
     }
 

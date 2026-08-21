@@ -4,7 +4,7 @@ use super::*;
 
 pub fn enable_m0() -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
-    
+
     let is_enabled = try_lock!(shared.m0 => is_enabled())??;
 
     if !is_enabled {
@@ -12,9 +12,8 @@ pub fn enable_m0() -> Result<(), Box<dyn std::error::Error>> {
         try_lock!(shared.m0 => enable())??;
         println!("  [DONE] - Motor has been enabled");
 
-        return Ok(())
-    }
-    else {
+        return Ok(());
+    } else {
         println!("Motor is already enabled");
     }
 
@@ -89,7 +88,7 @@ pub fn pos_trapezoid_move(
                 Acceleration::from_cps_sq(acc_cps2)
             )
         )??;
-        
+
         if let Err(e) = try_lock!(shared.m0 => wait_move_done(Duration::from_secs(20)))? {
             println!("{}", e);
         }
@@ -98,18 +97,18 @@ pub fn pos_trapezoid_move(
         Ok(())
     })();
 
+    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
+    let logger_stop_result = try_lock!(shared.logger => stop());
+
+    move_status?;
+    motor_stop_result??;
+
     /* ---------- Get Motor Pos ---------- */
     let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
     println!(
         "Final Pos: {} count, {:.2} rotation",
         current_pos.count, current_pos.rotation
     );
-
-    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
-    let logger_stop_result = try_lock!(shared.logger => stop());
-
-    move_status?;
-    motor_stop_result??;
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
@@ -143,7 +142,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
         try_lock!(
             shared.m0 => move_motor_pos_step(Position::from_rotation(target_rotation))
         )??;
-        
+
         if let Err(e) = try_lock!(shared.m0 => wait_move_done(Duration::from_secs(20)))? {
             println!("{}", e);
         }
@@ -152,18 +151,18 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
         Ok(())
     })();
 
+    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
+    let logger_stop_result = try_lock!(shared.logger => stop());
+
+    move_status?;
+    motor_stop_result??;
+
     /* ---------- Get Motor Pos ---------- */
     let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
     println!(
         "Final Pos: {} count, {:.2} rotation",
         current_pos.count, current_pos.rotation
     );
-
-    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
-    let logger_stop_result = try_lock!(shared.logger => stop());
-
-    move_status?;
-    motor_stop_result??;
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
