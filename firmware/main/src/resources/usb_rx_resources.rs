@@ -207,8 +207,9 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
-                if !motor.is_enable() {
-                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled).await;
+                if !motor.is_motion_enabled() {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled)
+                        .await;
                     return;
                 }
 
@@ -234,8 +235,9 @@ impl<'a> CommandHandler<'a> {
                     return;
                 };
 
-                if !motor.is_enable() {
-                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled).await;
+                if !motor.is_motion_enabled() {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled)
+                        .await;
                     return;
                 }
 
@@ -247,7 +249,7 @@ impl<'a> CommandHandler<'a> {
                         .await;
                     return;
                 }
-                
+
                 motor.set_move_done(false);
 
                 self.send_error_code(Some(op_code), ErrorCode::NoError)
@@ -368,10 +370,11 @@ impl<'a> CommandHandler<'a> {
                         return;
                     }
 
-                    if !motor.is_enable() {
-                        self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled).await;
+                    if !motor.is_motion_enabled() {
+                        self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled)
+                            .await;
                         return;
-                    }                    
+                    }
 
                     if motor
                         .try_set_motor_command(MotorCommand::PositionControl(Shape::Trapezoidal(
@@ -429,11 +432,12 @@ impl<'a> CommandHandler<'a> {
                         .await;
                     return;
                 };
-                
-                if !motor.is_enable() {
-                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled).await;
+
+                if !motor.is_motion_enabled() {
+                    self.send_error_code(Some(op_code), ErrorCode::MotorIsDisabled)
+                        .await;
                     return;
-                }                
+                }
 
                 if motor
                     .try_set_motor_command(MotorCommand::OpenLoop(pwm))
@@ -469,15 +473,17 @@ impl<'a> CommandHandler<'a> {
                 }
             }
             OpCode::SetMotorEnable => {
-                motor.set_motor_enable(true);
-                self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+                motor.request_motor_enable();
+                self.send_error_code(Some(op_code), ErrorCode::NoError)
+                    .await;
             }
             OpCode::SetMotorDisable => {
-                motor.set_motor_enable(false);
-                self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+                motor.request_motor_disable();
+                self.send_error_code(Some(op_code), ErrorCode::NoError)
+                    .await;
             }
             OpCode::GetMotorEnable => {
-                let motor_enable = motor.is_enable();
+                let motor_enable = motor.is_motion_enabled();
 
                 let mut buffer = Packet::new();
                 buffer

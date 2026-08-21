@@ -44,7 +44,9 @@ pub struct MotorHandler {
     pub max_speed_cps: AtomicI32,
     pub move_done: AtomicBool,
     pub id: u8,
-    enable: AtomicBool,
+    enable: PortableAtomicBool,
+    enable_requested: PortableAtomicBool,
+    disable_requested: PortableAtomicBool,
 }
 
 impl MotorHandler {
@@ -65,7 +67,9 @@ impl MotorHandler {
             max_speed_cps: AtomicI32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
             move_done: AtomicBool::new(false),
             id,
-            enable: AtomicBool::new(false),
+            enable: PortableAtomicBool::new(false),
+            enable_requested: PortableAtomicBool::new(false),
+            disable_requested: PortableAtomicBool::new(false),
         }
     }
 
@@ -153,12 +157,50 @@ impl MotorHandler {
     pub fn get_move_done(&self) -> bool {
         self.move_done.load(Ordering::Relaxed)
     }
-    
-    pub fn is_enable(&self) -> bool {
-        self.enable.load(Ordering::Relaxed)
+
+    pub fn is_motion_enabled(&self) -> bool {
+        self.enable.load(Ordering::SeqCst) && !self.disable_requested.load(Ordering::SeqCst)
     }
 
-    pub fn set_motor_enable(&self, status: bool) {
-        self.enable.store(status, Ordering::Relaxed);
+    pub fn is_motor_enabled(&self) -> bool {
+        self.enable.load(Ordering::SeqCst)
+    }
+
+    pub fn request_motor_enable(&self) {
+        if !self.is_motor_enabled() || self.disable_requested.load(Ordering::SeqCst) {
+            self.enable_requested.store(true, Ordering::SeqCst);
+        }
+    }
+
+    pub fn request_motor_disable(&self) {
+        self.enable_requested.store(false, Ordering::SeqCst);
+        self.disable_requested.store(true, Ordering::SeqCst);
+    }
+
+    pub fn take_enable_request(&self) -> bool {
+        take_request(&self.enable_requested)
+    }
+
+    pub fn take_disable_request(&self) -> bool {
+        take_request(&self.disable_requested)
+    }
+
+    pub fn set_motor_enabled(&self, status: bool) {
+        self.enable.store(status, Ordering::SeqCst);
+    }
+}
+
+fn take_request(request: &PortableAtomicBool) -> bool {
+    loop {
+        if !request.load(Ordering::SeqCst) {
+            return false;
+        }
+
+        if request
+            .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            return true;
+        }
     }
 }

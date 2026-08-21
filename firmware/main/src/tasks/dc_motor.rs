@@ -361,17 +361,31 @@ impl<'d> DCMotor<'d> {
         loop {
             ticker.next().await;
 
-            if !self.motor.is_enable() {
+            if self.motor.take_disable_request() {
+                self.motor.set_motor_enabled(false);
                 self.move_motor(0);
                 self.current_active_cmd = MotorCommand::Stop;
+                self.last_command = None;
                 self.control_mode = ControlMode::Stop;
                 self.motion_profile = None;
+                self.trapz_time_s_fixed = I32F32::from_num(0);
+                self.current_settle_ticks = 0;
+                self.command_just_received = false;
                 self.speed_control.reset();
                 self.position_control.reset();
 
                 while self.motor.get_motor_command().is_some() {}
                 continue;
             }
+
+            if !self.motor.is_motor_enabled() {
+                if self.motor.take_enable_request() {
+                    self.motor.set_motor_enabled(true);
+                }
+                continue;
+            }
+
+            self.motor.take_enable_request();
 
             let current_pos_ticks = self.motor.get_current_pos();
             let current_speed_ticks = self.filter.calculate_speed(current_pos_ticks);

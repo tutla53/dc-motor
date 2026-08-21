@@ -34,6 +34,7 @@ use embassy_sync::mutex::Mutex;
 use embassy_usb::class::cdc_acm::State;
 use fixed::types::I32F32;
 use motor_control::PIDConfig;
+use portable_atomic::AtomicBool as PortableAtomicBool;
 use sequential_storage::cache::NoCache;
 use sequential_storage::map::MapStorage;
 use serde::Serialize;
