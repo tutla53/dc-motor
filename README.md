@@ -315,32 +315,32 @@ We've created a sample script to test the basic movement of the DC motor and rec
 pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
-    // Speed Control Config
+    /* ---------- Config ---------- */
     let log_mask = LogMask::CommandedSpeed | LogMask::MotorSpeed;
     let time_sampling = 1;
     let chart_title = "Closed Loop Velocity Response";
     let y_label = "Velocity (RPM)";
     let duration_ms = 1500;
 
-    // Clear Motor Event
-    run_with_lock!(shared.m0 => clear_motor_event())?;
-
-    // Start Fimware Logger
-    run_with_lock!(shared.logger => start(log_mask, time_sampling))??;
+    /* ---------- Move Motor ---------- */
+    try_lock!(shared.m0 => clear_motor_event())?;
+    try_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
-    // Move Motor
-    run_with_lock!(shared.m0 => move_motor_speed(Speed::from_rpm(target_speed)))?;
-    wait_ms(duration_ms);
+    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
+        try_lock!(shared.m0 => move_motor_speed(Speed::from_rpm(target_speed)))??;
+        wait_ms(duration_ms);
+        Ok(())
+    })();
 
-    // Stop Firmware Logger
-    let (log_dir, file_dir) = run_with_lock!(shared.logger => stop())??;
-    wait_ms(300);
+    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
+    let logger_stop_result = try_lock!(shared.logger => stop());
 
-    // Stop Motor
-    run_with_lock!(shared.m0 => stop_motor())?;
+    move_status?;
+    motor_stop_result??;
 
-    // Plot Firmware Logger
+    /* ---------- Plot Firmware Log ---------- */
+    let (log_dir, file_dir) = logger_stop_result??;
     plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
 
     Ok(())
