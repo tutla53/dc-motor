@@ -322,6 +322,10 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     let y_label = "Velocity (RPM)";
     let duration_ms = 1500;
 
+    /* ---------- Gathering Motor Info ---------- */
+    let pid_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
+
     /* ---------- Move Motor ---------- */
     try_lock!(shared.m0 => clear_motor_event())?;
     try_lock!(shared.logger => start(log_mask, time_sampling))??;
@@ -341,7 +345,22 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
-    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
+
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_speed_control(
+        &csv_log,
+        ModelKind::Nonlinear,
+        max_speed_pps,
+        &pid_config,
+    )?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
     Ok(())
 }

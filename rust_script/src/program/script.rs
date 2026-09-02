@@ -20,7 +20,7 @@ pub fn enable_m0() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
+pub fn open_loop(percent: f64) -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
@@ -36,7 +36,7 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
     wait_ms(300);
 
     let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
-        try_lock!(shared.m0 => move_motor_open_loop(pwm))??;
+        try_lock!(shared.m0 => move_motor_open_loop(Pwm::from_percent(percent)))??;
         wait_ms(duration_ms);
         Ok(())
     })();
@@ -57,7 +57,7 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
         Y_AXIS_OFFSET,
     )?;
 
-    let simulation = MotorSimulation::simulate_open_loop(&csv_log)?;
+    let simulation = MotorSimulation::simulate_open_loop(&csv_log, ModelKind::Nonlinear)?;
 
     plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
@@ -135,6 +135,7 @@ pub fn pos_trapezoid_move(
 
     let simulation = MotorSimulation::simulate_position_control(
         &csv_log,
+        ModelKind::Nonlinear,
         initial_pos.count,
         max_speed_pps,
         &pid_speed_config,
@@ -208,6 +209,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
 
     let simulation = MotorSimulation::simulate_position_control(
         &csv_log,
+        ModelKind::Nonlinear,
         initial_pos.count,
         max_speed_pps,
         &pid_speed_config,
@@ -260,7 +262,12 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
         Y_AXIS_OFFSET,
     )?;
 
-    let simulation = MotorSimulation::simulate_speed_control(&csv_log, max_speed_pps, &pid_config)?;
+    let simulation = MotorSimulation::simulate_speed_control(
+        &csv_log,
+        ModelKind::Nonlinear,
+        max_speed_pps,
+        &pid_config,
+    )?;
 
     plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
