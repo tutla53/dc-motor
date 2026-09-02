@@ -10,3 +10,9 @@ array_trailing_comma = true
 
 # Use 4 spaces for indentation
 indent_string = "    "
+
+[[rule]]
+include = ["DeviceOpFuncs/DCMotor.toml"]
+
+[rule.formatting]
+reorder_keys = false

@@ -28,16 +28,16 @@ LOGGER  = 0xFD
 0 = "MOVE_MOTOR_DONE"
 
 [enums.ErrorCodes]
-0 = "NoError"
-1 = "OpCodeNotFound"
-2 = "NonFiniteFloat"
-3 = "ReadByteError"
-4 = "InvalidMotorId"
-5 = "InvalidHeaderCode"
-6 = "InvalidTimeSampling"
-7 = "FlashStorageError"
-8 = "ZeroDivisionError"
-9 = "MotorCommandChannelFull"
+0  = "NoError"
+1  = "OpCodeNotFound"
+2  = "NonFiniteFloat"
+3  = "ReadByteError"
+4  = "InvalidMotorId"
+5  = "InvalidHeaderCode"
+6  = "InvalidTimeSampling"
+7  = "FlashStorageError"
+8  = "ZeroDivisionError"
+9  = "MotorCommandChannelFull"
 10 = "MotorIsDisabled"
 
 [telemetry]
