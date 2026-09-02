@@ -44,7 +44,6 @@ pub struct Acceleration {
     pub cps_square: i32,
 }
 
-#[allow(unused)]
 impl Acceleration {
     pub fn from_cps_sq(cps_square: i32) -> Self {
         Self { cps_square }

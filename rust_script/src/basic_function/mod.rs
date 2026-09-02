@@ -14,6 +14,7 @@ use crate::program::macros::MutexExt;
 use crate::try_lock;
 
 /* ------------------------ Library --------------------------- */
+use motor_control::PIDConfig;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;

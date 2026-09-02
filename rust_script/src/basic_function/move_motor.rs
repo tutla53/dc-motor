@@ -143,6 +143,61 @@ impl Motor {
         Err("Pico returned a runtime error flag for this command".to_string())
     }
 
+    pub fn get_pid_motor_speed(&self) -> Result<PIDConfig, String> {
+        if let Ok(pid_config) = try_lock!(self.pico => get_pid_motor_speed(self.motor_id)) {
+            match pid_config {
+                Ok((kp, ki, kd, i_limit)) => {
+                    return Ok(PIDConfig {
+                        kp,
+                        ki,
+                        kd,
+                        i_limit,
+                    });
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        Err("Pico returned a runtime error flag for this command".to_string())
+    }
+
+    pub fn get_pid_motor_pos(&self) -> Result<PIDConfig, String> {
+        if let Ok(pid_config) = try_lock!(self.pico => get_pid_motor_pos(self.motor_id)) {
+            match pid_config {
+                Ok((kp, ki, kd, i_limit)) => {
+                    return Ok(PIDConfig {
+                        kp,
+                        ki,
+                        kd,
+                        i_limit,
+                    });
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        Err("Pico returned a runtime error flag for this command".to_string())
+    }
+
+    pub fn get_motor_max_speed(&self) -> Result<i32, String> {
+        if let Ok(max_speed) = try_lock!(self.pico => get_motor_max_speed(self.motor_id)) {
+            match max_speed {
+                Ok(value) => {
+                    return Ok(value);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        Err("Pico returned a runtime error flag for this command".to_string())
+    }
+
     pub fn clear_motor_event(&self) {
         if let Ok(pico) = self.pico.lock()
             && let Ok(mut events) = pico.shared_events.lock()
