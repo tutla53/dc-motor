@@ -7,3 +7,4 @@ use motor_control::PIDConfig;
 
 /* --------------------- Declare Modules ---------------------- */
 pub mod motor_config;
+pub mod nonlinear;
