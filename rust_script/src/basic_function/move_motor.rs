@@ -102,13 +102,13 @@ impl Motor {
         Ok(())
     }
 
-    pub fn move_motor_open_loop(&self, pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn move_motor_open_loop(&self, pwm: Pwm) -> Result<(), Box<dyn std::error::Error>> {
         let mut pico = self
             .pico
             .lock()
             .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
 
-        pico.move_motor_open_loop(self.motor_id, pwm)
+        pico.move_motor_open_loop(self.motor_id, pwm.ticks)
             .map_err(std::io::Error::other)?;
         Ok(())
     }

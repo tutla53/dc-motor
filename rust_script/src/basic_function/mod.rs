@@ -5,6 +5,7 @@
 /* ------------------------- Crate ---------------------------- */
 use crate::basic_function::conversion::Acceleration;
 use crate::basic_function::conversion::Position;
+use crate::basic_function::conversion::Pwm;
 use crate::basic_function::conversion::Speed;
 use crate::basic_function::move_motor::Motor;
 use crate::board::rpi::Pico;

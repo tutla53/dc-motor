@@ -54,3 +54,25 @@ impl Acceleration {
         Self { cps_square }
     }
 }
+
+pub struct Pwm {
+    pub ticks: i32,
+    pub percent: f64,
+}
+
+impl Pwm {
+    pub fn from_ticks(ticks: i32) -> Self {
+        let percent = (ticks.clamp(0, motor_config::MAX_PWM_TICKS) as f64
+            / motor_config::MAX_PWM_TICKS as f64)
+            * 100.0;
+
+        Self { ticks, percent }
+    }
+
+    pub fn from_percent(percent: f64) -> Self {
+        let ticks = (((percent * motor_config::MAX_PWM_TICKS as f64) / 100.0) as i32)
+            .clamp(0, motor_config::MAX_PWM_TICKS); // * motor_config::COUNT_PER_ROTATION * 60.0) as i32;
+
+        Self { ticks, percent }
+    }
+}
