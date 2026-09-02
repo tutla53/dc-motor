@@ -19,10 +19,10 @@ pub struct CommandDef {
     pub op: u8,
 
     #[serde(default)]
-    pub args: HashMap<String, String>,
+    pub args: IndexMap<String, String>,
 
     #[serde(default)]
-    pub ret: HashMap<String, String>,
+    pub ret: IndexMap<String, String>,
 }
 
 #[derive(serde::Deserialize, Debug)]

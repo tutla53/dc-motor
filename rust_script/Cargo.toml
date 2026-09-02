@@ -5,16 +5,20 @@ name    = "rust_script"
 version = "0.2.3"
 
 [dependencies]
+motor-control = { path = "../crates/motor-control", features = ["serde"] }
+
 bitflags   = { version = "2.13.1" }
 byteorder  = { version = "1.5" }
 clap       = { version = "4.5", features = ["derive"] }
 colored    = { version = "3.1.1" }
 csv        = { version = "1.3" }
+fixed      = { version = "1.31.0" }
+indexmap   = { version = "2.2", features = ["serde"] }
 plotters   = { version = "0.3.7" }
 rustyline  = { version = "18.0.1", features = ["derive"] }
 serde      = { version = "1.0", features = ["derive"] }
 serialport = { version = "4.3" }
-toml       = { version = "1.1.2" }
+toml       = { version = "1.1.2", features = ["preserve_order"] }
 
 [build-dependencies]
 indexmap = { version = "2.2", features = ["serde"] }

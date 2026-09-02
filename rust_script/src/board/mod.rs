@@ -8,6 +8,7 @@ use crate::SharedResponse;
 
 /* ------------------------ Library --------------------------- */
 use colored::Colorize;
+use indexmap::IndexMap;
 use serialport::SerialPort;
 use serialport::SerialPortType;
 use std::collections::HashMap;
