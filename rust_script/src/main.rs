@@ -5,6 +5,7 @@ mod config;
 mod logger;
 mod plotter;
 mod program;
+mod simulation;
 mod tool;
 
 use crate::apps::cli::ReplCli;

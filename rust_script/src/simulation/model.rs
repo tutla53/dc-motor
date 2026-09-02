@@ -1,0 +1,288 @@
+use super::*;
+
+#[derive(Debug, Clone)]
+pub struct OverlaySeries {
+    pub label: String,
+    pub points: Vec<(f32, f32)>,
+    pub color: RGBColor,
+}
+
+#[allow(clippy::enum_variant_names)]
+pub enum SimMode<'a> {
+    OpenLoop(f64),
+    SpeedClosedLoop(f64, i32, &'a PIDConfig),
+    PositionClosedLoop(f64, i32, &'a PIDConfig, &'a PIDConfig),
+}
+
+pub struct MotorSimulation {
+    d: usize,
+    alpha: f64,
+    beta_positive: f64,
+    beta_negative: f64,
+    speed_control: PIDController<I16F16>,
+    position_control: PIDController<I32F32>,
+}
+
+impl MotorSimulation {
+    /* ---------- Initialization ---------- */
+    pub fn new() -> Self {
+        let d = motor_config::L_STEPS as usize;
+        let alpha = (-motor_config::DT_S / motor_config::TAU_S).exp();
+        let beta_positive = motor_config::K_POSITIVE * (1.0 - alpha);
+        let beta_negative = motor_config::K_NEGATIVE * (1.0 - alpha);
+
+        Self {
+            d,
+            alpha,
+            beta_positive,
+            beta_negative,
+            speed_control: PIDController::new(
+                motor_config::DEFAULT_PID_SPEED_CONFIG,
+                motor_config::MAX_PWM_TICKS,
+            ),
+            position_control: PIDController::new(
+                motor_config::DEFAULT_PID_POS_CONFIG,
+                motor_config::MAX_SPEED_PPS,
+            ),
+        }
+    }
+
+    fn beta(&self, u: f64, nonlinear_mode: bool) -> f64 {
+        if !nonlinear_mode {
+            if u >= 0.0 {
+                return self.beta_positive;
+            } else {
+                return self.beta_negative;
+            }
+        }
+
+        self.beta_positive
+    }
+
+    /* ---------- Wrapper ---------- */
+    pub fn simulate_open_loop(
+        log: &CsvProcessing,
+    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+        Self::new().core(log, SimMode::OpenLoop(0.0))
+    }
+
+    pub fn simulate_speed_control(
+        log: &CsvProcessing,
+        max_speed_pps: i32,
+        pid_config: &PIDConfig,
+    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+        Self::new().core(
+            log,
+            SimMode::SpeedClosedLoop(0.0, max_speed_pps, pid_config),
+        )
+    }
+
+    pub fn simulate_position_control(
+        log: &CsvProcessing,
+        initial_pos: i32,
+        max_speed_pps: i32,
+        pid_speed_config: &PIDConfig,
+        pid_pos_config: &PIDConfig,
+    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+        Self::new().core(
+            log,
+            SimMode::PositionClosedLoop(
+                initial_pos as f64,
+                max_speed_pps,
+                pid_speed_config,
+                pid_pos_config,
+            ),
+        )
+    }
+
+    /* ---------- Mathematical Model ---------- */
+    fn open_loop(&self, initial_condition: f64, u: Vec<f64>) -> Vec<f64> {
+        let mut y = vec![initial_condition; u.len()];
+        let d = self.d;
+
+        /* ---------- Difference Equation ---------- */
+        for k in 0..u.len() {
+            if (k as i32 - d as i32 - 1) < 0 {
+                continue;
+            }
+
+            y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1], false) * u[k - d - 1];
+        }
+
+        y
+    }
+
+    fn speed_control(
+        &mut self,
+        initial_condition: f64,
+        set_point: Vec<f64>,
+        max_speed_pps: i32,
+        pid_config: &PIDConfig,
+    ) -> Vec<f64> {
+        let mut y = vec![initial_condition; set_point.len()];
+        let mut u = vec![0.0; set_point.len()];
+        let d = self.d;
+
+        self.speed_control.update_pid_param(
+            pid_config.kp,
+            pid_config.ki,
+            pid_config.kd,
+            pid_config.i_limit,
+        );
+        self.speed_control
+            .update_max_output(motor_config::MAX_PWM_TICKS);
+        self.speed_control.reset();
+
+        /* ---------- Difference Equation ---------- */
+        for k in 0..set_point.len() {
+            if (k as i32 - d as i32 - 1) < 0 {
+                continue;
+            }
+
+            u[k] = self.speed_control.compute(
+                (set_point[k] as i32).clamp(-max_speed_pps, max_speed_pps),
+                I16F16::from_num(y[k - 1]),
+            ) as f64;
+
+            y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1], false) * u[k - d - 1];
+        }
+
+        y
+    }
+
+    fn position_control(
+        &mut self,
+        initial_condition: f64,
+        set_point: Vec<f64>,
+        max_speed_pps: i32,
+        pid_speed_config: &PIDConfig,
+        pid_pos_config: &PIDConfig,
+    ) -> Vec<f64> {
+        let mut x = vec![initial_condition; set_point.len()]; // Motor Position
+        let mut y = vec![0.0; set_point.len()]; // Motor Speed Output
+        let mut u = vec![0.0; set_point.len()]; // PWM Input
+        let d = self.d;
+
+        self.speed_control.update_pid_param(
+            pid_speed_config.kp,
+            pid_speed_config.ki,
+            pid_speed_config.kd,
+            pid_speed_config.i_limit,
+        );
+        self.speed_control
+            .update_max_output(motor_config::MAX_PWM_TICKS);
+
+        self.position_control.update_pid_param(
+            pid_pos_config.kp,
+            pid_pos_config.ki,
+            pid_pos_config.kd,
+            pid_pos_config.i_limit,
+        );
+        self.position_control.update_max_output(max_speed_pps);
+
+        self.speed_control.reset();
+        self.position_control.reset();
+
+        /* ---------- Difference Equation ---------- */
+        for k in 0..set_point.len() {
+            if (k as i32 - d as i32 - 1) < 0 {
+                continue;
+            }
+
+            let target_speed = self
+                .position_control
+                .compute(set_point[k] as i32, I32F32::from_num(x[k - 1]));
+
+            u[k] = self
+                .speed_control
+                .compute(target_speed, I16F16::from_num(y[k - 1])) as f64;
+
+            y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1], false) * u[k - d - 1]; // Updating Motor Speed
+            x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S; // Update Position
+        }
+
+        x
+    }
+
+    /* ---------- Mode Selection ---------- */
+    fn core(
+        &mut self,
+        log: &CsvProcessing,
+        mode: SimMode,
+    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+        let (commanded_header, output_converter, input_converter) = match mode {
+            SimMode::OpenLoop(_) => {
+                (
+                    "Commanded_PWM",
+                    motor_config::ROTATION_PER_COUNT * 60.0,
+                    1.0,
+                ) // pps to rpm
+            }
+            SimMode::SpeedClosedLoop(_, _, _) => {
+                (
+                    "Commanded_Speed(RPM)",
+                    motor_config::ROTATION_PER_COUNT * 60.0,
+                    1.0 / (motor_config::ROTATION_PER_COUNT * 60.0),
+                ) // pps to rpm
+            }
+            SimMode::PositionClosedLoop(_, _, _, _) => {
+                (
+                    "Commanded_Position(rotation)",
+                    motor_config::ROTATION_PER_COUNT,
+                    1.0 / motor_config::ROTATION_PER_COUNT,
+                ) // count to rotation
+            }
+        };
+
+        let pwm_column = log
+            .header_names
+            .iter()
+            .position(|name| name == commanded_header)
+            .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Commanded_PWM column is missing"))?;
+
+        /* ---------- Set Point ---------- */
+        let u: Vec<f64> = log
+            .data
+            .iter()
+            .map(|row| (row[pwm_column] as f64) * input_converter)
+            .collect();
+
+        /* ---------- Calculate Motor Output ---------- */
+        let y = match mode {
+            SimMode::OpenLoop(initial_condition) => self.open_loop(initial_condition, u),
+            SimMode::SpeedClosedLoop(initial_condition, max_speed_pps, pid_config) => {
+                self.speed_control(initial_condition, u, max_speed_pps, pid_config)
+            }
+            SimMode::PositionClosedLoop(
+                initial_condition,
+                max_speed_pps,
+                pid_speed_config,
+                pid_pos_config,
+            ) => self.position_control(
+                initial_condition,
+                u,
+                max_speed_pps,
+                pid_speed_config,
+                pid_pos_config,
+            ),
+        };
+
+        /* ---------- Convert Simulation Unit ---------- */
+        let points = log
+            .data
+            .iter()
+            .zip(y)
+            .map(|(row, current_data)| {
+                let time_s = row[0];
+                let output = current_data * output_converter;
+                (time_s, output as f32)
+            })
+            .collect();
+
+        Ok(OverlaySeries {
+            label: format!("Sim_{commanded_header}"),
+            points,
+            color: RGBColor(0, 72, 140),
+        })
+    }
+}

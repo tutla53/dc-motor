@@ -1,4 +1,6 @@
 #![allow(unused)]
+use super::*;
+
 pub const MOTOR_ID: u8 = 0;
 
 // Mechanical Properties
@@ -24,3 +26,17 @@ pub const K_NEGATIVE: f64 = 0.19629188012626667; // (pulse per seconds)/PWM_TICK
 pub const TAU_S: f64 = 0.026508300557422464; // seconds
 pub const L_S: f64 = 0.013976871626348452; // Delay Time (seconds)
 pub const L_STEPS: i32 = (L_S / DT_S) as i32; // Delay Time (steps)
+
+pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
+    kp: 25.0,
+    ki: 0.0,
+    kd: 5.0,
+    i_limit: 1500.0,
+};
+
+pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
+    kp: 2.0,
+    ki: 0.16,
+    kd: 25.0,
+    i_limit: 26_595.0,
+};
