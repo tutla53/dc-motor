@@ -49,7 +49,17 @@ pub fn open_loop(pwm: i32) -> Result<(), Box<dyn std::error::Error>> {
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
-    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
+
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_open_loop(&csv_log)?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
     Ok(())
 }
@@ -67,12 +77,15 @@ pub fn pos_trapezoid_move(
     let chart_title = "Trapezoid Position Control";
     let y_label = "Position (rotation)";
 
-    /* ---------- Get Motor Pos ---------- */
-    let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    /* ---------- Gathering Motor Info ---------- */
+    let initial_pos = try_lock!(shared.m0 => get_motor_pos())??;
     println!(
         "Initial Pos: {} count, {:.2} rotation",
-        current_pos.count, current_pos.rotation
+        initial_pos.count, initial_pos.rotation
     );
+    let pid_speed_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let pid_pos_config = try_lock!(shared.m0 => get_pid_motor_pos())??;
+    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
 
     /* ---------- Move Motor ---------- */
     try_lock!(shared.m0 => clear_motor_event())?;
@@ -112,7 +125,23 @@ pub fn pos_trapezoid_move(
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
-    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
+
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_position_control(
+        &csv_log,
+        initial_pos.count,
+        max_speed_pps,
+        &pid_speed_config,
+        &pid_pos_config,
+    )?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
     Ok(())
 }
@@ -126,12 +155,15 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     let chart_title = "Step Position Response";
     let y_label = "Position (rotation)";
 
-    /* ---------- Get Motor Pos ---------- */
-    let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    /* ---------- Gathering Motor Info ---------- */
+    let initial_pos = try_lock!(shared.m0 => get_motor_pos())??;
     println!(
         "Initial Pos: {} count, {:.2} rotation",
-        current_pos.count, current_pos.rotation
+        initial_pos.count, initial_pos.rotation
     );
+    let pid_speed_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let pid_pos_config = try_lock!(shared.m0 => get_pid_motor_pos())??;
+    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
 
     /* ---------- Move Motor ---------- */
     try_lock!(shared.m0 => clear_motor_event())?;
@@ -166,7 +198,23 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
-    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
+
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_position_control(
+        &csv_log,
+        initial_pos.count,
+        max_speed_pps,
+        &pid_speed_config,
+        &pid_pos_config,
+    )?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
     Ok(())
 }
@@ -180,6 +228,10 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     let chart_title = "Closed Loop Velocity Response";
     let y_label = "Velocity (RPM)";
     let duration_ms = 1500;
+
+    /* ---------- Gathering Motor Info ---------- */
+    let pid_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
 
     /* ---------- Move Motor ---------- */
     try_lock!(shared.m0 => clear_motor_event())?;
@@ -200,7 +252,17 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
 
     /* ---------- Plot Firmware Log ---------- */
     let (log_dir, file_dir) = logger_stop_result??;
-    plot::plot_csv(&log_dir, &file_dir, chart_title, y_label)?;
+
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_speed_control(&csv_log, max_speed_pps, &pid_config)?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
 
     Ok(())
 }
