@@ -42,10 +42,7 @@ impl PIDConfig {
         self.i_limit >= 0.0
             && values
                 .iter()
-                .all(|&value| {
-                    value.is_finite()
-                        && T::checked_from_num(value).is_some()
-                })
+                .all(|&value| value.is_finite() && T::checked_from_num(value).is_some())
     }
 }
 

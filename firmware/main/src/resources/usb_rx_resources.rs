@@ -95,14 +95,20 @@ impl<'a> CommandHandler<'a> {
                 let current_pos_pid: PIDConfig = motor.get_pos_pid().await;
                 let current_max_speed: u32 = motor.get_max_speed();
 
+                let Ok(stored_max_speed) = StoredMaxSpeed::try_from(current_max_speed) else {
+                    self.send_error_code(Some(op_code), ErrorCode::MaxSpeedOutOfRange)
+                        .await;
+                    return;
+                };
+
                 let saved_speed =
                     save_config(id as u8, ConfigType::SpeedPID, &current_speed_pid).await;
                 let saved_pos =
                     save_config(id as u8, ConfigType::PositionPID, &current_pos_pid).await;
                 let saved_max_speed =
-                    save_config(id as u8, ConfigType::MaxSpeed, &current_max_speed).await;
+                    save_config(id as u8, ConfigType::MaxSpeed, &stored_max_speed).await;
 
-                if let (Err(()), Err(()), Err(())) = (saved_speed, saved_pos, saved_max_speed) {
+                if saved_speed.is_err() || saved_pos.is_err() || saved_max_speed.is_err() {
                     self.send_error_code(Some(op_code), ErrorCode::FlashStorageError)
                         .await;
                     return;
@@ -118,6 +124,13 @@ impl<'a> CommandHandler<'a> {
                 let default_pos_pid = motor.default_pos_pid;
                 let default_max_speed = motor.default_max_speed;
 
+                let Ok(stored_default_max_speed) = StoredMaxSpeed::try_from(default_max_speed)
+                else {
+                    self.send_error_code(Some(op_code), ErrorCode::MaxSpeedOutOfRange)
+                        .await;
+                    return;
+                };
+
                 motor.set_speed_pid(default_speed_pid).await;
                 motor.set_pos_pid(default_pos_pid).await;
                 motor.set_max_speed(default_max_speed);
@@ -127,9 +140,9 @@ impl<'a> CommandHandler<'a> {
                 let saved_pos =
                     save_config(id as u8, ConfigType::PositionPID, &default_pos_pid).await;
                 let saved_max_speed =
-                    save_config(id as u8, ConfigType::MaxSpeed, &default_max_speed).await;
+                    save_config(id as u8, ConfigType::MaxSpeed, &stored_default_max_speed).await;
 
-                if let (Err(()), Err(()), Err(())) = (saved_speed, saved_pos, saved_max_speed) {
+                if saved_speed.is_err() || saved_pos.is_err() || saved_max_speed.is_err() {
                     self.send_error_code(Some(op_code), ErrorCode::FlashStorageError)
                         .await;
                     return;
@@ -288,11 +301,12 @@ impl<'a> CommandHandler<'a> {
                     };
 
                     if motor.set_pos_pid(config).await {
-                        self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+                        self.send_error_code(Some(op_code), ErrorCode::NoError)
+                            .await;
                     } else {
-                        self.send_error_code(Some(op_code), ErrorCode::InvalidPidValue).await;
+                        self.send_error_code(Some(op_code), ErrorCode::InvalidPidValue)
+                            .await;
                     }
-
                 } else {
                     self.send_error_code(Some(op_code), ErrorCode::NonFiniteFloat)
                         .await;
@@ -334,13 +348,14 @@ impl<'a> CommandHandler<'a> {
                         kd,
                         i_limit,
                     };
-                    
+
                     if motor.set_speed_pid(config).await {
-                        self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+                        self.send_error_code(Some(op_code), ErrorCode::NoError)
+                            .await;
                     } else {
-                        self.send_error_code(Some(op_code), ErrorCode::InvalidPidValue).await;
+                        self.send_error_code(Some(op_code), ErrorCode::InvalidPidValue)
+                            .await;
                     }
-                    
                 } else {
                     self.send_error_code(Some(op_code), ErrorCode::NonFiniteFloat)
                         .await;
@@ -473,12 +488,15 @@ impl<'a> CommandHandler<'a> {
             OpCode::SetMotorMaxSpeed => {
                 if let Some(motor_max_speed) = self.read() {
                     if motor.set_max_speed(motor_max_speed) {
-                        self.send_error_code(Some(op_code), ErrorCode::NoError).await;
+                        self.send_error_code(Some(op_code), ErrorCode::NoError)
+                            .await;
                     } else {
-                        self.send_error_code(Some(op_code), ErrorCode::MaxSpeedOutOfRange).await;
+                        self.send_error_code(Some(op_code), ErrorCode::MaxSpeedOutOfRange)
+                            .await;
                     }
                 } else {
-                    self.send_error_code(Some(op_code), ErrorCode::ReadByteError).await;
+                    self.send_error_code(Some(op_code), ErrorCode::ReadByteError)
+                        .await;
                 }
             }
             OpCode::SetMotorEnable => {

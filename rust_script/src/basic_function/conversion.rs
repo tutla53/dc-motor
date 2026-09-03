@@ -71,8 +71,10 @@ impl Pwm {
 
     pub fn from_percent(percent: f64) -> Self {
         let percent = percent.clamp(-100.0, 100.0);
-        let ticks = (((percent * motor_config::MAX_PWM_TICKS as f64) / 100.0) as i32)
-            .clamp(-(motor_config::MAX_PWM_TICKS as i32), motor_config::MAX_PWM_TICKS as i32);
+        let ticks = (((percent * motor_config::MAX_PWM_TICKS as f64) / 100.0) as i32).clamp(
+            -(motor_config::MAX_PWM_TICKS as i32),
+            motor_config::MAX_PWM_TICKS as i32,
+        );
 
         Self { ticks, percent }
     }

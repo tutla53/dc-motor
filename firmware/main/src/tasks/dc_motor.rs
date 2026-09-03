@@ -103,9 +103,11 @@ impl<'d> DCMotor<'d> {
 
         let pwm_ccw = pwm_a?;
         let pwm_cw = pwm_b?;
-        
-        let speed_control: PIDController<I16F16> = PIDController::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks).ok()?;
-        let position_control: PIDController<I32F32> = PIDController::new(DEFAULT_PID_POS_CONFIG,DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS).ok()?;
+
+        let speed_control: PIDController<I16F16> =
+            PIDController::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks).ok()?;
+        let position_control: PIDController<I32F32> =
+            PIDController::new(DEFAULT_PID_POS_CONFIG, DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS).ok()?;
 
         let dc_motor = Self {
             pwm_cw,
@@ -147,13 +149,24 @@ impl<'d> DCMotor<'d> {
         .await;
         motor_handler.set_pos_pid(pos_pid).await;
 
-        let max_speed = load_config(
-            motor_id,
-            ConfigType::MaxSpeed,
-            DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
-        )
-        .await;
-        motor_handler.set_max_speed(max_speed);
+        let stored_default_max_speed =
+            StoredMaxSpeed::try_from(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS).ok()?;
+
+        let stored_max_speed: StoredMaxSpeed =
+            load_config(motor_id, ConfigType::MaxSpeed, stored_default_max_speed).await;
+
+        let max_speed = match u32::try_from(stored_max_speed) {
+            Ok(speed) if speed <= PHYSICAL_MOTOR_MAX_SPEED_CPS => speed,
+            _ => {
+                let _ =
+                    save_config(motor_id, ConfigType::MaxSpeed, &stored_default_max_speed).await;
+
+                DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS
+            }
+        };
+
+        let accepted = motor_handler.set_max_speed(max_speed);
+        debug_assert!(accepted, "validated flash maximum speed was rejected");
 
         Some(dc_motor)
     }
@@ -161,14 +174,17 @@ impl<'d> DCMotor<'d> {
     async fn update_pos_pid_config(&mut self) {
         let new_pos_pid = self.motor.get_pos_pid().await;
         let result = self.position_control.update_pid_param(new_pos_pid);
-        
-        debug_assert!(result.is_ok(), "MotorHandler stored an invalid position PID");
+
+        debug_assert!(
+            result.is_ok(),
+            "MotorHandler stored an invalid position PID"
+        );
     }
 
     async fn update_speed_pid_config(&mut self) {
         let new_speed_pid = self.motor.get_speed_pid().await;
         let result = self.speed_control.update_pid_param(new_speed_pid);
-        
+
         debug_assert!(result.is_ok(), "MotorHandler stored an invalid speed PID");
     }
 
@@ -176,8 +192,11 @@ impl<'d> DCMotor<'d> {
         let max_speed = self.motor.get_max_speed();
         let result = self.position_control.update_max_output(max_speed);
 
-        debug_assert!(result.is_ok(), "MotorHandler stored an invalid maximum speed");
-        
+        debug_assert!(
+            result.is_ok(),
+            "MotorHandler stored an invalid maximum speed"
+        );
+
         if result.is_ok() {
             self.max_speed_cps = max_speed;
         }
@@ -198,7 +217,10 @@ impl<'d> DCMotor<'d> {
     }
 
     pub fn move_motor(&mut self, pwm_input: i32) {
-        let pwm_value = pwm_input.clamp(-(self.motor.max_pwm_ticks as i32), self.motor.max_pwm_ticks as i32);
+        let pwm_value = pwm_input.clamp(
+            -(self.motor.max_pwm_ticks as i32),
+            self.motor.max_pwm_ticks as i32,
+        );
         self.motor.set_commanded_pwm(pwm_value);
 
         if pwm_value > 0 {
@@ -394,7 +416,6 @@ impl<'d> DCMotor<'d> {
 
             self.motor.take_enable_request();
 
-
             let current_pos_ticks = self.motor.get_current_pos();
             let current_speed_ticks = self.filter.calculate_speed(current_pos_ticks);
 
@@ -419,7 +440,8 @@ impl<'d> DCMotor<'d> {
 
                     // Compute PWM Output
                     let sig = self.speed_control.compute(
-                        commanded_speed.clamp(-(self.max_speed_cps as i32), self.max_speed_cps as i32),
+                        commanded_speed
+                            .clamp(-(self.max_speed_cps as i32), self.max_speed_cps as i32),
                         self.current_speed_cps_fixed,
                     );
 

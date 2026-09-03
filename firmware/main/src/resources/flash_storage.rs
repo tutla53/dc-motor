@@ -17,6 +17,8 @@ pub enum ConfigType {
     MaxSpeed = 2,
 }
 
+pub type StoredMaxSpeed = i32;
+
 /* --------------------------- Flash Storage -------------------------- */
 fn get_flash_key(motor_id: u8, config: ConfigType) -> u8 {
     (motor_id << 4) | (config as u8)

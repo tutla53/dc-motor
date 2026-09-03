@@ -67,8 +67,14 @@ impl MotorSimulation {
             ModelKind::Nonlinear => nonlinear::load_identification()?,
         };
 
-        let speed_control: PIDController<I16F16> = PIDController::new(motor_config::DEFAULT_PID_SPEED_CONFIG, motor_config::MAX_PWM_TICKS)?;
-        let position_control: PIDController<I32F32> = PIDController::new(motor_config::DEFAULT_PID_POS_CONFIG, motor_config::MAX_SPEED_PPS)?;
+        let speed_control: PIDController<I16F16> = PIDController::new(
+            motor_config::DEFAULT_PID_SPEED_CONFIG,
+            motor_config::MAX_PWM_TICKS,
+        )?;
+        let position_control: PIDController<I32F32> = PIDController::new(
+            motor_config::DEFAULT_PID_POS_CONFIG,
+            motor_config::MAX_SPEED_PPS,
+        )?;
 
         Ok(Self {
             model_kind,
@@ -183,7 +189,8 @@ impl MotorSimulation {
         let d = motor_config::L_STEPS as usize;
 
         self.speed_control.update_pid_param(*pid_config)?;
-        self.speed_control.update_max_output(motor_config::MAX_PWM_TICKS)?;
+        self.speed_control
+            .update_max_output(motor_config::MAX_PWM_TICKS)?;
 
         /* ---------- Difference Equation ---------- */
         for k in 0..set_point.len() {
@@ -216,7 +223,8 @@ impl MotorSimulation {
         let d = motor_config::L_STEPS as usize;
 
         self.speed_control.update_pid_param(*pid_speed_config)?;
-        self.speed_control.update_max_output(motor_config::MAX_PWM_TICKS)?;
+        self.speed_control
+            .update_max_output(motor_config::MAX_PWM_TICKS)?;
 
         self.position_control.update_pid_param(*pid_pos_config)?;
         self.position_control.update_max_output(max_speed_pps)?;

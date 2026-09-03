@@ -163,7 +163,7 @@ impl MotorHandler {
             self.speed_pid_dirty.store(true, Ordering::Release);
             return true;
         }
-        
+
         false
     }
 
@@ -175,7 +175,7 @@ impl MotorHandler {
         if (0..=PHYSICAL_MOTOR_MAX_SPEED_CPS).contains(&speed) {
             self.max_speed_cps.store(speed, Ordering::Relaxed);
             self.max_speed_dirty.store(true, Ordering::Release);
-            
+
             return true;
         }
 
