@@ -78,7 +78,6 @@ pub struct DCMotor<'d> {
     ticks_to_cps_per_windows: I16F16,
     trapz_time_s_fixed: I32F32,
     max_speed_cps: u32,
-    last_command: Option<MotorCommand>,
     current_active_cmd: MotorCommand,
 }
 
@@ -126,7 +125,6 @@ impl<'d> DCMotor<'d> {
             ticks_to_cps_per_windows: I16F16::from_num(TICKS_TO_CPS_PER_WINDOWS),
             trapz_time_s_fixed: I32F32::from_num(0),
             max_speed_cps: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
-            last_command: None,
             current_active_cmd: MotorCommand::Stop,
         };
 
@@ -309,10 +307,7 @@ impl<'d> DCMotor<'d> {
             EVENT_CHANNEL_SIZE,
         >,
     ) {
-        if let Some(motor_command) = self.motor.get_motor_command()
-            && Some(motor_command) != self.last_command
-        {
-            self.last_command = Some(motor_command);
+        if let Some(motor_command) = self.motor.get_motor_command() {
             self.current_active_cmd = motor_command;
             self.motor.set_move_done(false);
             self.current_settle_ticks = 0;
@@ -379,7 +374,6 @@ impl<'d> DCMotor<'d> {
 
         self.trapz_time_s_fixed = I32F32::from_num(0);
         self.current_active_cmd = MotorCommand::Stop;
-        self.last_command = None;
         self.filter.last_pos = self.motor.get_current_pos();
         self.control_mode = ControlMode::Stop;
         self.apply_pending_config().await;
@@ -391,7 +385,6 @@ impl<'d> DCMotor<'d> {
                 self.motor.set_motor_enabled(false);
                 self.move_motor(0);
                 self.current_active_cmd = MotorCommand::Stop;
-                self.last_command = None;
                 self.control_mode = ControlMode::Stop;
                 self.motion_profile = None;
                 self.trapz_time_s_fixed = I32F32::from_num(0);
