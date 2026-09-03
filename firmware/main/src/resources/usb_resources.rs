@@ -61,6 +61,8 @@ pub enum ErrorCode {
     ZeroDivisionError = 8,
     MotorCommandChannelFull = 9,
     MotorIsDisabled = 10,
+    MaxSpeedOutOfRange = 11,
+    InvalidPidValue = 12,
 }
 
 /* --------------------------- Event List -------------------------- */

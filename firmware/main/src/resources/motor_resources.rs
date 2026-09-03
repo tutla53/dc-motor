@@ -35,18 +35,24 @@ pub struct MotorHandler {
     current_commanded_speed: AtomicI32,
     current_commanded_pwm: AtomicI32,
     motor_command: Channel<CriticalSectionRawMutex, MotorCommand, 16>,
-    pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
-    speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     pub default_pos_pid: PIDConfig,
     pub default_speed_pid: PIDConfig,
-    pub default_max_speed: i32,
-    pub max_pwm_ticks: i32,
-    pub max_speed_cps: AtomicI32,
+    pub default_max_speed: u32,
+    pub max_pwm_ticks: u32,
     pub move_done: AtomicBool,
     pub id: u8,
+
+    pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
+    speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
+    pub max_speed_cps: AtomicU32,
+
     enable: PortableAtomicBool,
     enable_requested: PortableAtomicBool,
     disable_requested: PortableAtomicBool,
+
+    pos_pid_dirty: PortableAtomicBool,
+    speed_pid_dirty: PortableAtomicBool,
+    max_speed_dirty: PortableAtomicBool,
 }
 
 impl MotorHandler {
@@ -64,12 +70,17 @@ impl MotorHandler {
             default_speed_pid: DEFAULT_PID_SPEED_CONFIG,
             default_max_speed: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
-            max_speed_cps: AtomicI32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
+            max_speed_cps: AtomicU32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
             move_done: AtomicBool::new(false),
             id,
+
             enable: PortableAtomicBool::new(false),
             enable_requested: PortableAtomicBool::new(false),
             disable_requested: PortableAtomicBool::new(false),
+
+            pos_pid_dirty: PortableAtomicBool::new(false),
+            speed_pid_dirty: PortableAtomicBool::new(false),
+            max_speed_dirty: PortableAtomicBool::new(false),
         }
     }
 
@@ -124,29 +135,54 @@ impl MotorHandler {
         self.current_commanded_pwm.load(Ordering::Relaxed)
     }
 
-    pub async fn set_pos_pid(&self, config: PIDConfig) {
-        let mut current = self.pos_pid.lock().await;
-        *current = config;
+    pub async fn set_pos_pid(&self, config: PIDConfig) -> bool {
+        if config.is_valid_for::<I32F32>() {
+            {
+                let mut current = self.pos_pid.lock().await;
+                *current = config;
+            }
+
+            self.pos_pid_dirty.store(true, Ordering::Release);
+            return true;
+        }
+
+        false
     }
 
     pub async fn get_pos_pid(&self) -> PIDConfig {
         return *self.pos_pid.lock().await;
     }
 
-    pub async fn set_speed_pid(&self, config: PIDConfig) {
-        let mut current = self.speed_pid.lock().await;
-        *current = config;
+    pub async fn set_speed_pid(&self, config: PIDConfig) -> bool {
+        if config.is_valid_for::<I16F16>() {
+            {
+                let mut current = self.speed_pid.lock().await;
+                *current = config;
+            }
+
+            self.speed_pid_dirty.store(true, Ordering::Release);
+            return true;
+        }
+        
+        false
     }
 
     pub async fn get_speed_pid(&self) -> PIDConfig {
         return *self.speed_pid.lock().await;
     }
 
-    pub fn set_max_speed(&self, speed: i32) {
-        self.max_speed_cps.store(speed, Ordering::Relaxed);
+    pub fn set_max_speed(&self, speed: u32) -> bool {
+        if (0..=PHYSICAL_MOTOR_MAX_SPEED_CPS).contains(&speed) {
+            self.max_speed_cps.store(speed, Ordering::Relaxed);
+            self.max_speed_dirty.store(true, Ordering::Release);
+            
+            return true;
+        }
+
+        false
     }
 
-    pub fn get_max_speed(&self) -> i32 {
+    pub fn get_max_speed(&self) -> u32 {
         self.max_speed_cps.load(Ordering::Relaxed)
     }
 
@@ -187,6 +223,18 @@ impl MotorHandler {
 
     pub fn set_motor_enabled(&self, status: bool) {
         self.enable.store(status, Ordering::SeqCst);
+    }
+
+    pub fn take_pos_pid_update(&self) -> bool {
+        self.pos_pid_dirty.swap(false, Ordering::AcqRel)
+    }
+
+    pub fn take_speed_pid_update(&self) -> bool {
+        self.speed_pid_dirty.swap(false, Ordering::AcqRel)
+    }
+
+    pub fn take_max_speed_update(&self) -> bool {
+        self.max_speed_dirty.swap(false, Ordering::AcqRel)
     }
 }
 

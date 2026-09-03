@@ -32,6 +32,7 @@ use embassy_sync::channel::Sender as ChannelSender;
 use embassy_sync::channel::TrySendError;
 use embassy_sync::mutex::Mutex;
 use embassy_usb::class::cdc_acm::State;
+use fixed::types::I16F16;
 use fixed::types::I32F32;
 use motor_control::PIDConfig;
 use portable_atomic::AtomicBool as PortableAtomicBool;

@@ -31,13 +31,14 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
 };
 
 /* --------------------------- Motor Properties -------------------------- */
-pub const DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS: i32 = 807; // 1000 RPM
+pub const PHYSICAL_MOTOR_MAX_SPEED_CPS: u32 = 1129; // 1400 RPM
+pub const DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS: u32 = 807; // 1000 RPM
 
 /* --------------------------- Clock and PWM Config -------------------------- */
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000; // 133 MHz
 pub const PWM_FREQ_HZ: u32 = 25_000; // 25kHz
 pub const PWM_PERIOD_TICKS: u16 = (SYSTEM_FREQ_HZ / PWM_FREQ_HZ) as u16 - 1;
-pub const MOTOR_MAX_PWM_TICKS: i32 = PWM_PERIOD_TICKS as i32; // Full Range
+pub const MOTOR_MAX_PWM_TICKS: u32 = PWM_PERIOD_TICKS as u32; // Full Range
 
 /* --------------------------- Control Config -------------------------- */
 pub const TIME_SAMPLING_US: u64 = 1000; // Control Loop Frequency

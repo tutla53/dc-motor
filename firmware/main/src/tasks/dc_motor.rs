@@ -77,7 +77,7 @@ pub struct DCMotor<'d> {
     filter: MovingAverageFilter<SPEED_FILTER_WINDOW>,
     ticks_to_cps_per_windows: I16F16,
     trapz_time_s_fixed: I32F32,
-    max_speed_cps: i32,
+    max_speed_cps: u32,
     last_command: Option<MotorCommand>,
     current_active_cmd: MotorCommand,
 }
@@ -103,19 +103,16 @@ impl<'d> DCMotor<'d> {
 
         let pwm_ccw = pwm_a?;
         let pwm_cw = pwm_b?;
+        
+        let speed_control: PIDController<I16F16> = PIDController::new(DEFAULT_PID_SPEED_CONFIG, motor_handler.max_pwm_ticks).ok()?;
+        let position_control: PIDController<I32F32> = PIDController::new(DEFAULT_PID_POS_CONFIG,DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS).ok()?;
 
         let dc_motor = Self {
             pwm_cw,
             pwm_ccw,
             motor: motor_handler,
-            speed_control: PIDController::new(
-                DEFAULT_PID_SPEED_CONFIG,
-                motor_handler.max_pwm_ticks,
-            ),
-            position_control: PIDController::new(
-                DEFAULT_PID_POS_CONFIG,
-                DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
-            ),
+            speed_control,
+            position_control,
             control_mode: ControlMode::Stop,
             motion_profile: None,
             command_just_received: false,
@@ -163,33 +160,45 @@ impl<'d> DCMotor<'d> {
 
     async fn update_pos_pid_config(&mut self) {
         let new_pos_pid = self.motor.get_pos_pid().await;
-        let new_max_speed = self.motor.get_max_speed();
-
-        self.position_control.reset();
-        self.position_control.update_pid_param(
-            new_pos_pid.kp,
-            new_pos_pid.ki,
-            new_pos_pid.kd,
-            new_pos_pid.i_limit,
-        );
-        self.position_control.update_max_output(new_max_speed);
-        self.max_speed_cps = new_max_speed;
+        let result = self.position_control.update_pid_param(new_pos_pid);
+        
+        debug_assert!(result.is_ok(), "MotorHandler stored an invalid position PID");
     }
 
     async fn update_speed_pid_config(&mut self) {
         let new_speed_pid = self.motor.get_speed_pid().await;
+        let result = self.speed_control.update_pid_param(new_speed_pid);
+        
+        debug_assert!(result.is_ok(), "MotorHandler stored an invalid speed PID");
+    }
 
-        self.speed_control.reset();
-        self.speed_control.update_pid_param(
-            new_speed_pid.kp,
-            new_speed_pid.ki,
-            new_speed_pid.kd,
-            new_speed_pid.i_limit,
-        );
+    fn update_max_speed_config(&mut self) {
+        let max_speed = self.motor.get_max_speed();
+        let result = self.position_control.update_max_output(max_speed);
+
+        debug_assert!(result.is_ok(), "MotorHandler stored an invalid maximum speed");
+        
+        if result.is_ok() {
+            self.max_speed_cps = max_speed;
+        }
+    }
+
+    async fn apply_pending_config(&mut self) {
+        if self.motor.take_speed_pid_update() {
+            self.update_speed_pid_config().await;
+        }
+
+        if self.motor.take_pos_pid_update() {
+            self.update_pos_pid_config().await;
+        }
+
+        if self.motor.take_max_speed_update() {
+            self.update_max_speed_config();
+        }
     }
 
     pub fn move_motor(&mut self, pwm_input: i32) {
-        let pwm_value = pwm_input.clamp(-self.motor.max_pwm_ticks, self.motor.max_pwm_ticks);
+        let pwm_value = pwm_input.clamp(-(self.motor.max_pwm_ticks as i32), self.motor.max_pwm_ticks as i32);
         self.motor.set_commanded_pwm(pwm_value);
 
         if pwm_value > 0 {
@@ -207,8 +216,6 @@ impl<'d> DCMotor<'d> {
         // Reset Control Parameter
         self.speed_control.reset();
         self.position_control.reset();
-        self.update_speed_pid_config().await;
-        self.update_pos_pid_config().await;
 
         match self.control_mode {
             ControlMode::OpenLoop => {
@@ -353,10 +360,7 @@ impl<'d> DCMotor<'d> {
         self.last_command = None;
         self.filter.last_pos = self.motor.get_current_pos();
         self.control_mode = ControlMode::Stop;
-        self.speed_control.reset();
-        self.position_control.reset();
-        self.update_speed_pid_config().await;
-        self.update_pos_pid_config().await;
+        self.apply_pending_config().await;
 
         loop {
             ticker.next().await;
@@ -375,8 +379,11 @@ impl<'d> DCMotor<'d> {
                 self.position_control.reset();
 
                 while self.motor.get_motor_command().is_some() {}
+
                 continue;
             }
+
+            self.apply_pending_config().await;
 
             if !self.motor.is_motor_enabled() {
                 if self.motor.take_enable_request() {
@@ -386,6 +393,7 @@ impl<'d> DCMotor<'d> {
             }
 
             self.motor.take_enable_request();
+
 
             let current_pos_ticks = self.motor.get_current_pos();
             let current_speed_ticks = self.filter.calculate_speed(current_pos_ticks);
@@ -411,7 +419,7 @@ impl<'d> DCMotor<'d> {
 
                     // Compute PWM Output
                     let sig = self.speed_control.compute(
-                        commanded_speed.clamp(-self.max_speed_cps, self.max_speed_cps),
+                        commanded_speed.clamp(-(self.max_speed_cps as i32), self.max_speed_cps as i32),
                         self.current_speed_cps_fixed,
                     );
 

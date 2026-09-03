@@ -56,6 +56,12 @@ impl ToLeBytes for i32 {
     }
 }
 
+impl ToLeBytes for u32 {
+    fn push_to_packet(self, packet: &mut Packet) {
+        packet.push_bytes(&self.to_le_bytes());
+    }
+}
+
 impl ToLeBytes for f32 {
     fn push_to_packet(self, packet: &mut Packet) {
         packet.push_bytes(&self.to_le_bytes());
