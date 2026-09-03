@@ -15,7 +15,7 @@
 [project]
 description = "RP2040 DC Motor Control"
 name        = "DCMotor"
-version     = "0.2.3"
+version     = "0.3.0"
 
 # ---------------------------------- Headers -----------------------------------#
 [headers]
@@ -39,6 +39,8 @@ LOGGER  = 0xFD
 8  = "ZeroDivisionError"
 9  = "MotorCommandChannelFull"
 10 = "MotorIsDisabled"
+11 = "MaxSpeedOutOfRange"
+12 = "InvalidPidValue"
 
 [telemetry]
 flags = [
@@ -179,10 +181,10 @@ args    = { motor_id = "u8" }
 command = "get_motor_max_speed"
 desc    = "Get the motor maximum speed in cps"
 op      = 17
-ret     = { motor_max_speed_cps = "i32" }
+ret     = { motor_max_speed_cps = "u32" }
 
 [[commands]]
-args    = { motor_id = "u8", motor_max_speed_cps = "i32" }
+args    = { motor_id = "u8", motor_max_speed_cps = "u32" }
 command = "set_motor_max_speed"
 desc    = "Set the motor maximum speed in cps"
 op      = 18
