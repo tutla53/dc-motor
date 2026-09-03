@@ -39,6 +39,10 @@ pub fn api_handler(
                         .parse::<i32>()
                         .map(|v| payload.extend_from_slice(&v.to_le_bytes()))
                         .map_err(|_| ()),
+                    "u32" => value_str
+                        .parse::<u32>()
+                        .map(|v| payload.extend_from_slice(&v.to_le_bytes()))
+                        .map_err(|_| ()),
                     "f32" => value_str
                         .parse::<f32>()
                         .map(|v| payload.extend_from_slice(&v.to_le_bytes()))
@@ -79,6 +83,13 @@ pub fn api_handler(
                                 }
                                 "i32" if offset + 4 <= response_bytes.len() => {
                                     let val = i32::from_le_bytes(
+                                        response_bytes[offset..offset + 4].try_into().unwrap(),
+                                    );
+                                    println!("  {}: {}", field_name, val);
+                                    offset += 4;
+                                }
+                                "u32" if offset + 4 <= response_bytes.len() => {
+                                    let val = u32::from_le_bytes(
                                         response_bytes[offset..offset + 4].try_into().unwrap(),
                                     );
                                     println!("  {}: {}", field_name, val);

@@ -10,8 +10,8 @@ pub struct OverlaySeries {
 #[allow(clippy::enum_variant_names)]
 pub enum SimMode<'a> {
     OpenLoop(f64),
-    SpeedClosedLoop(f64, i32, &'a PIDConfig),
-    PositionClosedLoop(f64, i32, &'a PIDConfig, &'a PIDConfig),
+    SpeedClosedLoop(f64, u32, &'a PIDConfig),
+    PositionClosedLoop(f64, u32, &'a PIDConfig, &'a PIDConfig),
 }
 
 #[allow(unused)]
@@ -67,20 +67,17 @@ impl MotorSimulation {
             ModelKind::Nonlinear => nonlinear::load_identification()?,
         };
 
+        let speed_control: PIDController<I16F16> = PIDController::new(motor_config::DEFAULT_PID_SPEED_CONFIG, motor_config::MAX_PWM_TICKS)?;
+        let position_control: PIDController<I32F32> = PIDController::new(motor_config::DEFAULT_PID_POS_CONFIG, motor_config::MAX_SPEED_PPS)?;
+
         Ok(Self {
             model_kind,
             alpha,
             identification,
             beta_positive: motor_config::K_POSITIVE * (1.0 - alpha),
             beta_negative: motor_config::K_NEGATIVE * (1.0 - alpha),
-            speed_control: PIDController::new(
-                motor_config::DEFAULT_PID_SPEED_CONFIG,
-                motor_config::MAX_PWM_TICKS,
-            ),
-            position_control: PIDController::new(
-                motor_config::DEFAULT_PID_POS_CONFIG,
-                motor_config::MAX_SPEED_PPS,
-            ),
+            speed_control,
+            position_control,
         })
     }
 
@@ -129,7 +126,7 @@ impl MotorSimulation {
     pub fn simulate_speed_control(
         log: &CsvProcessing,
         model_kind: ModelKind,
-        max_speed_pps: i32,
+        max_speed_pps: u32,
         pid_config: &PIDConfig,
     ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
         Self::new(model_kind)?.core(
@@ -142,7 +139,7 @@ impl MotorSimulation {
         log: &CsvProcessing,
         model_kind: ModelKind,
         initial_pos: i32,
-        max_speed_pps: i32,
+        max_speed_pps: u32,
         pid_speed_config: &PIDConfig,
         pid_pos_config: &PIDConfig,
     ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
@@ -178,22 +175,15 @@ impl MotorSimulation {
         &mut self,
         initial_condition: f64,
         set_point: Vec<f64>,
-        max_speed_pps: i32,
+        max_speed_pps: u32,
         pid_config: &PIDConfig,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
         let mut y = vec![initial_condition; set_point.len()];
         let mut u = vec![0.0; set_point.len()];
         let d = motor_config::L_STEPS as usize;
 
-        self.speed_control.update_pid_param(
-            pid_config.kp,
-            pid_config.ki,
-            pid_config.kd,
-            pid_config.i_limit,
-        );
-        self.speed_control
-            .update_max_output(motor_config::MAX_PWM_TICKS);
-        self.speed_control.reset();
+        self.speed_control.update_pid_param(*pid_config)?;
+        self.speed_control.update_max_output(motor_config::MAX_PWM_TICKS)?;
 
         /* ---------- Difference Equation ---------- */
         for k in 0..set_point.len() {
@@ -202,48 +192,34 @@ impl MotorSimulation {
             }
 
             u[k] = self.speed_control.compute(
-                (set_point[k] as i32).clamp(-max_speed_pps, max_speed_pps),
+                (set_point[k] as i32).clamp(-(max_speed_pps as i32), max_speed_pps as i32),
                 I16F16::from_num(y[k - 1]),
             ) as f64;
 
             y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1]) * u[k - d - 1];
         }
 
-        y
+        Ok(y)
     }
 
     fn position_control(
         &mut self,
         initial_condition: f64,
         set_point: Vec<f64>,
-        max_speed_pps: i32,
+        max_speed_pps: u32,
         pid_speed_config: &PIDConfig,
         pid_pos_config: &PIDConfig,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
         let mut x = vec![initial_condition; set_point.len()]; // Motor Position
         let mut y = vec![0.0; set_point.len()]; // Motor Speed Output
         let mut u = vec![0.0; set_point.len()]; // PWM Input
         let d = motor_config::L_STEPS as usize;
 
-        self.speed_control.update_pid_param(
-            pid_speed_config.kp,
-            pid_speed_config.ki,
-            pid_speed_config.kd,
-            pid_speed_config.i_limit,
-        );
-        self.speed_control
-            .update_max_output(motor_config::MAX_PWM_TICKS);
+        self.speed_control.update_pid_param(*pid_speed_config)?;
+        self.speed_control.update_max_output(motor_config::MAX_PWM_TICKS)?;
 
-        self.position_control.update_pid_param(
-            pid_pos_config.kp,
-            pid_pos_config.ki,
-            pid_pos_config.kd,
-            pid_pos_config.i_limit,
-        );
-        self.position_control.update_max_output(max_speed_pps);
-
-        self.speed_control.reset();
-        self.position_control.reset();
+        self.position_control.update_pid_param(*pid_pos_config)?;
+        self.position_control.update_max_output(max_speed_pps)?;
 
         /* ---------- Difference Equation ---------- */
         for k in 0..set_point.len() {
@@ -263,7 +239,7 @@ impl MotorSimulation {
             x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S; // Update Position
         }
 
-        x
+        Ok(x)
     }
 
     /* ---------- Mode Selection ---------- */
@@ -316,7 +292,7 @@ impl MotorSimulation {
         let y = match mode {
             SimMode::OpenLoop(initial_condition) => self.open_loop(initial_condition, u),
             SimMode::SpeedClosedLoop(initial_condition, max_speed_pps, pid_config) => {
-                self.speed_control(initial_condition, u, max_speed_pps, pid_config)
+                self.speed_control(initial_condition, u, max_speed_pps, pid_config)?
             }
             SimMode::PositionClosedLoop(
                 initial_condition,
@@ -329,7 +305,7 @@ impl MotorSimulation {
                 max_speed_pps,
                 pid_speed_config,
                 pid_pos_config,
-            ),
+            )?,
         };
 
         /* ---------- Convert Simulation Unit ---------- */

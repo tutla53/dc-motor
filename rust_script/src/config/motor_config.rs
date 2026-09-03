@@ -8,13 +8,13 @@ pub const GEAR_RATIO: f64 = 4.4;
 pub const ENCODER_PPR: f64 = 11.0;
 pub const ROTATION_PER_COUNT: f64 = 1.0 / (GEAR_RATIO * ENCODER_PPR);
 pub const COUNT_PER_ROTATION: f64 = (GEAR_RATIO * ENCODER_PPR);
-pub const MAX_SPEED_PPS: i32 = 887;
+pub const MAX_SPEED_PPS: u32 = 887;
 pub const MAX_SPEED_RPM: f64 = MAX_SPEED_PPS as f64 * ROTATION_PER_COUNT * 60.0;
 
 //  Electronic Properties
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000;
 pub const PWM_FREQ_HZ: u32 = 25_000;
-pub const MAX_PWM_TICKS: i32 = ((SYSTEM_FREQ_HZ / PWM_FREQ_HZ) - 1) as i32;
+pub const MAX_PWM_TICKS: u32 = ((SYSTEM_FREQ_HZ / PWM_FREQ_HZ) - 1);
 
 // System Properties Based on the System Identification
 pub const FREQUENCY_SAMPLING_HZ: u32 = 1000;

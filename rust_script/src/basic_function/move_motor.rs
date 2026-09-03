@@ -183,7 +183,7 @@ impl Motor {
         Err("Pico returned a runtime error flag for this command".to_string())
     }
 
-    pub fn get_motor_max_speed(&self) -> Result<i32, String> {
+    pub fn get_motor_max_speed(&self) -> Result<u32, String> {
         if let Ok(max_speed) = try_lock!(self.pico => get_motor_max_speed(self.motor_id)) {
             match max_speed {
                 Ok(value) => {
