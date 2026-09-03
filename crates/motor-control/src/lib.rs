@@ -4,6 +4,7 @@
 
 #![no_std]
 
+use core::fmt;
 use core::ops::Neg;
 use fixed::traits::Fixed;
 use fixed::traits::FixedSigned;
