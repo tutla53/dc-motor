@@ -21,6 +21,12 @@ impl Position {
     }
 }
 
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} count, {:.2} rotation", self.count, self.rotation)
+    }
+}
+
 pub struct Speed {
     pub cps: i32,
     pub rpm: f64,
