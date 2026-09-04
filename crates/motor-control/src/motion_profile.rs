@@ -12,6 +12,24 @@ pub enum MotionProfileError {
     CalculationFailed,
 }
 
+impl fmt::Display for MotionProfileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ZeroVelocity => {
+                write!(f, "Invalid: Zero Velocity Value")
+            }
+            Self::ZeroAcceleration => {
+                write!(f, "Invalid: Zero Acceleration Value")
+            }
+            Self::CalculationFailed => {
+                write!(f, "Calculation Failed")
+            }
+        }
+    }
+}
+
+impl core::error::Error for MotionProfileError {}
+
 pub struct TrapezoidProfile<T: FixedSigned> {
     initial_position: T,
     target_position: T,
@@ -122,5 +140,11 @@ impl<T: FixedSigned + FastSqrt> TrapezoidProfile<T> {
             let d_acc = T::from_num(0.5) * self.a_max * self.t_acc * self.t_acc;
             d_acc + self.a_max * self.t_acc * t_dec - T::from_num(0.5) * self.a_max * t_dec * t_dec
         }
+    }
+
+    pub fn get_total_time_ms(&self) -> u64 {
+        let t_total: u64 = (self.t_total * T::from_num(1000.0)).to_num::<u64>();
+
+        t_total
     }
 }
