@@ -9,6 +9,8 @@ use crate::basic_function::conversion::Acceleration;
 use crate::basic_function::conversion::Position;
 use crate::basic_function::conversion::Pwm;
 use crate::basic_function::conversion::Speed;
+use crate::basic_function::utility::finalize_motor_routine;
+use crate::basic_function::utility::get_move_timeout_ms;
 use crate::basic_function::utility::wait_ms;
 use crate::config::motor_config;
 use crate::plotter::plot;
