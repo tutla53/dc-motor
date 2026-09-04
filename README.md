@@ -312,19 +312,36 @@ For more detail on the development of rust_script, you can go to this section: [
 <!-- - On `script/run.py` you can create custom code to command the RP2040. We have created the example such as: -->
 We've created a sample script to test the basic movement of the DC motor and record the sensor value at 1 kHz sampling rate as shown on the code below:
 ```rust
-pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
+pub fn pos_trapezoid_move(
+    target_rotation: f64,
+    speed_rpm: f64,
+    acc_cps2: i32,
+) -> Result<(), Box<dyn std::error::Error>> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
-    let log_mask = LogMask::CommandedSpeed | LogMask::MotorSpeed;
+    let log_mask = LogMask::CommandedPosition | LogMask::MotorPosition;
     let time_sampling = 1;
-    let chart_title = "Closed Loop Velocity Response";
-    let y_label = "Velocity (RPM)";
-    let duration_ms = 1500;
+    let chart_title = "Trapezoid Position Control";
+    let y_label = "Position (rotation)";
 
     /* ---------- Gathering Motor Info ---------- */
-    let pid_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let initial_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    let pid_speed_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let pid_pos_config = try_lock!(shared.m0 => get_pid_motor_pos())??;
     let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
+
+    /* ---------- Estimate Move Time ---------- */
+    let timeout_ms = get_move_timeout_ms(
+        &initial_pos,
+        &Position::from_rotation(target_rotation),
+        &Speed::from_rpm(speed_rpm),
+        &Acceleration::from_cps_sq(acc_cps2),
+        max_speed_pps as i32,
+    )?;
+
+    /* ---------- Display Motor Info ---------- */
+    println!("  [INFO] - Initial Pos: {initial_pos}");
 
     /* ---------- Move Motor ---------- */
     try_lock!(shared.m0 => clear_motor_event())?;
@@ -332,20 +349,28 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     wait_ms(300);
 
     let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
-        try_lock!(shared.m0 => move_motor_speed(Speed::from_rpm(target_speed)))??;
-        wait_ms(duration_ms);
+        try_lock!(
+            shared.m0 =>
+            move_motor_pos_trapezoid(
+                Position::from_rotation(target_rotation),
+                Speed::from_rpm(speed_rpm),
+                Acceleration::from_cps_sq(acc_cps2)
+            )
+        )??;
+
+        try_lock!(shared.m0 => wait_move_done(Duration::from_millis(timeout_ms)))??;
+        wait_ms(300);
+
         Ok(())
     })();
 
-    let motor_stop_result = try_lock!(shared.m0 => stop_motor());
-    let logger_stop_result = try_lock!(shared.logger => stop());
+    let (log_dir, file_dir) = finalize_motor_routine(&shared.m0, &shared.logger, move_status)?;
 
-    move_status?;
-    motor_stop_result??;
+    /* ---------- Get Motor Pos ---------- */
+    let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    println!("  [INFO] - Final Pos: {current_pos}");
 
     /* ---------- Plot Firmware Log ---------- */
-    let (log_dir, file_dir) = logger_stop_result??;
-
     let csv_log = CsvProcessing::extract_information(
         &file_dir,
         TIMESTAMP_INDEX,
@@ -353,11 +378,13 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
         Y_AXIS_OFFSET,
     )?;
 
-    let simulation = MotorSimulation::simulate_speed_control(
+    let simulation = MotorSimulation::simulate_position_control(
         &csv_log,
         ModelKind::Nonlinear,
+        initial_pos.count,
         max_speed_pps,
-        &pid_config,
+        &pid_speed_config,
+        &pid_pos_config,
     )?;
 
     plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
