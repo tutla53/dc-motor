@@ -224,7 +224,7 @@ impl Motor {
 
                 if start.elapsed() > timeout {
                     return Err(format!(
-                        "Timeout waiting for motor {} to finish moving",
+                        "Timeout waiting for [Motor {}] to finish moving",
                         self.motor_id
                     ));
                 }
