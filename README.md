@@ -34,7 +34,7 @@ DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-r
 		      <ul>
 		        <li> RP2040 code by using <code>embassy_rs</code> framework </li>
 				<li> Implement Low-Level PID Motor Control </li>
-				<li> Handling USB CDC communication based on the <code> DCMotor.toml</code> </li>
+				<li> Handling USB CDC communication based on the <code>DCMotor.toml</code> </li>
 		      </ul>
 	    	</td>
 	  	</tr>
