@@ -41,10 +41,10 @@ DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-r
 		<!-- -->
 		<tr> 
 			<td align="left"> DCMotor.toml </td>
-		  	<td>
+		  	<td align="left">
 			  <ul>
 			    <li> Firmware API as a bridge between host and firmware </li>
-				<li> Format of the <code> toml</code> file
+				<li> Format of the <code> toml</code> file </li>
 				  <ul> 
 				    <li> <code> args    = { args_name = "args_type" } </code> </li>
 					<li> <code> command = "command_name" </code> </li>
@@ -52,7 +52,6 @@ DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-r
 					<li> <code> op      = OP number </code> </li>
 					<li> <code> ret     = { return_name = "return_type" } </code> </li>
 				  </ul>
-				</li>
 			  </ul>
 			</td>
 		</tr>		
