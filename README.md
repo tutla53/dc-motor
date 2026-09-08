@@ -96,16 +96,15 @@ By using this architecture we can easily organize the changes from the firmware 
 
 <!-- Please refer to the [DC Motor Research Documentation](docs/README.md) for detail research on the DC Motor. -->
 
-## Features
-### Firmware Features
-The table below shows the firmware features:
-<div align="center">
+<!-- ## Features -->
+<!-- ### Firmware Features -->
+<!-- The table below shows the firmware features: -->
+<!-- <div align="center">
 	<table>
 		<tr> 
 			<th width = "250" align="center"> Features</th>
 			<th width = "600" align="center"> Details </th>
 		</tr>
-		<!-- PID Motor Control -->
 		<tr> 
 	    	<td align="left"> PID Motor Control</td>
 	    	<td align="left">  
@@ -121,7 +120,6 @@ The table below shows the firmware features:
 		      </ul>
 	    	</td>
 	  	</tr>
-		<!-- USB Communication -->
 		<tr> 
 		  <td align="left"> Raw Byte Communication via USB CDC ACM</td>
 		  <td align="left">  
@@ -133,17 +131,14 @@ The table below shows the firmware features:
 			  </ul>
 		  </td>
 		</tr>
-		<!-- Encoder Reading Method -->
 		<tr> 
 			<td align="left"> Encoder Reading Method</td>
 		  	<td><ul><li> RP2040 PIO via <code>embassy_rp::pio_programs::rotary_encoder::PioEncoder</code></li></ul></td>
 		</tr>
-		<!-- Flash Storage -->
 		<tr> 
 	    	<td align="left">Flash Storage</td>
 	    	<td align="left"><ul><li>Save firware config on the flash memory to simulate EEPROM via <code>sequential_storage</code></li></ul></td>
 	  	</tr>
-		<!-- Multicore -->
 		<tr> 
 	    	<td align="left">Multicore</td>
 	    	<td align="left"> 
@@ -154,18 +149,17 @@ The table below shows the firmware features:
 			</td>
 	  	</tr>
 	</table>
-</div>
+</div> -->
 
-### Rust Script Features (Host Side)
-The table below shows the host-side scripting features:
+<!-- ### Rust Script Features (Host Side)
+The table below shows the host-side scripting features: -->
 
-<div align="center">
+<!-- <div align="center">
     <table>
         <tr>
             <th width="250" align="center">Features</th>
             <th width="600" align="center">Details</th>
         </tr>
-		<!-- Generated Hardware API -->
         <tr>
             <td align="left">Generated Hardware API</td>
             <td align="left">
@@ -178,7 +172,6 @@ The table below shows the host-side scripting features:
                 </ul>
             </td>
         </tr>
-        <!-- High-Level Motor Scripts -->
         <tr>
             <td align="left">Create High-Level Scripts</td>
             <td align="left">
@@ -189,8 +182,7 @@ The table below shows the host-side scripting features:
                         <code>run</code> command on the CLI apps</li>
                 </ul>
             </td>
-        </tr>				
-        <!-- Motor Abstraction -->
+        </tr>
         <tr>
             <td align="left">Motor Abstraction</td>
             <td align="left">
@@ -202,7 +194,6 @@ The table below shows the host-side scripting features:
                 </ul>
             </td>
         </tr>
-        <!-- Firmware Logging -->
         <tr>
             <td align="left">Firmware Logger</td>
             <td align="left">
@@ -214,7 +205,6 @@ The table below shows the host-side scripting features:
                 </ul>
             </td>
         </tr>
-        <!-- Data Processing and Plotting -->
         <tr>
             <td align="left">Data Processing and Plotting</td>
             <td align="left">
@@ -226,7 +216,6 @@ The table below shows the host-side scripting features:
                 </ul>
             </td>
         </tr>
-        <!-- Motor Simulation -->
         <tr>
             <td align="left">Motor Simulation</td>
             <td align="left">
@@ -239,7 +228,6 @@ The table below shows the host-side scripting features:
                 </ul>
             </td>
         </tr>
-        <!-- Simulation Mode -->
         <tr>
             <td align="left">Hardware Simulation Mode</td>
             <td align="left">
@@ -252,7 +240,7 @@ The table below shows the host-side scripting features:
             </td>
         </tr>
     </table>
-</div>
+</div> -->
 
 ## Hardware
 <p align="center">
