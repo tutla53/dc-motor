@@ -11,7 +11,7 @@ impl Motor {
         Self { pico, motor_id }
     }
 
-    pub fn enable(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn enable(&self) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -22,7 +22,7 @@ impl Motor {
         Ok(())
     }
 
-    pub fn disable(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn disable(&self) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -33,7 +33,7 @@ impl Motor {
         Ok(())
     }
 
-    pub fn is_enabled(&self) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn is_enabled(&self) -> DefaultResult<bool> {
         let mut pico = self
             .pico
             .lock()
@@ -53,7 +53,7 @@ impl Motor {
         }
     }
 
-    pub fn stop_motor(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn stop_motor(&self) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -64,7 +64,7 @@ impl Motor {
         Ok(())
     }
 
-    pub fn move_motor_speed(&self, speed: Speed) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn move_motor_speed(&self, speed: Speed) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -75,7 +75,7 @@ impl Motor {
         Ok(())
     }
 
-    pub fn move_motor_pos_step(&self, target: Position) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn move_motor_pos_step(&self, target: Position) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -91,7 +91,7 @@ impl Motor {
         target: Position,
         speed: Speed,
         acc: Acceleration,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()
@@ -102,7 +102,7 @@ impl Motor {
         Ok(())
     }
 
-    pub fn move_motor_open_loop(&self, pwm: Pwm) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn move_motor_open_loop(&self, pwm: Pwm) -> DefaultResult<()> {
         let mut pico = self
             .pico
             .lock()

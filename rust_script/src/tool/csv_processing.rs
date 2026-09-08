@@ -1,3 +1,6 @@
+
+use super::*;
+
 pub struct CsvProcessing {
     pub n_col: usize,
     pub header_names: Vec<String>,
@@ -14,7 +17,7 @@ impl CsvProcessing {
         timestamp_index: usize,
         dt_s: f32,
         y_axis_offset: f32,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<Self> {
         let mut reader = csv::Reader::from_path(file_path)?;
 
         let headers = reader.headers()?;

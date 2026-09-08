@@ -28,6 +28,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::Receiver;
 
 type BoardOutput = (Pico, Receiver<LogEntry>, HashMap<String, CommandDef>);
+type DefaultResult<T> = Result<T, Box<dyn std::error::Error>>;
 type SharedResponse = Arc<Mutex<HashMap<u8, Result<Vec<u8>, u8>>>>;
 type ResourcesOutput = (
     SharedResources,
@@ -48,7 +49,7 @@ pub struct SharedResources {
 }
 
 impl SharedResources {
-    fn new(motor_id: u8) -> Result<ResourcesOutput, Box<dyn std::error::Error>> {
+    fn new(motor_id: u8) -> DefaultResult<ResourcesOutput> {
         let (pico, log_rx, cmd_definitions) = Pico::new(env!("CONFIG_FILE"))?;
 
         let mut available_commands: Vec<String> = cmd_definitions.keys().cloned().collect();
@@ -81,7 +82,7 @@ impl SharedResources {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> DefaultResult<()> {
     let (shared, command_def, available_commands, available_routines) =
         SharedResources::new(MOTOR_ID)?;
 

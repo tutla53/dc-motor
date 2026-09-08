@@ -4,6 +4,7 @@
 
 /* ------------------------- Crate ---------------------------- */
 use crate::config::motor_config;
+use crate::DefaultResult;
 use crate::plotter::plotter_config::Canvas;
 use crate::plotter::plotter_config::ChartConfig;
 use crate::plotter::plotter_config::ColorConfig;

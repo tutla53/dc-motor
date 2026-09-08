@@ -113,7 +113,7 @@ impl Validator for CommandCompleter {
 pub fn initialized_editor(
     available_commands: &[String],
     available_routines: &[String],
-) -> Result<Editor<CommandCompleter, DefaultHistory>, Box<dyn std::error::Error>> {
+) -> DefaultResult<Editor<CommandCompleter, DefaultHistory>> {
     let config = Config::builder().auto_add_history(false).build();
     let mut editor = Editor::with_config(config)?;
 

@@ -1,3 +1,5 @@
+use super::*;
+
 // Nonlinear Properties
 pub const IDENTIFICATION_CSV: &str = include_str!("system_identification.csv");
 
@@ -13,7 +15,7 @@ pub struct IdentificationPoint {
     pub tau_s: f64,
 }
 
-pub fn load_identification() -> Result<Box<[IdentificationPoint]>, Box<dyn std::error::Error>> {
+pub fn load_identification() -> DefaultResult<Box<[IdentificationPoint]>> {
     let mut reader = csv::Reader::from_reader(IDENTIFICATION_CSV.as_bytes());
 
     let points = reader

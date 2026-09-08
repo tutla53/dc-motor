@@ -13,6 +13,7 @@ use crate::basic_function::utility::finalize_motor_routine;
 use crate::basic_function::utility::get_move_timeout_ms;
 use crate::basic_function::utility::wait_ms;
 use crate::config::motor_config;
+use crate::DefaultResult;
 use crate::plotter::plot;
 use crate::plotter::plotter_config::TIMESTAMP_INDEX;
 use crate::plotter::plotter_config::Y_AXIS_OFFSET;
@@ -35,7 +36,7 @@ pub mod script;
 // Global resources can be used only on for the script.rs
 static SHARED: OnceLock<SharedResources> = OnceLock::new();
 
-pub fn initialize_script(shared: SharedResources) -> Result<(), Box<dyn std::error::Error>> {
+pub fn initialize_script(shared: SharedResources) -> DefaultResult<()> {
     SHARED
         .set(shared.clone())
         .map_err(|_| "Shared resources already initialized!")?;

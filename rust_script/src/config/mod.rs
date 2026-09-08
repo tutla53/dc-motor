@@ -2,6 +2,9 @@
 * config hub
 */
 
+/* ------------------------- Crate ---------------------------- */
+use crate::DefaultResult;
+
 /* ------------------------ Library --------------------------- */
 use motor_control::PIDConfig;
 

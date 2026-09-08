@@ -82,7 +82,7 @@ impl Logger {
         &mut self,
         mask: LogMask,
         sampling_rate_ms: u64,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> DefaultResult<()> {
         if self.is_logging_start.load(Ordering::Relaxed) {
             return Err(Box::from("FW Logger has been started"));
         }
@@ -98,7 +98,7 @@ impl Logger {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<(String, String), Box<dyn std::error::Error>> {
+    pub fn stop(&mut self) -> DefaultResult<(String, String)> {
         if !self.is_logging_start.load(Ordering::Relaxed) {
             return Err(Box::from("FW Logger has not been started"));
         }

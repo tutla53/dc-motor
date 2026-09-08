@@ -47,7 +47,7 @@ pub struct Pico {
 }
 
 impl Pico {
-    pub fn new(toml_path: &str) -> Result<BoardOutput, Box<dyn std::error::Error>> {
+    pub fn new(toml_path: &str) -> DefaultResult<BoardOutput> {
         let toml_content = fs::read_to_string(toml_path).unwrap_or_default();
         let config: TomlConfig = toml::from_str(&toml_content)?;
         let headers = config.headers.unwrap_or_default();

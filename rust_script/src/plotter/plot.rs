@@ -7,7 +7,7 @@ pub fn plot_csv(
     file_path: &str,
     chart_title: &str,
     y_label: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> DefaultResult<()> {
     /* Plotter Config */
     let font_style = "sans-serif";
     let canvas = Canvas::new(2048, 16, 9);
@@ -130,7 +130,7 @@ pub fn plot_log(
     chart_title: &str,
     y_label: &str,
     overlays: &[OverlaySeries],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> DefaultResult<()> {
     if csv_log.data.is_empty() {
         return Err("Cannot plot an empty log".into());
     }

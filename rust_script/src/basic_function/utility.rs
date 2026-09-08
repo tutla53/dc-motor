@@ -38,8 +38,8 @@ pub fn safe_exit(pico: Arc<Mutex<Pico>>, m0: Arc<Mutex<Motor>>, logger: Arc<Mute
 pub fn finalize_motor_routine(
     motor: &Arc<Mutex<Motor>>,
     logger: &Arc<Mutex<Logger>>,
-    move_status: Result<(), Box<dyn std::error::Error>>,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
+    move_status: DefaultResult<()>,
+) -> DefaultResult<(String, String)> {
     let motor_stop_result = try_lock!(motor => stop_motor()).and_then(|result| result);
 
     let disable_result = if motor_stop_result.is_err() {
@@ -87,7 +87,7 @@ pub fn get_move_timeout_ms<'a>(
     speed: &'a Speed,
     acc: &'a Acceleration,
     max_speed: i32,
-) -> Result<u64, Box<dyn std::error::Error>> {
+) -> DefaultResult<u64>{
     let motion_profile = TrapezoidProfile::new(
         I32F32::from_num(initial_pos.count),
         I32F32::from_num(target_pos.count),

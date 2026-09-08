@@ -13,6 +13,7 @@ use crate::config::motor_config;
 use crate::config::motor_config::DEFAULT_TIMEOUT_MS;
 use crate::config::motor_config::TIMEOUT_OFFSET_MS;
 use crate::config::motor_config::TIMEOUT_SCALE;
+use crate::DefaultResult;
 use crate::logger::fwlogger::Logger;
 use crate::program::macros::MutexExt;
 use crate::try_lock;

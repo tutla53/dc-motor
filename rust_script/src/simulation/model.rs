@@ -59,7 +59,7 @@ pub struct MotorSimulation {
 
 impl MotorSimulation {
     /* ---------- Initialization ---------- */
-    pub fn new(model_kind: ModelKind) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(model_kind: ModelKind) -> DefaultResult<Self> {
         let alpha = (-motor_config::DT_S / motor_config::TAU_S).exp();
 
         let identification = match model_kind {
@@ -125,7 +125,7 @@ impl MotorSimulation {
     pub fn simulate_open_loop(
         log: &CsvProcessing,
         model_kind: ModelKind,
-    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<OverlaySeries> {
         Self::new(model_kind)?.core(log, SimMode::OpenLoop(0.0))
     }
 
@@ -134,7 +134,7 @@ impl MotorSimulation {
         model_kind: ModelKind,
         max_speed_pps: u32,
         pid_config: &PIDConfig,
-    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<OverlaySeries> {
         Self::new(model_kind)?.core(
             log,
             SimMode::SpeedClosedLoop(0.0, max_speed_pps, pid_config),
@@ -148,7 +148,7 @@ impl MotorSimulation {
         max_speed_pps: u32,
         pid_speed_config: &PIDConfig,
         pid_pos_config: &PIDConfig,
-    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<OverlaySeries> {
         Self::new(model_kind)?.core(
             log,
             SimMode::PositionClosedLoop(
@@ -183,7 +183,7 @@ impl MotorSimulation {
         set_point: Vec<f64>,
         max_speed_pps: u32,
         pid_config: &PIDConfig,
-    ) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<Vec<f64>> {
         let mut y = vec![initial_condition; set_point.len()];
         let mut u = vec![0.0; set_point.len()];
         let d = motor_config::L_STEPS as usize;
@@ -216,7 +216,7 @@ impl MotorSimulation {
         max_speed_pps: u32,
         pid_speed_config: &PIDConfig,
         pid_pos_config: &PIDConfig,
-    ) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<Vec<f64>> {
         let mut x = vec![initial_condition; set_point.len()]; // Motor Position
         let mut y = vec![0.0; set_point.len()]; // Motor Speed Output
         let mut u = vec![0.0; set_point.len()]; // PWM Input
@@ -255,7 +255,7 @@ impl MotorSimulation {
         &mut self,
         log: &CsvProcessing,
         mode: SimMode,
-    ) -> Result<OverlaySeries, Box<dyn std::error::Error>> {
+    ) -> DefaultResult<OverlaySeries> {
         let (commanded_header, legend, input_converter, output_converter) = match mode {
             SimMode::OpenLoop(_) => {
                 (

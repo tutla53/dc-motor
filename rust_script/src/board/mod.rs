@@ -4,6 +4,7 @@
 
 /* ------------------------- Crate ---------------------------- */
 use crate::BoardOutput;
+use crate::DefaultResult;
 use crate::SharedResponse;
 
 /* ------------------------ Library --------------------------- */

@@ -3,13 +3,13 @@
 use super::*;
 
 pub trait MutexExt<T> {
-    fn with<F, R>(&self, f: F) -> Result<R, Box<dyn std::error::Error>>
+    fn with<F, R>(&self, f: F) -> DefaultResult<R>
     where
         F: FnOnce(&mut MutexGuard<'_, T>) -> R;
 }
 
 impl<T> MutexExt<T> for Mutex<T> {
-    fn with<F, R>(&self, f: F) -> Result<R, Box<dyn std::error::Error>>
+    fn with<F, R>(&self, f: F) -> DefaultResult<R>
     where
         F: FnOnce(&mut MutexGuard<'_, T>) -> R,
     {
