@@ -3,9 +3,9 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::DefaultResult;
 use crate::board::rpi::CommandDef;
 use crate::board::rpi::Pico;
-use crate::DefaultResult;
 use crate::execute_program_routine;
 use crate::program::macros::MutexExt;
 use crate::try_lock;

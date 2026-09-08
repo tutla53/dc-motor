@@ -78,11 +78,7 @@ impl Logger {
         }
     }
 
-    pub fn start(
-        &mut self,
-        mask: LogMask,
-        sampling_rate_ms: u64,
-    ) -> DefaultResult<()> {
+    pub fn start(&mut self, mask: LogMask, sampling_rate_ms: u64) -> DefaultResult<()> {
         if self.is_logging_start.load(Ordering::Relaxed) {
             return Err(Box::from("FW Logger has been started"));
         }

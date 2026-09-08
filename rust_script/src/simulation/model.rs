@@ -251,11 +251,7 @@ impl MotorSimulation {
     }
 
     /* ---------- Mode Selection ---------- */
-    fn core(
-        &mut self,
-        log: &CsvProcessing,
-        mode: SimMode,
-    ) -> DefaultResult<OverlaySeries> {
+    fn core(&mut self, log: &CsvProcessing, mode: SimMode) -> DefaultResult<OverlaySeries> {
         let (commanded_header, legend, input_converter, output_converter) = match mode {
             SimMode::OpenLoop(_) => {
                 (

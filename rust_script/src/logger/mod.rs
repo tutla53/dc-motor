@@ -3,10 +3,10 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::DefaultResult;
 use crate::LogMask;
 use crate::board::rpi::LogEntry;
 use crate::board::rpi::Pico;
-use crate::DefaultResult;
 use crate::program::macros::MutexExt;
 use crate::try_lock;
 

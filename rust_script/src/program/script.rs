@@ -1,8 +1,11 @@
+// This is the place to create custom high-level motor experiment scripts.
+// This module contains routines exposed through the `run` CLI command.
+//
+// Please read the `rust_script/README.md` for the detailed information.
+
 use super::*;
 
-// TODO: Add the guidline to create the custom script
-
-pub fn enable_motor() -> Result<(), Box<dyn std::error::Error>> {
+pub fn enable_motor() -> DefaultResult<()> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     let is_enabled = try_lock!(shared.m0 => is_enabled())??;
@@ -20,7 +23,7 @@ pub fn enable_motor() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn open_loop(percent: f64) -> Result<(), Box<dyn std::error::Error>> {
+pub fn open_loop(percent: f64) -> DefaultResult<()> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
@@ -35,7 +38,7 @@ pub fn open_loop(percent: f64) -> Result<(), Box<dyn std::error::Error>> {
     try_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
-    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
+    let move_status = (|| -> DefaultResult<()> {
         try_lock!(shared.m0 => move_motor_open_loop(Pwm::from_percent(percent)))??;
         wait_ms(duration_ms);
         Ok(())
@@ -61,8 +64,8 @@ pub fn open_loop(percent: f64) -> Result<(), Box<dyn std::error::Error>> {
 pub fn pos_trapezoid_move(
     target_rotation: f64,
     speed_rpm: f64,
-    acc_cps2: i32,
-) -> Result<(), Box<dyn std::error::Error>> {
+    acc_pps2: i32,
+) -> DefaultResult<()> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
@@ -82,7 +85,7 @@ pub fn pos_trapezoid_move(
         &initial_pos,
         &Position::from_rotation(target_rotation),
         &Speed::from_rpm(speed_rpm),
-        &Acceleration::from_cps_sq(acc_cps2),
+        &Acceleration::from_pps_sq(acc_pps2),
         max_speed_pps as i32,
     )?;
 
@@ -94,13 +97,13 @@ pub fn pos_trapezoid_move(
     try_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
-    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
+    let move_status = (|| -> DefaultResult<()> {
         try_lock!(
             shared.m0 =>
             move_motor_pos_trapezoid(
                 Position::from_rotation(target_rotation),
                 Speed::from_rpm(speed_rpm),
-                Acceleration::from_cps_sq(acc_cps2)
+                Acceleration::from_pps_sq(acc_pps2)
             )
         )??;
 
@@ -127,7 +130,7 @@ pub fn pos_trapezoid_move(
     let simulation = MotorSimulation::simulate_position_control(
         &csv_log,
         ModelKind::Nonlinear,
-        initial_pos.count,
+        initial_pos.pulse,
         max_speed_pps,
         &pid_speed_config,
         &pid_pos_config,
@@ -138,7 +141,7 @@ pub fn pos_trapezoid_move(
     Ok(())
 }
 
-pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Error>> {
+pub fn pos_step_move(target_rotation: f64) -> DefaultResult<()> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
@@ -157,8 +160,8 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     let timeout_ms = get_move_timeout_ms(
         &initial_pos,
         &Position::from_rotation(target_rotation),
-        &Speed::from_cps(max_speed_pps as i32),
-        &Acceleration::from_cps_sq(1_000_000), // TODO: Move this value to the motor config
+        &Speed::from_pps(max_speed_pps as i32),
+        &Acceleration::from_pps_sq(1_000_000), // TODO: Move this value to the motor config
         max_speed_pps as i32,
     )?;
 
@@ -170,7 +173,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     try_lock!(shared.logger=> start(log_mask, time_sampling))??;
     wait_ms(300);
 
-    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
+    let move_status = (|| -> DefaultResult<()> {
         try_lock!(
             shared.m0 => move_motor_pos_step(Position::from_rotation(target_rotation))
         )??;
@@ -198,7 +201,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     let simulation = MotorSimulation::simulate_position_control(
         &csv_log,
         ModelKind::Nonlinear,
-        initial_pos.count,
+        initial_pos.pulse,
         max_speed_pps,
         &pid_speed_config,
         &pid_pos_config,
@@ -209,7 +212,7 @@ pub fn pos_step_move(target_rotation: f64) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
+pub fn speed_move(target_speed: f64) -> DefaultResult<()> {
     let shared = SHARED.get().expect("Shared resources not initialized!");
 
     /* ---------- Config ---------- */
@@ -228,7 +231,7 @@ pub fn speed_move(target_speed: f64) -> Result<(), Box<dyn std::error::Error>> {
     try_lock!(shared.logger => start(log_mask, time_sampling))??;
     wait_ms(300);
 
-    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
+    let move_status = (|| -> DefaultResult<()> {
         try_lock!(shared.m0 => move_motor_speed(Speed::from_rpm(target_speed)))??;
         wait_ms(duration_ms);
         Ok(())

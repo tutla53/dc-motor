@@ -3,6 +3,7 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::DefaultResult;
 use crate::LogMask;
 use crate::SharedResources;
 use crate::basic_function::conversion::Acceleration;
@@ -13,7 +14,6 @@ use crate::basic_function::utility::finalize_motor_routine;
 use crate::basic_function::utility::get_move_timeout_ms;
 use crate::basic_function::utility::wait_ms;
 use crate::config::motor_config;
-use crate::DefaultResult;
 use crate::plotter::plot;
 use crate::plotter::plotter_config::TIMESTAMP_INDEX;
 use crate::plotter::plotter_config::Y_AXIS_OFFSET;

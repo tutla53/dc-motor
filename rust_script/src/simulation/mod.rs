@@ -3,9 +3,9 @@
 */
 
 /* ------------------------- Crate ---------------------------- */
+use crate::DefaultResult;
 use crate::config::motor_config;
 use crate::config::nonlinear;
-use crate::DefaultResult;
 use crate::tool::csv_processing::CsvProcessing;
 
 /* ------------------------ Library --------------------------- */

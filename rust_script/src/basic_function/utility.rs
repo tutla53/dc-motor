@@ -87,7 +87,7 @@ pub fn get_move_timeout_ms<'a>(
     speed: &'a Speed,
     acc: &'a Acceleration,
     max_speed: i32,
-) -> DefaultResult<u64>{
+) -> DefaultResult<u64> {
     let motion_profile = TrapezoidProfile::new(
         I32F32::from_num(initial_pos.pulse),
         I32F32::from_num(target_pos.pulse),
