@@ -51,7 +51,7 @@
           <li>Implemented with 
           <a href ="https://docs.embassy.dev/embassy-rp/0.10.0/rp2040/pio_programs/rotary_encoder/struct.PioEncoder.html"><code>PioEncoder</code></a>
           to read the encoder position and direction </li>
-          <li> Create a task to keep the position counter only </li>
+          <li> Create a task to keep the position pulse only </li>
         </ul> 
       </td>
     </tr>

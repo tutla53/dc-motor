@@ -31,8 +31,8 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
 };
 
 /* --------------------------- Motor Properties -------------------------- */
-pub const PHYSICAL_MOTOR_MAX_SPEED_CPS: u32 = 1129; // 1400 RPM
-pub const DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS: u32 = 807; // 1000 RPM
+pub const PHYSICAL_MOTOR_MAX_SPEED_PPS: u32 = 1129; // 1400 RPM
+pub const DEFAULT_MOTOR_CONTROL_MAX_SPEED_PPS: u32 = 807; // 1000 RPM
 
 /* --------------------------- Clock and PWM Config -------------------------- */
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000; // 133 MHz
@@ -47,12 +47,12 @@ pub const TIME_SAMPLING_S_FIXED: I32F32 =
 
 /* --------------------------- Moving Average Filter Config -------------------------- */
 pub const SPEED_FILTER_WINDOW: usize = 1 << 5; // Must be 2^n
-pub const TICKS_TO_CPS_PER_WINDOWS: f32 =
+pub const TICKS_TO_PPS_PER_WINDOWS: f32 =
     1_000_000.0_f32 / (TIME_SAMPLING_US as f32 * SPEED_FILTER_WINDOW as f32);
 
 /* --------------------------- Motor Steady-State Criteria -------------------------- */
-pub const POS_TOLERANCE_COUNT: i32 = 5;
-pub const SPEED_TOLERANCE_CPS: i32 = 2;
+pub const POS_TOLERANCE_PULSE: i32 = 5;
+pub const SPEED_TOLERANCE_PPS: i32 = 2;
 pub const SETTLE_TICKS: u32 = (50 * 1000) / TIME_SAMPLING_US as u32; // 50 ms
 
 /* --------------------------- USB Communication-------------------------- */

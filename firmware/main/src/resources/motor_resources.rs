@@ -44,7 +44,7 @@ pub struct MotorHandler {
 
     pos_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
     speed_pid: Mutex<CriticalSectionRawMutex, PIDConfig>,
-    pub max_speed_cps: AtomicU32,
+    pub max_speed_pps: AtomicU32,
 
     enable: PortableAtomicBool,
     enable_requested: PortableAtomicBool,
@@ -68,9 +68,9 @@ impl MotorHandler {
             speed_pid: Mutex::new(DEFAULT_PID_SPEED_CONFIG),
             default_pos_pid: DEFAULT_PID_POS_CONFIG,
             default_speed_pid: DEFAULT_PID_SPEED_CONFIG,
-            default_max_speed: DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS,
+            default_max_speed: DEFAULT_MOTOR_CONTROL_MAX_SPEED_PPS,
             max_pwm_ticks: MOTOR_MAX_PWM_TICKS,
-            max_speed_cps: AtomicU32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_CPS),
+            max_speed_pps: AtomicU32::new(DEFAULT_MOTOR_CONTROL_MAX_SPEED_PPS),
             move_done: AtomicBool::new(false),
             id,
 
@@ -172,8 +172,8 @@ impl MotorHandler {
     }
 
     pub fn set_max_speed(&self, speed: u32) -> bool {
-        if (0..=PHYSICAL_MOTOR_MAX_SPEED_CPS).contains(&speed) {
-            self.max_speed_cps.store(speed, Ordering::Relaxed);
+        if (0..=PHYSICAL_MOTOR_MAX_SPEED_PPS).contains(&speed) {
+            self.max_speed_pps.store(speed, Ordering::Relaxed);
             self.max_speed_dirty.store(true, Ordering::Release);
 
             return true;
@@ -183,7 +183,7 @@ impl MotorHandler {
     }
 
     pub fn get_max_speed(&self) -> u32 {
-        self.max_speed_cps.load(Ordering::Relaxed)
+        self.max_speed_pps.load(Ordering::Relaxed)
     }
 
     pub fn set_move_done(&self, status: bool) {

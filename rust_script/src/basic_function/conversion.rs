@@ -3,61 +3,61 @@
 use super::*;
 
 pub struct Position {
-    pub count: i32,
+    pub pulse: i32,
     pub rotation: f64,
 }
 
 impl Position {
-    pub fn from_count(count: i32) -> Self {
-        let rotation = (count as f64 * motor_config::ROTATION_PER_COUNT);
+    pub fn from_pulse(pulse: i32) -> Self {
+        let rotation = (pulse as f64 * motor_config::ROTATION_PER_PULSE);
 
-        Self { count, rotation }
+        Self { pulse, rotation }
     }
 
     pub fn from_rotation(rotation: f64) -> Self {
-        let count = (rotation * motor_config::COUNT_PER_ROTATION) as i32;
+        let pulse = (rotation * motor_config::PULSE_PER_ROTATION) as i32;
 
-        Self { count, rotation }
+        Self { pulse, rotation }
     }
 }
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} count, {:.2} rotation", self.count, self.rotation)
+        write!(f, "{} pulse, {:.2} rotation", self.pulse, self.rotation)
     }
 }
 
 pub struct Speed {
-    pub cps: i32,
+    pub pps: i32,
     pub rpm: f64,
 }
 
 impl Speed {
-    pub fn from_cps(cps: i32) -> Self {
-        let rpm = cps as f64 * motor_config::ROTATION_PER_COUNT * 60.0;
+    pub fn from_pps(pps: i32) -> Self {
+        let rpm = pps as f64 * motor_config::ROTATION_PER_PULSE * 60.0;
 
-        Self { cps, rpm }
+        Self { pps, rpm }
     }
 
     pub fn from_rpm(rpm: f64) -> Self {
-        let cps = ((rpm * motor_config::COUNT_PER_ROTATION) / 60.0) as i32;
+        let pps = ((rpm * motor_config::PULSE_PER_ROTATION) / 60.0) as i32;
 
-        Self { cps, rpm }
+        Self { pps, rpm }
     }
 }
 
 pub struct Acceleration {
-    pub cps_square: i32,
+    pub pps_square: i32,
 }
 
 impl Acceleration {
-    pub fn from_cps_sq(cps_square: i32) -> Self {
-        Self { cps_square }
+    pub fn from_pps_sq(pps_square: i32) -> Self {
+        Self { pps_square }
     }
 
     pub fn from_rpm_per_sec(rpm_per_sec: f64) -> Self {
-        let cps_square = (rpm_per_sec * motor_config::COUNT_PER_ROTATION / 60.0) as i32;
-        Self { cps_square }
+        let pps_square = (rpm_per_sec * motor_config::PULSE_PER_ROTATION / 60.0) as i32;
+        Self { pps_square }
     }
 }
 

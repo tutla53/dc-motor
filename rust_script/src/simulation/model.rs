@@ -262,23 +262,23 @@ impl MotorSimulation {
                     "Commanded_PWM",
                     "Open Loop Simulation",
                     1.0,                                     // pwm to pwm
-                    motor_config::ROTATION_PER_COUNT * 60.0, // pps to rpm
+                    motor_config::ROTATION_PER_PULSE * 60.0, // pps to rpm
                 )
             }
             SimMode::SpeedClosedLoop(_, _, _) => {
                 (
                     "Commanded_Speed(RPM)",
                     "Motor Speed Simulation",
-                    1.0 / (motor_config::ROTATION_PER_COUNT * 60.0), // rpm to pps
-                    motor_config::ROTATION_PER_COUNT * 60.0,         // pps to rpm
+                    1.0 / (motor_config::ROTATION_PER_PULSE * 60.0), // rpm to pps
+                    motor_config::ROTATION_PER_PULSE * 60.0,         // pps to rpm
                 )
             }
             SimMode::PositionClosedLoop(_, _, _, _) => {
                 (
                     "Commanded_Position(rotation)",
                     "Motor Position Simulation",
-                    1.0 / motor_config::ROTATION_PER_COUNT, // rotation to pulse
-                    motor_config::ROTATION_PER_COUNT,       // pulse to rotation
+                    1.0 / motor_config::ROTATION_PER_PULSE, // rotation to pulse
+                    motor_config::ROTATION_PER_PULSE,       // pulse to rotation
                 )
             }
         };

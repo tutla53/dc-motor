@@ -70,7 +70,7 @@ impl Motor {
             .lock()
             .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
 
-        pico.move_motor_speed(self.motor_id, speed.cps)
+        pico.move_motor_speed(self.motor_id, speed.pps)
             .map_err(std::io::Error::other)?;
         Ok(())
     }
@@ -81,7 +81,7 @@ impl Motor {
             .lock()
             .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
 
-        pico.move_motor_abs_pos(self.motor_id, target.count)
+        pico.move_motor_abs_pos(self.motor_id, target.pulse)
             .map_err(std::io::Error::other)?;
         Ok(())
     }
@@ -97,7 +97,7 @@ impl Motor {
             .lock()
             .map_err(|_| std::io::Error::other("Pico mutex is poisoned"))?;
 
-        pico.move_motor_abs_pos_trapezoid(self.motor_id, target.count, speed.cps, acc.cps_square)
+        pico.move_motor_abs_pos_trapezoid(self.motor_id, target.pulse, speed.pps, acc.pps_square)
             .map_err(std::io::Error::other)?;
         Ok(())
     }
@@ -114,10 +114,10 @@ impl Motor {
     }
 
     pub fn get_motor_pos(&self) -> Result<Position, String> {
-        if let Ok(count) = try_lock!(self.pico => get_motor_pos(self.motor_id)) {
-            match count {
+        if let Ok(pulse) = try_lock!(self.pico => get_motor_pos(self.motor_id)) {
+            match pulse {
                 Ok(value) => {
-                    return Ok(Position::from_count(value));
+                    return Ok(Position::from_pulse(value));
                 }
                 Err(e) => {
                     return Err(e);
@@ -129,10 +129,10 @@ impl Motor {
     }
 
     pub fn get_motor_speed(&self) -> Result<Speed, String> {
-        if let Ok(cps) = try_lock!(self.pico => get_motor_speed(self.motor_id)) {
-            match cps {
+        if let Ok(pps) = try_lock!(self.pico => get_motor_speed(self.motor_id)) {
+            match pps {
                 Ok(value) => {
-                    return Ok(Speed::from_cps(value));
+                    return Ok(Speed::from_pps(value));
                 }
                 Err(e) => {
                     return Err(e);

@@ -89,10 +89,10 @@ pub fn get_move_timeout_ms<'a>(
     max_speed: i32,
 ) -> DefaultResult<u64>{
     let motion_profile = TrapezoidProfile::new(
-        I32F32::from_num(initial_pos.count),
-        I32F32::from_num(target_pos.count),
-        I32F32::from_num(speed.cps.clamp(-max_speed, max_speed)),
-        I32F32::from_num(acc.cps_square),
+        I32F32::from_num(initial_pos.pulse),
+        I32F32::from_num(target_pos.pulse),
+        I32F32::from_num(speed.pps.clamp(-max_speed, max_speed)),
+        I32F32::from_num(acc.pps_square),
     )?;
 
     let timeout_ms: u64 = motion_profile

@@ -99,14 +99,14 @@ ret     = { kp = "f32", ki = "f32", kd = "f32", i_limit = "f32" }
 [[commands]]
 args    = { motor_id = "u8", vel = "i32" }
 command = "move_motor_speed"
-desc    = "Motor Speed Control with Step Motion Profile in count per second (cps)"
+desc    = "Motor Speed Control with Step Motion Profile in pulse per second (pps)"
 op      = 3
 ret     = {}
 
 [[commands]]
 args    = { motor_id = "u8", target = "i32" }
 command = "move_motor_abs_pos"
-desc    = "Motor Position Control with Step Motion Profile in count"
+desc    = "Motor Position Control with Step Motion Profile in pulse"
 op      = 4
 ret     = {}
 
@@ -116,9 +116,9 @@ command = "move_motor_abs_pos_trapezoid"
 desc = """
             Motor Position Control with Commanded Trapezoid Motion Profile
             Argument(s)
-            - target: Position Target in Count
-            - vel: Commanded Velocity in Count per Second (cps)
-            - acc: Commanded Acceleration in Count per Second Square (cps^2)
+            - target: Position Target in Pulse
+            - vel: Commanded Velocity in Pulse per Second (pps)
+            - acc: Commanded Acceleration in Pulse per Second Square (pps^2)
         """
 op = 10
 ret = {}
@@ -144,16 +144,16 @@ ret     = {}
 [[commands]]
 args    = { motor_id = "u8" }
 command = "get_motor_pos"
-desc    = "Get motor position in Count"
+desc    = "Get motor position in Pulse"
 op      = 11
-ret     = { pos_count = "i32" }
+ret     = { pos_pulse = "i32" }
 
 [[commands]]
 args    = { motor_id = "u8" }
 command = "get_motor_speed"
-desc    = "Get motor speed in Count per Second (cps)"
+desc    = "Get motor speed in Pulse per Second (pps)"
 op      = 12
-ret     = { speed_cps = "i32" }
+ret     = { speed_pps = "i32" }
 
 [[commands]]
 args    = {}
@@ -179,14 +179,14 @@ ret     = { major = "u8", minor = "u8", patch = "u8" }
 [[commands]]
 args    = { motor_id = "u8" }
 command = "get_motor_max_speed"
-desc    = "Get the motor maximum speed in cps"
+desc    = "Get the motor maximum speed in pps"
 op      = 17
-ret     = { motor_max_speed_cps = "u32" }
+ret     = { motor_max_speed_pps = "u32" }
 
 [[commands]]
-args    = { motor_id = "u8", motor_max_speed_cps = "u32" }
+args    = { motor_id = "u8", motor_max_speed_pps = "u32" }
 command = "set_motor_max_speed"
-desc    = "Set the motor maximum speed in cps"
+desc    = "Set the motor maximum speed in pps"
 op      = 18
 ret     = {}
 

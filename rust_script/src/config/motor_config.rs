@@ -6,10 +6,10 @@ pub const MOTOR_ID: u8 = 0;
 // Mechanical Properties
 pub const GEAR_RATIO: f64 = 4.4;
 pub const ENCODER_PPR: f64 = 11.0;
-pub const ROTATION_PER_COUNT: f64 = 1.0 / (GEAR_RATIO * ENCODER_PPR);
-pub const COUNT_PER_ROTATION: f64 = (GEAR_RATIO * ENCODER_PPR);
+pub const ROTATION_PER_PULSE: f64 = 1.0 / (GEAR_RATIO * ENCODER_PPR);
+pub const PULSE_PER_ROTATION: f64 = (GEAR_RATIO * ENCODER_PPR);
 pub const MAX_SPEED_PPS: u32 = 887;
-pub const MAX_SPEED_RPM: f64 = MAX_SPEED_PPS as f64 * ROTATION_PER_COUNT * 60.0;
+pub const MAX_SPEED_RPM: f64 = MAX_SPEED_PPS as f64 * ROTATION_PER_PULSE * 60.0;
 
 //  Electronic Properties
 pub const SYSTEM_FREQ_HZ: u32 = 133_000_000;
