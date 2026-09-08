@@ -4,7 +4,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-const CONFIG_FILE: &str = "DeviceOpFuncs/DCMotor.toml";
+const CONFIG_FILE: &str = "../DeviceOpFuncs/DCMotor.toml";
 const PROGRAM_FILE: &str = "src/program/script.rs";
 
 #[derive(Deserialize, Debug)]

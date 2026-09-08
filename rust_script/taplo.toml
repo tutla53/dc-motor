@@ -12,7 +12,7 @@ array_trailing_comma = true
 indent_string = "    "
 
 [[rule]]
-include = ["DeviceOpFuncs/DCMotor.toml"]
+include = ["../DeviceOpFuncs/DCMotor.toml"]
 
 [rule.formatting]
 reorder_keys = false
