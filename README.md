@@ -12,12 +12,64 @@
 </div>
 	
 #
-DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `rust` application from the desktop as the host to communicate with the firmware API via serial communication. The graph below shows the communication diagram between host and firmware. All the firmware commands is stored on a toml file as the API between the host and firmware. The host is designed to automatically creates all the commands on the toml file as a rust function with it's argument and return value at compile time.
+
+## Project Architecture
+DC Motor Speed and Position Control with Raspberry Pi Pico RP2040 and `embassy-rs` 🦀. This is the framework to write a firmware code with USB communication and flash storage feature. We use `rust` application from the desktop as the host to communicate with the firmware API via serial communication. The graph below shows the communication diagram between host and firmware. All the firmware commands is stored on a toml file as the API between the host and firmware. The host is designed to automatically creates all the commands on the toml file at compile time as a rust function with it's argument and return value.
 
 <p align="center">
     <img src="assets/diagram/Communication Diagram.jpg" width="500">
+	<br>Fig 1. DC Motor Communication Diagram
 </p>
 
+<div align="center">
+	<table>
+		<tr> 
+			<th width = "150" align="center"> Program </th>
+			<th width = "500" align="center"> Description </th>
+		</tr>
+		<!--  -->
+		<tr> 
+	    	<td align="left"> Firmware </td>
+	    	<td align="left">  
+		      <ul>
+		        <li> RP2040 code by using <code>embassy_rs</code> framework </li>
+				<li> Implement Low-Level PID Motor Control </li>
+				<li> Handling USB CDC communication based on the <code> DCMotor.toml</code> </li>
+		      </ul>
+	    	</td>
+	  	</tr>
+		<!-- -->
+		<tr> 
+			<td align="left"> DCMotor.toml </td>
+		  	<td>
+			  <ul>
+			    <li> Firmware API as a bridge between host and firmware </li>
+				<li> Format of the <code> toml</code> file
+				  <ul> 
+				    <li> <code> args    = { args_name = "args_type" } </code> </li>
+					<li> <code> command = "command_name" </code> </li>
+					<li> <code> desc    = "API description" </code> </li>
+					<li> <code> op      = OP number </code> </li>
+					<li> <code> ret     = { return_name = "return_type" } </code> </li>
+				  </ul>
+				</li>
+			  </ul>
+			</td>
+		</tr>		
+		<!--  -->
+		<tr> 
+		  <td align="left"> Rust Program (Host Side) </td>
+		  <td align="left">  
+			  <ul>
+				<li> Controlling the Firmware with the CLI application</li>
+				<li> Creates all the commands on the toml file at compile time as a rust function with it's argument and return value</li>
+				<li> Handling Events and Firmware Logger Data </li>
+				<li> Create high level routines and experiments such as DC Motor identification and simulation  </li>
+			  </ul>
+		  </td>
+		</tr>
+	</table>
+</div>
 
 For example there's a command on the toml file to get the motor position as shown below.
 
@@ -25,9 +77,9 @@ For example there's a command on the toml file to get the motor position as show
 [[commands]]
 args    = { motor_id = "u8" }
 command = "get_motor_pos"
-desc    = "Get motor position in Count"
+desc    = "Get motor position in Pulse"
 op      = 11
-ret     = { pos_count = "i32" }
+ret     = { pos_pulse = "i32" }
 ```
 
 On the host side, that `commands` is translated to a function that we can call with something like this:
@@ -38,10 +90,15 @@ let current_pos: i32 = pico.get_motor_pos(motor_id);
 
 By using this architecture we can easily organize the changes from the firmware on the `toml` file without creating major changes on the host side and it's quite flexible to scale up the project. We can create `high-level script` that needs more computation resources (e.g. processing telemetry data, vision, SLAM, path planning) on the host side and keep microcontroller dealing with the low-level instruction. This architecture also possible to be integrated with the `ROS2`, but this topic is not included on this repository. The last important things is we need to make sure that the toml file is inline with the firmware. Wrong OP code, arguments, arguments type, and return value can lead to undefined behaviour of the firmware.
 
+<p align="center">
+    <img src="assets/00_Preview/rust-script.jpg" width="600">
+	<br>Fig 2. Desktop App Interface
+</p>
+
 <!-- Please refer to the [DC Motor Research Documentation](docs/README.md) for detail research on the DC Motor. -->
 
 ## Features
-
+### Firmware Features
 The table below shows the firmware features:
 <div align="center">
 	<table>
@@ -100,11 +157,109 @@ The table below shows the firmware features:
 	</table>
 </div>
 
+### Rust Script Features (Host Side)
+The table below shows the host-side scripting features:
+
+<div align="center">
+    <table>
+        <tr>
+            <th width="250" align="center">Features</th>
+            <th width="600" align="center">Details</th>
+        </tr>
+		<!-- Generated Hardware API -->
+        <tr>
+            <td align="left">Generated Hardware API</td>
+            <td align="left">
+                <ul>
+                    <li>Typed host methods generated from <code>DCMotor.toml</code></li>
+                    <li>Automatically serializes command arguments and decodes firmware responses</li>
+                    <li>Supports firmware configuration, motor commands,
+                        PID settings, and status queries</li>
+					<li>All direct low-level API commands can be shown and used by using the <code>dev</code> command on the CLI apps</li>
+                </ul>
+            </td>
+        </tr>
+        <!-- High-Level Motor Scripts -->
+        <tr>
+            <td align="left">Create High-Level Scripts</td>
+            <td align="left">
+                <ul>
+                    <li>Create custom high-level script in
+                        <code>src/program/script.rs</code></li>
+                    <li>The custom script automatically exposed through the
+                        <code>run</code> command on the CLI apps</li>
+                </ul>
+            </td>
+        </tr>				
+        <!-- Motor Abstraction -->
+        <tr>
+            <td align="left">Motor Abstraction</td>
+            <td align="left">
+                <ul>
+                    <li>Provides a high-level <code>Motor</code> wrapper</li>
+                    <li>Supports enable, disable, stop, and status queries</li>
+                    <li>Supports open-loop, speed, and position commands</li>
+                    <li>Uses shared resource locking for host/device access</li>
+                </ul>
+            </td>
+        </tr>
+        <!-- Firmware Logging -->
+        <tr>
+            <td align="left">Firmware Logger</td>
+            <td align="left">
+                <ul>
+                    <li>Starts and stops the firmware logger</li>
+                    <li>Receives motor position, speed, commanded values,
+                        and PWM data</li>
+                    <li>Supports sampling frequency up to 1 kHz</li>
+                </ul>
+            </td>
+        </tr>
+        <!-- Data Processing and Plotting -->
+        <tr>
+            <td align="left">Data Processing and Plotting</td>
+            <td align="left">
+                <ul>
+                    <li>Exports firmware telemetry to CSV</li>
+                    <li>Converts raw logger values into engineering units</li>
+                    <li>Generates PNG plots from experiment data</li>
+                    <li>Supports measured-data and simulation overlays</li>
+                </ul>
+            </td>
+        </tr>
+        <!-- Motor Simulation -->
+        <tr>
+            <td align="left">Motor Simulation</td>
+            <td align="left">
+                <ul>
+                    <li>Simulates open-loop motor response</li>
+                    <li>Simulates closed-loop speed response</li>
+                    <li>Simulates step and trapezoid position response</li>
+                    <li>Compares simulation results with firmware telemetry</li>
+                    <li>Supports linear and nonlinear motor models</li>
+                </ul>
+            </td>
+        </tr>
+        <!-- Simulation Mode -->
+        <tr>
+            <td align="left">Hardware Simulation Mode</td>
+            <td align="left">
+                <ul>
+                    <li>Runs the CLI when no compatible controller is found</li>
+                    <li>Allows command and routine development without hardware</li>
+                    <li>Simulates movement completion events</li>
+                    <li>Does not validate physical motor behavior</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+</div>
+
 ## Hardware
 <p align="center">
     <br>
     <img src="assets/00_Preview/motor_setup.jpg" width="500">
-	<br>Picture 1. Hardware Setup
+	<br>Fig 3. Hardware Setup
 </p>
 
 ### Specification
@@ -168,33 +323,19 @@ We can see the GPIO pin list on the `firmware/main/src/resources/gpio_list.rs`
 </div>
 
 
-## Getting Started
+## Build the Project
 ### Project Structure
-We have two main directories: `firmware` and `script` as shown on the graph below. To start with this project you can clone this repository and follows the instruction below.
+We have two main directories: `firmware` and `rust_script` as shown on the graph below. To start with this project you can clone this repository and follows the instruction below.
 
 ```bash
 .
 ├── assets
-├── docs  
+├── crates					# PID and Motion Profile Library
+├── DeviceOpFuncs
+│   └── DCMotor.toml		# Firmware API
+├── docs
 ├── firmware				# Firmware Code
-│   ├── main				## Primary Firmware Project: RP2040 PID DC Motor Control
-│   │   └── src
-│   │       ├── control
-│   │       ├── resources
-│   │       └── tasks
-│   └── playground 			## Experimental project (USB, Flash Storage)
-│
 └── rust_script				# Script to communicate with the RP2040
-    ├── DeviceOpFuncs 		## Device OP file folder to call the firmware API
-    ├── LOG					## Firmware Log Directory
-    └── src
-        ├── apps			## CLI apps builder
-        ├── basic_function	## Basic function wrapper
-        ├── board			## Manage all boards communication
-        ├── config			## Manage all hardware configs
-        ├── logger			## Firmware Logger
-        ├── plotter			## Firmware CSV Plotter
-        └── program			## Playground to create custom RP2040 program
 ```
 
 ### Software Dependencies
@@ -242,7 +383,7 @@ This project use `debian` to build the `uf2` file. This is also works on the nat
   git clone https://github.com/tutla53/dc-motor.git 
   ```
 
-### Build the Software
+### Run the Code
 
 #### Firmware
 
@@ -295,105 +436,16 @@ On the desktop script we can try using two useful commands:
 	- `dev -a` : list all avaliable commands from the toml file
 	- `dev <command> <arguments>` : call a commands with it's arguments
 
-- Run specific script by using `script`
-	- `script -a` : list all avaliable function on `rust_script/src/program/script.rs`
-	- `script <function> <arguments>` : call a function with it's arguments
+- Run specific script by using `run`
+	- `run -a` : list all avaliable function on `rust_script/src/program/script.rs`
+	- `run <function> <arguments>` : call a function with it's arguments
 
 The list of commands from toml and script from the rust code is automatically generated at a compile time with the `build.rs` script. So, for the development we only need to changet the toml file and the script file. No need to update major rust_script code. The image below shows the interface of the rust_script on the host side.
-
-<p align="center">
-    <img src="assets/00_Preview/rust-script.jpg" width="600">
-	<br>Picture 2. Desktop App Interface
-</p>
 
 For more detail on the development of rust_script, you can go to this section: [Desktop Apps Documentation](rust_script/README.md).
 
 ## Project Example
-<!-- - On `script/run.py` you can create custom code to command the RP2040. We have created the example such as: -->
-We've created a sample script to test the basic movement of the DC motor and record the sensor value at 1 kHz sampling rate as shown on the code below:
-```rust
-pub fn pos_trapezoid_move(
-    target_rotation: f64,
-    speed_rpm: f64,
-    acc_cps2: i32,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let shared = SHARED.get().expect("Shared resources not initialized!");
-
-    /* ---------- Config ---------- */
-    let log_mask = LogMask::CommandedPosition | LogMask::MotorPosition;
-    let time_sampling = 1;
-    let chart_title = "Trapezoid Position Control";
-    let y_label = "Position (rotation)";
-
-    /* ---------- Gathering Motor Info ---------- */
-    let initial_pos = try_lock!(shared.m0 => get_motor_pos())??;
-    let pid_speed_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
-    let pid_pos_config = try_lock!(shared.m0 => get_pid_motor_pos())??;
-    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
-
-    /* ---------- Estimate Move Time ---------- */
-    let timeout_ms = get_move_timeout_ms(
-        &initial_pos,
-        &Position::from_rotation(target_rotation),
-        &Speed::from_rpm(speed_rpm),
-        &Acceleration::from_cps_sq(acc_cps2),
-        max_speed_pps as i32,
-    )?;
-
-    /* ---------- Display Motor Info ---------- */
-    println!("  [INFO] - Initial Pos: {initial_pos}");
-
-    /* ---------- Move Motor ---------- */
-    try_lock!(shared.m0 => clear_motor_event())?;
-    try_lock!(shared.logger => start(log_mask, time_sampling))??;
-    wait_ms(300);
-
-    let move_status = (|| -> Result<(), Box<dyn std::error::Error>> {
-        try_lock!(
-            shared.m0 =>
-            move_motor_pos_trapezoid(
-                Position::from_rotation(target_rotation),
-                Speed::from_rpm(speed_rpm),
-                Acceleration::from_cps_sq(acc_cps2)
-            )
-        )??;
-
-        try_lock!(shared.m0 => wait_move_done(Duration::from_millis(timeout_ms)))??;
-        wait_ms(300);
-
-        Ok(())
-    })();
-
-    let (log_dir, file_dir) = finalize_motor_routine(&shared.m0, &shared.logger, move_status)?;
-
-    /* ---------- Get Motor Pos ---------- */
-    let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
-    println!("  [INFO] - Final Pos: {current_pos}");
-
-    /* ---------- Plot Firmware Log ---------- */
-    let csv_log = CsvProcessing::extract_information(
-        &file_dir,
-        TIMESTAMP_INDEX,
-        motor_config::DT_S as f32,
-        Y_AXIS_OFFSET,
-    )?;
-
-    let simulation = MotorSimulation::simulate_position_control(
-        &csv_log,
-        ModelKind::Nonlinear,
-        initial_pos.count,
-        max_speed_pps,
-        &pid_speed_config,
-        &pid_pos_config,
-    )?;
-
-    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
-
-    Ok(())
-}
-```
-
-And the result can be shown on the table below including another script.
+We've created a sample script to test the basic movement of the DC motor and record the sensor value at 1 kHz sampling rate as shown on the images below:
 
 <table>
   <tr align = "center">
