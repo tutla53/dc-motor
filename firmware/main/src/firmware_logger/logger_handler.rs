@@ -12,19 +12,21 @@ pub struct LogData {
 }
 
 impl LogData {
-    pub fn pack_data(&self, out: &mut [u8]) {
-        if out.len() < 26 {
-            return;
+    pub fn pack_data(&self) -> Result<Packet, PacketError> {
+        let mut buffer = Packet::new();
+
+        buffer
+            .push(UsbHeader::Logger as u8)?
+            .push(self.seq)?
+            .push(self.dt)?;
+
+        for value in self.values {
+            buffer.push(value)?;
         }
 
-        out[0] = UsbHeader::Logger as u8;
-        out[1] = self.seq;
-        out[2..6].copy_from_slice(&self.dt.to_le_bytes());
-        out[6..10].copy_from_slice(&self.values[0].to_le_bytes());
-        out[10..14].copy_from_slice(&self.values[1].to_le_bytes());
-        out[14..18].copy_from_slice(&self.values[2].to_le_bytes());
-        out[18..22].copy_from_slice(&self.values[3].to_le_bytes());
-        out[22..26].copy_from_slice(&self.values[4].to_le_bytes());
+        debug_assert_eq!(buffer.len(), LOG_PACKET_SIZE);
+
+        Ok(buffer)
     }
 }
 

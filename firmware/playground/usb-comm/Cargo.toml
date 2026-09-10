@@ -1,0 +1,27 @@
+[package]
+authors.workspace    = true
+description          = "Iteration 1: generic USB command parser with an RP2040 LED application"
+edition.workspace    = true
+license.workspace    = true
+name                 = "usb-comm-playground"
+repository.workspace = true
+version              = "0.1.0"
+
+[[bin]]
+bench = false
+name  = "usb-comm-playground"
+path  = "src/main.rs"
+test  = false
+
+[dependencies]
+cortex-m-rt.workspace      = true
+defmt.workspace            = true
+defmt-rtt.workspace        = true
+embassy-executor.workspace = true
+embassy-rp.workspace       = true
+embassy-sync.workspace     = true
+embassy-usb.workspace      = true
+panic-probe.workspace      = true
+portable-atomic.workspace  = true
+static_cell                = "2.1.1"
+usb-comm.workspace         = true

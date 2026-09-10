@@ -1,0 +1,13 @@
+[package]
+description = "Iteration 1: bounded USB packets and generic command parsing"
+edition     = "2024"
+license     = "MIT OR Apache-2.0"
+name        = "usb-comm"
+version     = "0.1.0"
+
+[dependencies]
+embassy-sync = "0.8.0"
+embassy-usb  = "0.6.0"
+
+[target.'cfg(not(target_os = "none"))'.dev-dependencies]
+critical-section = { version = "1.2.0", features = ["std"] }

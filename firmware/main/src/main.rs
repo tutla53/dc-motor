@@ -1,7 +1,15 @@
 #![no_std]
 #![no_main]
 
+// Macros
+#[macro_use]
+pub mod macros;
+
 // Mod
+mod communication;
+mod firmware_logger;
+mod flash_storage;
+mod motor;
 mod resources;
 mod tasks;
 
@@ -10,6 +18,9 @@ use panic_probe as _;
 use portable_atomic as _;
 
 // Crate
+use crate::firmware_logger::LoggerHandler;
+use crate::flash_storage::STORAGE;
+use crate::motor::MotorHandler;
 use crate::resources::BOS_DESC;
 use crate::resources::CMD_CHANNEL;
 use crate::resources::CONFIG_DESC;
@@ -21,17 +32,15 @@ use crate::resources::EXECUTOR0;
 use crate::resources::EXECUTOR1;
 use crate::resources::FLASH_SIZE;
 use crate::resources::N_MOTOR;
-use crate::resources::STORAGE;
 use crate::resources::STORAGE_END;
 use crate::resources::STORAGE_START;
 use crate::resources::SYSTEM_FREQ_HZ;
+use crate::resources::USB_BUFFER_SIZE;
 use crate::resources::USB_STATE;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::Motor0Resources;
 use crate::resources::gpio_list::Motor1Resources;
-use crate::resources::logger_resources::LoggerHandler;
-use crate::resources::motor_resources::MotorHandler;
 use crate::tasks::dc_motor::DCMotor;
 use crate::tasks::dc_motor::EncoderPin;
 use crate::tasks::dc_motor::MotorPin;
@@ -65,6 +74,12 @@ use embassy_usb::class::cdc_acm::State;
 use sequential_storage::cache::NoCache;
 use sequential_storage::map::MapConfig;
 use sequential_storage::map::MapStorage;
+
+// Type
+pub type StorageType =
+    MapStorage<u8, Flash<'static, embassy_rp::peripherals::FLASH, Async, FLASH_SIZE>, NoCache>;
+pub type Packet = usb_comm::Packet<USB_BUFFER_SIZE>;
+pub type StoredMaxSpeed = i32;
 
 #[interrupt]
 unsafe fn SWI_IRQ_1() {

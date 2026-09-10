@@ -4,9 +4,7 @@
 
 use super::*;
 
-pub type MyStorage =
-    MapStorage<u8, Flash<'static, embassy_rp::peripherals::FLASH, Async, FLASH_SIZE>, NoCache>;
-pub static STORAGE: Mutex<ThreadModeRawMutex, Option<MyStorage>> = Mutex::new(None);
+pub static STORAGE: Mutex<ThreadModeRawMutex, Option<StorageType>> = Mutex::new(None);
 
 /* ------- List of Available Config which can be Saved on Flash Storage --------- */
 #[derive(Clone, Copy)]
@@ -16,8 +14,6 @@ pub enum ConfigType {
     PositionPID = 1,
     MaxSpeed = 2,
 }
-
-pub type StoredMaxSpeed = i32;
 
 /* --------------------------- Flash Storage -------------------------- */
 fn get_flash_key(motor_id: u8, config: ConfigType) -> u8 {

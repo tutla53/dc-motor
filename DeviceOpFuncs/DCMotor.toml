@@ -41,6 +41,8 @@ LOGGER  = 0xFD
 10 = "MotorIsDisabled"
 11 = "MaxSpeedOutOfRange"
 12 = "InvalidPidValue"
+13 = "PacketBufferFull"
+14 = "InvalidMotionParameter"
 
 [telemetry]
 flags = [

@@ -53,23 +53,30 @@ pub async fn usb_tx_task(
 
                 Either3::Second(event) => {
                     // EVENT
-                    packet.data[0] = UsbHeader::Event as u8; // Event Header
+                    let mut buffer = Packet::new();
+                    buffer
+                        .push(UsbHeader::Event as u8)
+                        .expect("Data Fits")
+                        .push(0x00_u8)
+                        .expect("Data Fits"); // OP Code
 
                     match event {
                         EventList::MotorMoveDone(motor_id) => {
-                            packet.data[1] = 0x00; // OP Code
-                            packet.data[2] = motor_id;
+                            buffer.push(motor_id).expect("Data Fits");
                         }
                     }
 
-                    packet.len = 3;
+                    packet = buffer;
                 }
 
-                Either3::Third(data_1) => {
+                Either3::Third(log_data) => {
                     // LOGGER
                     if LOGGER.is_logging_active() {
-                        data_1.pack_data(&mut packet.data[0..26]);
-                        packet.len = 26;
+                        if let Ok(packed_log) = log_data.pack_data() {
+                            packet = packed_log
+                        } else {
+                            continue;
+                        }
                     } else {
                         continue;
                     }

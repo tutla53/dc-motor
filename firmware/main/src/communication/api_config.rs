@@ -1,5 +1,5 @@
 /*
-* USB Resources
+* API Config
     Input Command Pattern
         [HEADER] [OP_CODE] [PARAMETERS]
     Output Pattern
@@ -7,6 +7,7 @@
     Event Pattern
         [HEADER] [EVENT_CODE] [ID]
 */
+use super::*;
 
 /* --------------------------- HEADER -------------------------- */
 #[derive(PartialEq)]
@@ -63,6 +64,8 @@ pub enum ErrorCode {
     MotorIsDisabled = 10,
     MaxSpeedOutOfRange = 11,
     InvalidPidValue = 12,
+    PacketBufferFull = 13,
+    InvalidMotionParameter = 14,
 }
 
 /* --------------------------- Event List -------------------------- */

@@ -1,5 +1,10 @@
 [workspace]
-members  = ["main", "playground/flash_storage", "playground/usb_communication"]
+members = [
+    "main",
+    "playground/flash_storage",
+    "playground/usb_communication",
+    "playground/usb-comm",
+]
 resolver = "2"
 
 [workspace.package]
@@ -9,8 +14,8 @@ license    = "MIT OR Apache-2.0"
 repository = "https://github.com/tutla53/dc-motor"
 
 [workspace.dependencies]
-# Motor Control
-motor-control = { path = "../crates/motor-control", features = ["serde"]}
+motor-control = { path = "../crates/motor-control", features = ["serde"] }
+usb-comm      = { path = "../crates/usb-comm" }
 
 # Cortex 
 cortex-m-rt = { version = "0.7.5" }
