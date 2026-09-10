@@ -36,7 +36,8 @@ use crate::resources::SPEED_TOLERANCE_PPS;
 use crate::resources::TICKS_TO_PPS_PER_WINDOWS;
 use crate::resources::TIME_SAMPLING_S_FIXED;
 use crate::resources::TIME_SAMPLING_US;
-use crate::resources::USB_BUFFER_SIZE;
+use crate::resources::USB_RX_CHANNEL_SIZE;
+use crate::resources::USB_TX_CHANNEL_SIZE;
 
 use embassy_futures::select::Either3;
 use embassy_futures::select::select3;
@@ -75,6 +76,8 @@ use fixed::types::I32F32;
 use motor_control::MovingAverageFilter;
 use motor_control::PIDController;
 use motor_control::TrapezoidProfile;
+use usb_comm::transport::run_rx;
+use usb_comm::transport::run_tx;
 
 pub mod dc_motor;
 pub mod heartbeat;

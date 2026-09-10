@@ -36,7 +36,9 @@ use crate::resources::STORAGE_END;
 use crate::resources::STORAGE_START;
 use crate::resources::SYSTEM_FREQ_HZ;
 use crate::resources::USB_BUFFER_SIZE;
+use crate::resources::USB_RX_CHANNEL;
 use crate::resources::USB_STATE;
+use crate::resources::USB_TX_CHANNEL;
 use crate::resources::gpio_list::AssignedResources;
 use crate::resources::gpio_list::Irqs;
 use crate::resources::gpio_list::Motor0Resources;
@@ -51,8 +53,10 @@ use crate::tasks::dc_motor::motor0_task;
 use crate::tasks::dc_motor::motor1_task;
 use crate::tasks::heartbeat::heartbeat_task;
 use crate::tasks::logger::firmware_logger_task;
+use crate::tasks::usb_task::usb_command_task;
 use crate::tasks::usb_task::usb_device_task;
 use crate::tasks::usb_task::usb_rx_task;
+use crate::tasks::usb_task::usb_traffic_controller_task;
 use crate::tasks::usb_task::usb_tx_task;
 
 // Library
@@ -212,16 +216,20 @@ async fn main(_spawner: Spawner) {
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
         spawner.spawn(usb_device_task(usb_dev).expect("FAILED"));
-        spawner.spawn(usb_rx_task(usb_receiver, CMD_CHANNEL.sender()).expect("FAILED"));
+        spawner.spawn(usb_rx_task(usb_receiver, USB_RX_CHANNEL.sender()).expect("FAILED"));
         spawner.spawn(
-            usb_tx_task(
-                usb_transmitter,
+            usb_command_task(USB_RX_CHANNEL.receiver(), CMD_CHANNEL.sender()).expect("FAILED"),
+        );
+        spawner.spawn(
+            usb_traffic_controller_task(
                 CMD_CHANNEL.receiver(),
                 EVENT_CHANNEL.receiver(),
                 LOGGER.log_tx_buffer.receiver(),
+                USB_TX_CHANNEL.sender(),
             )
             .expect("FAILED"),
         );
+        spawner.spawn(usb_tx_task(usb_transmitter, USB_TX_CHANNEL.receiver()).expect("FAILED"));
         spawner.spawn(firmware_logger_task().expect("FAILED"));
         spawner.spawn(heartbeat_task(onboard_led.into()).expect("FAILED"));
     });

@@ -61,11 +61,17 @@ pub const EVENT_CHANNEL_SIZE: usize = 64;
 pub const DATA_CHANNEL_SIZE: usize = 64;
 pub const LOG_BUFFER_SIZE: usize = 2048;
 pub const LOG_PACKET_SIZE: usize = 26;
+pub const USB_RX_CHANNEL_SIZE: usize = 8;
+pub const USB_TX_CHANNEL_SIZE: usize = 8;
 
 /* --------------------------- Communication Channels-------------------------- */
 pub static EVENT_CHANNEL: Channel<CriticalSectionRawMutex, EventList, EVENT_CHANNEL_SIZE> =
     Channel::new();
 pub static CMD_CHANNEL: Channel<CriticalSectionRawMutex, Packet, DATA_CHANNEL_SIZE> =
+    Channel::new();
+pub static USB_RX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_RX_CHANNEL_SIZE> =
+    Channel::new();
+pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, Packet, USB_TX_CHANNEL_SIZE> =
     Channel::new();
 
 /* --------------------------- USB Builder-------------------------- */
