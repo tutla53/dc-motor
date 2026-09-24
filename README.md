@@ -317,7 +317,7 @@ We have two main directories: `firmware` and `rust_script` as shown on the graph
 ```bash
 .
 ├── assets
-├── crates					# PID and Motion Profile Library
+├── crates					# Motor Control and USB Communication Library
 ├── DeviceOpFuncs
 │   └── DCMotor.toml		# Firmware API
 ├── docs

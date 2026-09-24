@@ -68,7 +68,7 @@
 
     After the ZOH discretization process above the difference equation is shown in the equation below:
     \[
-        y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{L}{T_s})-1]
+        y[n] = e^{-T_s/\tau} \cdot y[n-1] + K \cdot (1 - e^{-T_s/\tau}) \cdot u[n-round(\frac{D}{T_s})-1]
     \]
 
     We can simplify the equation by defining new variables: 
@@ -76,7 +76,7 @@
     \begin{tabular}{l l}
         $\alpha = e^{-T_s/\tau}$ : Discrete Pole \\
         $\beta = K \cdot (1 - \alpha)$ : Input Gain \\
-        $d = round(L/T_s)$ : Dead-Time Index \\
+        $d = round(D/T_s)$ : Dead-Time Index \\
     \end{tabular} \\
 
     The final equation is:
@@ -88,7 +88,7 @@
             $T_s$ : Time Sampling (s) \\
             $\tau$ : Time Constant (s) \\
             $K$ : System Static Gain $\left( \frac{pulse/sec}{ticks} \right)$ \\
-            $L$ : time delay (s) \\
+            $D$ : time delay (s) \\
         \end{tabular} \\
     
     condition: \\

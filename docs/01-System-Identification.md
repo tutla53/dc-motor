@@ -1,21 +1,23 @@
 # System Identification
 
 <div align="center">
-  <a href="01-Control-Implementation.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
-  Control Implementation
+  DC Motor System
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
-  Speed Control
+  Control Implementation
 </div>
     
 #
 
 ## Method
+
+
 Based on the difference equation of DC motor, we can simulate the motor model with the algorithm on the python code listing below. But on this stage we still don't know the exact value of the motor parameters: steady-state gain, time-constant, and time-delay. To get that parameters we need can `directly measured` the motor parameter like Kt, Kb, L, R, J, and B or if we dont interest on the individual parameters then we can perform `numerical optimization` from the motor's open loop response. On this repo we will perform numerical optimization with the `differential_evolution` method from `scipy.optimize`. We can compare the simulation result with the actual motor step response with differents K, tau, and L value, then select the most similar result. The similarity itself is defined by the `minimum Root Mean Squared Error` (RMSE) between the simulation and the actual data. Then we repeat the process for all the different PWM input values.
 
 ### Simulation Model
@@ -262,16 +264,16 @@ The table below shows the comparison between the DC Motor open loop firmware log
 </div>
 
 <div align="center">
-  <a href="01-Control-Implementation.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
+  <a href="README.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
-  Control Implementation
+  DC Motor System
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
-  Speed Control
+  Control Implemenation
 </div>
     
 #

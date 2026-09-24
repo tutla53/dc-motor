@@ -3,7 +3,6 @@ members = [
     "main",
     "playground/flash_storage",
     "playground/usb_communication",
-    "playground/usb-comm",
 ]
 resolver = "2"
 
