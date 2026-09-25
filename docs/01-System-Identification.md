@@ -17,23 +17,81 @@
 
 ## Method
 
+After creating the mathematical model of the DC motor we will try to identify the parameters of the motor. This step is very useful to understand the dynamic and the stability of the motor or even we can move further to the simulation and implementing and tuning control system. We will not identify all motor parameters like $K_t$, $K_b$, $L$, $R$, $J$, and $B$ with detail but instead we will identify them from the `first-order system` form. The parameters that we will identify are:
+- Steady-state gain $(K)$
+- Time-constant $(\tau)$
+- Time-delay $(D)$
 
-Based on the difference equation of DC motor, we can simulate the motor model with the algorithm on the python code listing below. But on this stage we still don't know the exact value of the motor parameters: steady-state gain, time-constant, and time-delay. To get that parameters we need can `directly measured` the motor parameter like Kt, Kb, L, R, J, and B or if we dont interest on the individual parameters then we can perform `numerical optimization` from the motor's open loop response. On this repo we will perform numerical optimization with the `differential_evolution` method from `scipy.optimize`. We can compare the simulation result with the actual motor step response with differents K, tau, and L value, then select the most similar result. The similarity itself is defined by the `minimum Root Mean Squared Error` (RMSE) between the simulation and the actual data. Then we repeat the process for all the different PWM input values.
-
-### Simulation Model
+In this test, we will use the numerical method from python `scipy.optimize.differential_evolution` to estimates the unknown parameters simultaneously by minimizing the differences between model predictions from difference equation and the actual motor open loop response. The code below shows the setup of this test:
 
 ```python
-def simulate_open_loop_response(self, params, u: list, dt):        
+from scipy.optimize import differential_evolution
+
+parameters_bound = [(0.01, 0.50),   # K
+                    (0.01, 0.10),   # tau
+                    (0.00, 0.05)]   # D
+
+result = differential_evolution(
+    objective_function, 
+    parameters_bound, 
+    args=(open_loop_data, time_sampling),
+    strategy='best1bin',
+    tol=0.01,
+    mutation=(0.5, 1),
+    polish=True
+)
+```
+
+For the optimization paramaters, we choose:
+- `strategy='best1bin` = mutate the best candidate using one population difference; apply binomial crossover
+- `tol = 0.01` = relative convergence tolerance on the population’s scores
+- `mutation=(0.5, 1)` = randomly choose mutation weight $F\in[0.5,1)$ each generation
+- `polish=True` = refine the best solution with bounded local optimization, normally L-BFGS-B for this call
+
+And for the `objective_function` of this test is by minimizing the normalize `root mean squared error` (RMSE) between the model prediction and the actual motor velocity, or follows this equation: 
+$$objective = \frac{\mathrm{RMSE}}{\max|y_{\mathrm{meas}}|}.$$
+
+If the term $\max|y_{\mathrm{meas}}| = 0$, the objective value only become RMSE. The example of objective_function implementation is shown on the code below:
+
+```python
+def objective_function(self, params, open_loop_data, time_sampling):
+    # Method: Root Mean Square Error (RMSE)
+    
+    K, tau, D = params
+    
+    # Filter Invalid Value
+    if K <= 0 or tau <= 0 or D < 0:
+        return 1e10 
+    
+    u, y_meas = open_loop_data
+    y_sim = open_loop_response(params, u.tolist(), time_sampling)
+    
+    error = y_meas - y_sim
+    mse = np.mean(error**2)
+    rmse = np.sqrt(mse)
+    
+    target = np.max(np.abs(y_meas))
+    if target == 0: target = 1 
+    
+    total_error = rmse / target
+        
+    return total_error    
+```
+
+And the implementation of the difference equation is shown on the code below. This implementation approximates the delay using whole samples: $(d=\lfloor D/T_s\rfloor)$. The effective simulated delay is $dT_s$.
+
+```python
+def open_loop_response(self, params, u: list, dt):        
     '''
         Input u: PWM (Ticks)
         Output y: Motor Speed (Pulse per Second)
     '''
     
-    K, tau, L = params
+    K, tau, D = params
     
     # Simulation Variable
     N     = len(u)        # Number of Data
-    d     = int(L / dt)   # Time Delay
+    d     = int(D / dt)   # Time Delay
     y     = [0.0] * N     # Output: Motor Speed (Pulse per Second)
     
     # Motor Parameters
@@ -50,15 +108,31 @@ def simulate_open_loop_response(self, params, u: list, dt):
 
 ```
 
+With that system identification tools, we can estimate the motor parameters from the actual motor open loop data.
+
+### Test Setup
+- The identified model represents the response from commanded PWM to filtered measured velocity, including the motor, driver, and velocity estimator.
+- System Frequency = 133 MHz
+- PWM Frequency = 25 kHz
+- PWM Maximum Ticks = 5319
+- Motor Input = Voltage PWM in ticks
+- Motor Output = Motor Velocity in pulse/s
+- PWM Input Test Case = −5300 to 5300, Δticks = 100
+
+### Motor Parameters Unit
+- Steady-state gain $(pulse/s)/ticks$
+- Time-constant $(s)$
+- Time-delay $(s)$
+
 ## Simulation Result
-The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 25%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (L) has no significant changes. The average time-constant is 0.0265 seconds, while the average time delay is 0.014 second (14 steps). But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
+The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 19%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (D) has no significant changes. The average time-constant is 0.0265 seconds, while the average time delay is 0.014 second (14 steps). But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
 
 <div align="center"> 
   <img src="../assets/01_System_Identification/System_Identification_Result.jpg" width="800"></img>
 </div>
 
 ### Motor Linearity
-After we convert the data to PWM vs Motor Speed, we can see that the motor response is not linear for all the input range and not symmetric for different direction of the motor. Please note that the system that we mention here is the combination of the DC Motor and the motor driver. We used this criterion to identify the DC motor region.
+After we convert the data to PWM vs Motor Speed, we can see that the motor response is not linear for all the input range and not symmetric for different direction of the motor. Please note that the system that we mention here is the combination of the DC Motor and the motor driver. We used this criterion to identify the DC motor region. And to match the motor specification, on this graph the speed unit is on the RPM.
 
 <table>
   <tr align = "center">
@@ -180,7 +254,7 @@ The table below shows the summary of the system identification process:
     </tr>
     <tr>
       <td>Time-delay (s)</td>
-      <td align="center">L</td>
+      <td align="center">D</td>
       <td align="center" colspan=3> 0.014 </td>        
     </tr>    
   </table>
