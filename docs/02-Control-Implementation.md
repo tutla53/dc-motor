@@ -312,6 +312,7 @@ impl<T: Fixed + Neg<Output = T>> PIDController<T> {
 }
 ```
 The controller uses per-sample PID gains. Each update accumulates the error directly and calculates the derivative as the difference between the current and previous errors, without explicitly multiplying or dividing by the sampling period $T_s$. Therefore, when converting continuous-time parallel PID gains $K_p$, $K_i$, and $K_d$ to this implementation, use:
+
 $$
 \texttt{kp}=K_p,\qquad
 \texttt{ki}=K_iT_s,\qquad
