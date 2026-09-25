@@ -88,7 +88,8 @@ If we refer to the DC motor first-order voltage to velocity transfer function mo
 $$ f_{bandwidth} = \frac{1}{2 \pi \tau } (Hz)$$
 
 Based on the system identification result the time-constant of the motor is `0.0265 s`, so the DC motor bandwidth is `6.01 Hz`. 
-By that calculation, Nyquist–Shannon requires $f_s > 12.02$ Hz. By that calculation we got:
+By that calculation, Nyquist–Shannon requires $f_s > 12.02$ Hz or:
+
 $$T_s < 83.19 \text{ ms}$$
 
 This is a `theoretical reconstruction limit`, not a recommended controller sampling period.
@@ -168,6 +169,7 @@ async fn run_encoder_task() {
 
 ### Velocity
 To measure velocity of the motor, usually we have two options: (1) measuring how many pulse at a `constant-time` interval or (2) measuring time at a `constant-pulse` interval. Based on our control loop architecture, the `constant-time` method provides a straightforward implementation because it uses the position samples already available to the periodic control task. The formula for this implementation is shown on the equation below:
+
 $$v_{\text{raw}}[k]=\frac{p[k]-p[k-1]}{T_s}$$
 
 
