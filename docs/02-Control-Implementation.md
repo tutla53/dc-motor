@@ -40,7 +40,7 @@
 		<tr>  
 		<tr> 
       <td align="left"> Main Control Loop Sampling Method</td>
-      <td align="left"> Pooling with 
+      <td align="left"> Periodic asynchronous task using
         <a href="https://docs.embassy.dev/embassy-time/0.5.1/default/struct.Ticker.html"><code>embassy-time::Ticker</code></a>
       </td>
     </tr>     
@@ -60,7 +60,7 @@
       <td align="left">
         <ul>
           <li>Get the position at the beginning of the control loop to get the delta position</li>
-          <li>Update the current speed by using moving average filter with 32-sample delta position window</li>
+          <li>Update the current speed by using <code>moving average filter</code> with 32-sample delta position window</li>
         </ul> 
       </td>
     </tr>
@@ -108,7 +108,7 @@ Reference: [control-delay criterion](https://imperix.com/doc/help/discrete-contr
 
 The discrete-time controller is designed using a constant sampling period ($T_s$). The implementation should therefore keep actual sampling intervals close to this period and limit the delay between reading feedback and applying the calculated output. Excessive timing variation can change the controller response relative to the discrete-time model. A hardware-timer interrupt like `Interrupt Service Routine (ISR)` is one option for scheduling control updates with low latency. However, its timing still depends on interrupt priorities, interrupt masking, and execution time. For this implementation, the control loop uses `embassy-time::Ticker` with a period of 1 ms, corresponding to a nominal sampling frequency of 1 kHz. This allows the control algorithm to execute as an asynchronous task alongside encoder servicing and the second motor controller.
 
-The following simplified example shows the scheduling structure:
+The following simplified example shows the scheduling structure. The complete code can be found on: [`firmware/main/src/tasks/dc_motor.rs`](../firmware/main/src/tasks/dc_motor.rs)
 
 ```Rust
 // PID Control Loop Structure
@@ -131,8 +131,6 @@ async fn run_motor_task() {
 }
 ```
 
-The code above generate the `ticker` for every 1 ms (1000 Hz) that will trigger the loop on the `run_motor_task`. It's not the relative delay like `delay()` on Arduino which will start the calculation after the function is called, but it's will calculate the time after declaration and will be executed with constant tick. This ticker also is not blocking delay, while the `ticker` is waiting for the next tick, the CPU will jump to another task that available. By using this method, we can create constant time-sampling for 1000 Hz application.
-
 The ticker maintains a periodic schedule rather than starting a new 1 ms delay after each calculation (e.g. `delay()` on Arduino). While the next tick is pending, the executor can service other ready tasks without busy waiting. This provides a straightforward way to coordinate periodic control and asynchronous encoder processing. The 1 ms period is a scheduling target, not an automatic execution guarantee. Other tasks, interrupts, resource waits, or flash operations can delay an update. The complete control path must therefore be assessed for maximum scheduling delay, execution time, and missed deadlines. Overdue ticks may complete immediately, so the implementation also needs an explicit policy for missed updates rather than assuming that every iteration represents a normally spaced sample.
 
 Reference: [Embassy Ticker](https://docs.embassy.dev/embassy-time/0.5.1/default/struct.Ticker.html)
@@ -141,10 +139,11 @@ Reference: [Embassy Ticker](https://docs.embassy.dev/embassy-time/0.5.1/default/
 ### Position 
 We can measured the motor position by counting how much rotary encoder signal or pulse. We can convert the pulse to the other unit like angle or distance unit. This measurement method could be very instensive especially on high speed DC motor. For example, on our DC motor we have:
 - Rotary Encoder = 48.4 pulse/rotation
-- Maximum Speed = 1200 RPM or 20 rotation/seconds
-- Rotary Encoder Maximum Frequency = `968 pulse/seconds`
+- Maximum Physical Speed = 1500 RPM or 25 rotation/seconds
+- Rotary Encoder Maximum Frequency = `1210 pulse/seconds`
 
-To accomodate that, we can create a task just to keep counting for every position change. On the `embassy-rp` we can use the `PioEncoder` to read the rotary encoder position for both clockwise and counter clockwise direction. This will be useful to reduce the CPU load during reading two ditial pin of the rotary encoder. The example of the PioEncoder can be found [here](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/pio_rotary_encoder.rs). To avoid the data racing during read and write the current position, we can use `Atomic`, specifically for this project we use `AtomicI32`, which can be safely shared between threads (control, logger, etc). The code below shows the example how to updating the motor position by using AtomicI32 and PioEncoder.
+To accomodate that, we can create a task just to keep counting for every position change. On the `embassy-rp` we can use the `PioEncoder` to read the rotary encoder position for both clockwise and counter clockwise direction. This will be useful to reduce the CPU load during reading two ditial pin of the rotary encoder. The example of the PioEncoder can be found [here](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/pio_rotary_encoder.rs). To avoid the data racing during read and write the current position, we can use `Atomic`, specifically for this project we use `AtomicI32`, which can be safely shared between threads (control, logger, etc). The code below shows the example how to updating the motor position by using AtomicI32 and PioEncoder. The complete code can be found on: [`firmware/main/src/tasks/dc_motor.rs`](../firmware/main/src/tasks/dc_motor.rs)
+
 
 ```Rust
 // Measuring Motor Position from Rotary Encoder
@@ -161,8 +160,10 @@ async fn run_encoder_task() {
             Direction::Clockwise => 1,
             Direction::CounterClockwise => -1,
         };
+
         let current_pos = CURRENT_POS.load(Ordering::Relaxed);
-        self.motor.set_current_pos(current_pos.saturating_add(step));
+
+        CURRENT_POS.store(current_pos.saturating_add(step), Ordering::Relaxed);
     }
 }
 ```
@@ -172,13 +173,9 @@ To measure velocity of the motor, usually we have two options: (1) measuring how
 
 $$v_{\text{raw}}[k]=\frac{p[k]-p[k-1]}{T_s}$$
 
-
-
 But the main problem with measuring pulse at a constant-time interval is a shorter measurement interval produces a larger velocity increment per encoder count, resulting in coarser velocity resolution. For example, with our 1 ms sampling time, each additional count changes the raw estimate by:
 
 $$ \Delta v=\frac{1}{0.001}=1000\text{ pulse/s} $$
-
-
 
 Consequently, a constant physical velocity can produce readings of zero or 1000 pulse/s. Let's take a example at the case of a motor running constantly at 800 pulse/seconds and the encoder reading constant-time interval is 1 ms. 
 
@@ -214,11 +211,12 @@ Then the measurement reading will be resulting something like this:
 
 To increase the resolution, we can increase the measurement interval. For instance, if we use 4 ms interval then the resolution is become 250 pulse/s and the measurement result contains three or four counts, producing 750 or 1000 pulse/s. The result is better but still not good enough to measure low velocity. The simplest solution is keep increasing the measurement interval but this method will reducing the responsiveness of the motor because it takes long time to update the velocity. Because of that we need to set some limit to improve the measurement resolution but still has good responsiveness. Let say we want to achieve the velocity resolution of `40 RPM` or around `32 pulse/second` (around 3% of maximum velocity). That means we need the measurement interval of around 32 ms.
 
-A non-overlapping 32 ms measurement window would provide a new estimate every 32 ms. Instead, this implementation uses an overlapping window containing the latest 32 position increments and updates the estimate every 1 ms or usually called as `moving average filter`. This improves the update rate while retaining the resolution and delay associated with the longer measurement window. With 32 samples at a 1 ms sampling period, the moving average introduces 15.5 ms of additional group delay relative to the raw velocity estimates. The complete 32 ms measurement window is centered approximately 16 ms before the current update. Updating the estimate every millisecond does not remove this measurement lag. The formula of this filter is shown on the formula below:
+A non-overlapping 32 ms measurement window would provide a new estimate every 32 ms. Instead, this implementation uses an overlapping window containing the latest 32 position increments and updates the estimate every 1 ms or usually called as `moving average filter`. This improves the update rate while retaining the resolution and delay associated with the longer measurement window. With 32 samples at a 1 ms sampling period, the moving average introduces 15.5 ms of additional group delay relative to the raw velocity estimates. The complete 32 ms measurement window is centered approximately 16 ms before the current update. Updating the estimate every millisecond does not remove this measurement lag. The formula of this filter is shown on the equation below:
 
 $$ \hat v[k] =\frac{1}{N}\sum_{i=0}^{N-1}v_{\text{raw}}[k-i]$$
 
-The implementation of the velocity calculation is shown on the listing below. The filter buffer is initially filled with zeros, so early outputs include a startup transient until 32 actual increments have been collected. Before the first update, `last_pos` must be initialized to the current encoder count to avoid treating an existing position offset as motion.
+The implementation of the velocity calculation is shown on the listing below. The filter buffer is initially filled with zeros, so early outputs include a startup transient until 32 actual increments have been collected. Before the first update, `last_pos` must be initialized to the current encoder count to avoid treating an existing position offset as motion. The complete code can be found on: [`crates/motor-control/src/filter.rs`](../crates/motor-control/src/filter.rs)
+
 
 ```rust
 pub struct MovingAverageFilter<const WINDOW: usize> {
@@ -272,41 +270,55 @@ self.current_speed_pps_fixed = current_speed_ticks * ticks_to_pps_per_windows;
 ```
 
 ## PID Control
-### Floating Point Handler
-The RP2040 doesn't have have floating-point arithmetic implemented in hardware and it is best to
-avoid it if possible. The compiler like `gcc` or `rustc` comes with software floating-point libraries for processors without floating-point support. But the problem with the compiler-builtins is it takes around 60–90 clock cycles to perform a single-precision float addition or substract. Raspberry included a fast floating-point library on the `bootROM`. This library knows all the features of the RP2040 and uses the division coprocessor. This can reduce the CPU cycles 2-3 times, so this makes the floating point calculation faster. But there's faster way to handle the floating point arithmetic, is by using <a href="https://crates.io/crates/fixed"><code>fixed</code></a> which treat the float as the integer. By using that, the addition and substraction can be done by using only 1 cpu cycle. This method can speed up the floating-point arithmetic 2-3 times faster than the boot ROM and 5-6 times faster than the compiler builtins. This is very significant improvment because the PID calculation is always executed on the control loop task. 
+### Fixed-Point Arithmetic
+
+The RP2040 PID controller operates at a **1 kHz sampling frequency**, providing **1 ms between control updates**. On calculating PID, we will face intensive floating-point calculation that can create the computational overhead. To reduce computational overhead, the controller uses fixed-point arithmetic through Rust’s [`fixed`](https://crates.io/crates/fixed) crate instead of the RP2040 floating-point library on `bootROM`. Fixed-point represents fractional values as scaled integers, avoiding the exponent alignment and normalization required by software floating-point arithmetic. The speed controller uses `I16F16`, a 32-bit format with 16 fractional bits and a constant resolution of approximately $0.00001526$. As a reference baseline, a [Cornell RP2040 benchmark](https://people.ece.cornell.edu/land/courses/ece4760/RP2040/C_SDK_fixed_pt/index_fixed.html), running at **125 MHz** with **`-Ofast`** optimization, measured **138 µs for floating-point versus 40 µs for equivalent-format fixed-point** over 100 multiply-and-add iterations, including loop overhead. This represents approximately **3.4× faster execution**, or a **71% reduction in execution time** for that workload. If performed once per 1 ms control period, the benchmark workload would consume **13.8% versus 4.0% of one core’s processing time**, freeing 98 µs for other work. This illustrates how lower arithmetic overhead can increase the time available for sensor processing, filtering, and PWM updates. However, Cornell’s handwritten C benchmark is not a measurement of this Rust PID controller, which includes saturating arithmetic and additional control logic. The actual benefit must therefore be measured using the compiled implementation, while verifying that numerical range, quantization, and complete-loop execution time satisfy the controller’s requirements.
 
 ### PID Implementation
-The implementation of the PID by using the fixed-point float is shown on the code below. The PIDControl is designed to a generic fixed point because the `fixed` type of the speed and position control is different. Because the input range of speed control is from -1200 to 1200 RPM, it's enough using the `I16F16` (16-bit fixed-point numbers) which has the range from -32_768 to 32_767. For the position control it's need the `I32F32` (32-bit fixed-point numbers) because we have no limitation for the position command. By using this we can easily calculate the PID output by calling the `compute` function.
+The implementation of the PID by using the fixed-point arithmetic is shown on the code below. The PIDControl is designed to a generic fixed point because the `fixed` type of the speed and position control is different. Because the input range of speed control is approximately from ±1200 pulse/s, it's enough using the `I16F16` (32-bit fixed-point numbers) which has the range from $-32768$ to $32768-2^{-16}$ to accommodates the expected speed input range. The error, accumulated error, and gain products must also remain within the representable range to avoid unintended saturation.
+
+Position commands use signed 32-bit encoder counts. The position controller therefore uses `I32F32` (64-bit fixed-point numbers) to represent this count range while retaining fractional precision. By using this we can easily calculate the PID output by calling the `compute` function.
 
 ```Rust
-pub struct PIDcontrol<T: Fixed> {
+pub struct PIDController<T: Fixed> {
     kp: T,
     ki: T,
     kd: T,
     i_limit: T,
     integral: T,
     prev_error: T,
-    max_threshold: i32,
+    max_output: i32,
 }
 
-impl<T: Fixed + Neg<Output = T>> PIDcontrol<T> {
+impl<T: Fixed + Neg<Output = T>> PIDController<T> {
     #[inline(always)]
-    pub fn compute(&mut self, error: T) -> i32 {
+    pub fn compute(&mut self, command: i32, feedback: T) -> i32 {
+        let error = T::from_num(command).saturating_sub(feedback);
+
         let next_integral = self.integral.saturating_add(error);
         self.integral = next_integral.clamp(-self.i_limit, self.i_limit);
 
-        let derivative = error - self.prev_error;
+        let derivative = error.saturating_sub(self.prev_error);
         self.prev_error = error;
 
-        let sig = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative);
+        let p = self.kp.saturating_mul(error);
+        let i = self.ki.saturating_mul(self.integral);
+        let d = self.kd.saturating_mul(derivative);
 
-        sig.to_num::<i32>().clamp(-self.max_threshold, self.max_threshold)
+        let sig = p.saturating_add(i).saturating_add(d);
+
+        sig.to_num::<i32>().clamp(-self.max_output, self.max_output)
     }
 }
 ```
+The controller uses per-sample PID gains. Each update accumulates the error directly and calculates the derivative as the difference between the current and previous errors, without explicitly multiplying or dividing by the sampling period $T_s$. Therefore, when converting continuous-time parallel PID gains $K_p$, $K_i$, and $K_d$ to this implementation, use:
+$$
+\texttt{kp}=K_p,\qquad
+\texttt{ki}=K_iT_s,\qquad
+\texttt{kd}=\frac{K_d}{T_s}
+$$
 
-To separate the communication and the main PID control tasks, we used the multicore capability of the RP2040. CORE0 will be used for the communication tasks and CORE1 is for the control tasks.
+Here, $T_s$ is expressed in seconds. At the nominal sampling period of $1\,\text{ms}$, these become $\texttt{ki}=0.001K_i$ and $\texttt{kd}=1000K_d$. The implementation stores and uses these discrete gains directly; it does not perform this conversion internally. Gains already tuned using this implementation should not be converted again. If the sampling period changes, the gains must be reconsidered to preserve the intended controller response.
 
 <!-- ### Speed Control
 ### Position Control
