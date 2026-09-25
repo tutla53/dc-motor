@@ -117,6 +117,8 @@ With that system identification tools, we can estimate the motor parameters from
 - PWM Maximum Ticks = 5319
 - Motor Input = Voltage PWM in ticks
 - Motor Output = Motor Velocity in pulse/s
+- Velocity Sampling Period = 1 ms (1 kHz)
+- Velocity Measurement = Position difference over each sample, followed by a 32-sample moving average (32 ms window), as described in [Control Implementation](02-Control-Implementation.md#velocity)
 - PWM Input Test Case = −5300 to 5300, Δticks = 100
 
 ### Motor Parameters Unit
@@ -125,14 +127,14 @@ With that system identification tools, we can estimate the motor parameters from
 - Time-delay $(s)$
 
 ## Simulation Result
-The graph below shows the result of the system identification process. We can see that there's a deadband for the PWM below 19%. After the deadband to the maximum PWM input, we can see that the time-constant ($\tau$) and time-delay (D) has no significant changes. The average time-constant is 0.0265 seconds, while the average time delay is 0.014 second (14 steps). But for the steady-state gain (K) there's a nonlinearity behaviour based on the PWM input. After the deadband region, the value of K is increasing up to the 85% of the PWM Input, and then decreasing after that up to 100%. To analyzed further about the K, we will convert the graph from PWM vs K to PWM vs Speed.
+The graph below shows the fitted parameters across the tested PWM range. Little or no motion is observed below approximately 19% PWM magnitude. Away from this deadband and its transition, the plotted time constants ($\tau$) and delays ($D$) cluster around approximately constant levels, while the steady-state gain ($K$) varies with input. The reported summary values are $\tau = 0.0265$ s and $D = 0.014$ s; at a 1 ms sampling period, a 14 ms effective delay corresponds to 14 samples. These describe the combined response from PWM command to filtered measured velocity. Fits near the deadband may reach the parameter bounds and should not be interpreted as reliable estimates of motor dynamics. The fitted gain changes with PWM magnitude and direction, rising toward a peak in the upper input range before decreasing near full input. The following PWM-versus-speed plot illustrates the corresponding steady-state behavior.
 
 <div align="center"> 
   <img src="../assets/01_System_Identification/System_Identification_Result.jpg" width="800"></img>
 </div>
 
 ### Motor Linearity
-After we convert the data to PWM vs Motor Speed, we can see that the motor response is not linear for all the input range and not symmetric for different direction of the motor. Please note that the system that we mention here is the combination of the DC Motor and the motor driver. We used this criterion to identify the DC motor region. And to match the motor specification, on this graph the speed unit is on the RPM.
+The PWM-versus-speed plot shows a nonlinear steady-state response and different behavior in the two directions. Speed is expressed in RPM for comparison with the motor specification. The regions below are approximate descriptions of the observed motor-and-driver response, using PWM magnitude. They do not establish which physical mechanism causes each change in slope. Friction and driver behavior are possible contributors, but separating them requires additional measurements. An approximately straight steady-state curve also does not by itself establish transient-model accuracy.
 
 <table>
   <tr align = "center">
@@ -146,22 +148,22 @@ After we convert the data to PWM vs Motor Speed, we can see that the motor respo
     </td>
     <td align="left">
       <b>[1] Deadband Zone</b><br>
-      At the low PWM input from 0 - 19% the motor is not moving because the current is not enough to overcome the static friction from the motor. Because of that we called this region as the `deadband`, because we cannot get the response. On the DC motor model we assume that the friction on the motor is only the viscous friction, but in reality the motor need to overcome the static coulomb friction from brush, bearing, and gear.<br><br>
+      At approximately 0 - 19% PWM magnitude, little or no motion is observed. This region is described as the deadband. Insufficient drive torque to overcome static friction is one possible explanation, but the speed measurements alone do not separate friction from driver or load effects.<br><br>
+      <!--  -->
+      <b>[2] Nonlinear Transition</b><br>
+      At approximately 19 - 30% PWM magnitude, the motor begins to move and the slope of the steady-state speed curve changes. A constant-gain model may therefore fit this region poorly. Speed-dependent friction, including a possible Stribeck effect, could contribute, but this mechanism has not been isolated by these tests.<br><br>
       <!--  -->
     </td>
     <tr>
     <td colspan=2>
-    <b>[2] Nonlinear Transition</b><br>
-      Just after the voltage input is increased, the current is strong enough to move the motor system. But during this transition, the friction constant is still not linear (see `Stribeck Effect`), which also makes the relationship between PWM input and motor speed is not linear. So, if we simulate the motor response on this region (19 - 30% of input) with the linear model, the the result may not accurate. <br><br>
-      <!--  -->
       <b>[3] Linear Region</b><br>
-      In this region (30 - 75% of input) the friction is fully moved to viscous friction and has a constant value. We can predict the system accurately with linear model on this region. We can estimate the value of K (steady-state constant) of the DC motor by calculating the slope of this region to build the linear model. This is the sweet spot of the DC motor and very recommended to operate and tune the DC motor on this region.<br><br>
+      At approximately 30 - 75% PWM magnitude, the steady-state speed curve is approximately straight. This makes the region a candidate for fitting a linear approximation and evaluating controller tuning. It does not show that friction is exclusively viscous. The approximation must still be checked against transient measurements over the intended operating range.<br><br>
       <!--  -->
       <b>[4] Pre-saturation</b><br>
-      If we input voltage above 75%, some constant like the back-EMF constant starting to reach the limit and not give a linear response. Beside that, the H-bridge also almost reach the saturation region which resulting the output voltage is hardly to increase. This could also occur on the other components that begin sturate as the response to the temperature change. Because of that we can see that the speed changes is higher than the linear region as shown on the jump value of K on the Figure 1.<br><br>
+      At approximately 75 - 90% PWM magnitude, the slope departs from the middle-range linear approximation before reaching the upper speed plateau. Here, pre-saturation is a descriptive label for that observed transition. The curve does not establish saturation of the back-EMF constant, H-bridge, or other components; identifying the cause would require measurements such as motor-terminal voltage, current, and temperature.<br><br>
       <!--  -->
       <b>[5] Saturation</b><br>
-      At this point, the input changes cannot increase the motor speed because many components is also saturating. 
+      At approximately 90 - 100% PWM magnitude, further command increases produce little change in the measured steady-state speed. This is an observed speed plateau under the test conditions; it does not identify which component or limitation causes the plateau.
     </td>
     </tr>
   </tr>  
@@ -262,7 +264,7 @@ The table below shows the summary of the system identification process:
 - Notes: pps = pulse per seconds
 
 ## Nonlinear Simulation Model
-To implement the Nonlinear model, we can use the `interpolation` from stead-state data gain. With this method we can create more accurate for all PWM input. The drawback is the computation process is slower because we need to interpolate the K based on the motor open loop response.
+The nonlinear model interpolates the fitted gain as a function of signed PWM input. This allows the model to represent the observed variation in steady-state response while retaining the chosen time constant and delay. Interpolation adds a calculation to each simulation update, but its execution-time cost has not been measured here. Accuracy between measured operating points, during reversals, and under different loads requires validation; interpolation alone does not establish accuracy across the full input range.
 
 ```python    
 for k in range(N):
@@ -280,7 +282,9 @@ for k in range(N):
 
 ## Verification
 
-The table below shows the comparison between the DC Motor open loop firmware log and the simulation graph.  Based on that, we can say that we have successfully created the simulation model of the DC Motor with the minimum of error that cover for both direction and various speed. For the linear model, we can see that the most accurate model is on the linear region. Outside that, the motor model prediction may be higher or lower than the actual steady-state speed of the motor. But on the other hand, the nonlinear model can predict accurately the motor response from 0 to 100% of PWM input. That's inline with our analysis before and we can say the optimization process is correct.
+The table below compares measured open-loop responses with the linear and nonlinear simulations at selected positive PWM levels. The displayed curves show improved agreement for the nonlinear model, particularly where a constant-gain model misses the steady-state speed. These comparisons provide qualitative evidence for the displayed cases; they do not establish a numerical accuracy level, performance in both directions, or accuracy throughout the full input range.
+
+This document does not establish whether the comparison logs were excluded from parameter fitting and gain-table construction. Until their provenance is recorded, these plots should be treated as response comparisons rather than independent predictive validation. A quantitative validation should identify the fitting and held-out datasets, include both directions, and report errors for each case, such as RMSE in pulse/s and steady-state speed error. Peak-normalized RMSE can also be reported for nonzero responses, with the stated zero-speed fallback distinguished from a relative error. No such validation metrics are reported here.
 
 <div align="center">
   <table>
