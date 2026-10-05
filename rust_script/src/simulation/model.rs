@@ -163,7 +163,7 @@ impl MotorSimulation {
     /* ---------- Mathematical Model ---------- */
     fn open_loop(&self, initial_condition: f64, u: Vec<f64>) -> Vec<f64> {
         let mut y = vec![initial_condition; u.len()];
-        let d = motor_config::L_STEPS as usize;
+        let d = motor_config::D_STEPS as usize;
 
         /* ---------- Difference Equation ---------- */
         for k in 0..u.len() {
@@ -186,7 +186,7 @@ impl MotorSimulation {
     ) -> DefaultResult<Vec<f64>> {
         let mut y = vec![initial_condition; set_point.len()];
         let mut u = vec![0.0; set_point.len()];
-        let d = motor_config::L_STEPS as usize;
+        let d = motor_config::D_STEPS as usize;
 
         self.speed_control.update_pid_param(*pid_config)?;
         self.speed_control
@@ -220,7 +220,7 @@ impl MotorSimulation {
         let mut x = vec![initial_condition; set_point.len()]; // Motor Position
         let mut y = vec![0.0; set_point.len()]; // Motor Speed Output
         let mut u = vec![0.0; set_point.len()]; // PWM Input
-        let d = motor_config::L_STEPS as usize;
+        let d = motor_config::D_STEPS as usize;
 
         self.speed_control.update_pid_param(*pid_speed_config)?;
         self.speed_control

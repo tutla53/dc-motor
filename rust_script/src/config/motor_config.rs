@@ -39,8 +39,8 @@ pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
 pub const K_POSITIVE: f64 = 0.2058678594254962; // (pulse per seconds)/PWM_TICKS
 pub const K_NEGATIVE: f64 = 0.19629188012626667; // (pulse per seconds)/PWM_TICKS
 pub const TAU_S: f64 = 0.026508300557422464; // seconds
-pub const L_S: f64 = 0.013976871626348452; // Delay Time (seconds)
-pub const L_STEPS: i32 = (L_S / DT_S) as i32; // Delay Time (steps)
+pub const D_S: f64 = 0.013976871626348452; // Delay Time (seconds)
+pub const D_STEPS: i32 = (D_S / DT_S) as i32; // Delay Time (steps)
 
 // Move Motor Config
 pub const DEFAULT_TIMEOUT_MS: u64 = 20_000;
