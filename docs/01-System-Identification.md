@@ -5,12 +5,12 @@
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="02-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-Control-Design.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   DC Motor System
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="700" height="1">
-  Control Implementation
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
+  Control Design
 </div>
     
 #
@@ -118,7 +118,7 @@ With that system identification tools, we can estimate the motor parameters from
 - Motor Input = Voltage PWM in ticks
 - Motor Output = Motor Velocity in pulse/s
 - Velocity Sampling Period = 1 ms (1 kHz)
-- Velocity Measurement = Position difference over each sample, followed by a 32-sample moving average (32 ms window), as described in [Control Implementation](02-Control-Implementation.md#velocity)
+- Velocity Measurement = Position difference over each sample, followed by a 32-sample moving average (32 ms window), as described in [Control Design](02-Control-Design.md#velocity)
 - PWM Input Test Case = −5300 to 5300, Δticks = 100
 
 ### Motor Parameters Unit
@@ -266,20 +266,6 @@ The table below shows the summary of the system identification process:
 ## Nonlinear Simulation Model
 The nonlinear model interpolates the fitted gain as a function of signed PWM input. This allows the model to represent the observed variation in steady-state response while retaining the chosen time constant and delay. Interpolation adds a calculation to each simulation update, but its execution-time cost has not been measured here. Accuracy between measured operating points, during reversals, and under different loads requires validation; interpolation alone does not establish accuracy across the full input range.
 
-```python    
-for k in range(N):
-    if (k - d - 1) < 0:
-        continue
-    
-    # Update Motor Gain based on the PWM Input
-    K_intrp = interpolate(K_LIST, u[k-d-1])
-    BETA    = K_intrp * (1 - ALPHA)
-    
-    # Difference Equation: Update Speed
-    y[k] = ALPHA * y[k-1] + BETA * u[k-d-1]
-
-```
-
 ## Verification
 
 The table below compares measured open-loop responses with the linear and nonlinear simulations at selected positive PWM levels. The displayed curves show improved agreement for the nonlinear model, particularly where a constant-gain model misses the steady-state speed. These comparisons provide qualitative evidence for the displayed cases; they do not establish a numerical accuracy level, performance in both directions, or accuracy throughout the full input range.
@@ -346,12 +332,12 @@ This document does not establish whether the comparison logs were excluded from 
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="02-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="02-Control-Design.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   DC Motor System
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="700" height="1">
-  Control Implemenation
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="750" height="1">
+  Control Design
 </div>
     
 #

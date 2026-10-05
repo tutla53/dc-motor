@@ -1,43 +1,42 @@
-# Control System Implementation on RP2040
+# Control System Design
 
 <div align="center">
   <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
-  Speed Control
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1">
+  Control Implementation
 </div>
     
 #
 
-## Highlight
+## Design Highlights
 <div align="center">
 	<table>
 		<tr> 
-			<th width=200 align="center"> Parameter</th>
-			<th width=600 align="center"> Value </th>
+			<th width="200" align="center"> Parameter</th>
+			<th width="700" align="center"> Description </th>
 		</tr>
 		<tr> 
       <td align="left"> Time-Constant</td>
       <td align="left"> 0.0265 s (from system identification)</td>
     </tr>     
 		<tr> 
-      <td align="left"> Motor Bandwidth</td>
+      <td align="left"> Identified Model Bandwidth</td>
       <td align="left"> 6.01 Hz</td>
     </tr>
 		<tr> 
       <td align="left"> Control Sampling</td>
       <td align="left"> 
         Sampling Frequency: 1000 Hz <br>
-        Time-Sampling: 1 ms
+        Sampling Period: 1 ms
       </td>
     </tr>    
-		<tr>  
 		<tr> 
       <td align="left"> Main Control Loop Sampling Method</td>
       <td align="left"> Periodic asynchronous task using
@@ -50,8 +49,8 @@
         <ul>
           <li>Implemented with 
           <a href ="https://docs.embassy.dev/embassy-rp/0.10.0/rp2040/pio_programs/rotary_encoder/struct.PioEncoder.html"><code>PioEncoder</code></a>
-          to read the encoder position and direction </li>
-          <li> Create a task to keep the position pulse only </li>
+          to detect encoder rotation direction </li>
+          <li>A dedicated task accumulates encoder counts to track position</li>
         </ul> 
       </td>
     </tr>
@@ -61,46 +60,87 @@
         <ul>
           <li>Get the position at the beginning of the control loop to get the delta position</li>
           <li>Update the current speed by using <code>moving average filter</code> with 32-sample delta position window</li>
+          <li>
+            Speed Estimator Implementation:
+            <code> <a href = "../crates/motor-control/src/filter.rs">crates/motor-control/src/filter.rs</a> </code>
+          </li>
         </ul> 
       </td>
     </tr>
 		<tr> 
-      <td align="left"> Handling Floating-Point Data Type</td>
-      <td align="left"> Fixed-point arithmetic to represent the "float" as an integer by using
+      <td align="left"> Fractional Arithmetic</td>
+      <td align="left"> Fixed-point arithmetic represents fractional values as scaled integers using the
         <a href="https://crates.io/crates/fixed"><code>fixed</code> </a> crate
       </td>
-    </tr>                              
+    </tr>
+		<tr> 
+      <td align="left"> PID Control </td>
+      <td align="left"> 
+        Complete PID Implementation:
+        <code> <a href = "../crates/motor-control/src/pid_control.rs">crates/motor-control/src/pid_control.rs</a> </code>
+      </td>
+    </tr>     
+		<tr> 
+      <td align="left"> Available Control Modes</td>
+      <td align="left"> 
+        <code>Open Loop</code>
+        <ul>
+          <li>Command Input: Step PWM</li>
+          <li>Output: Motor Speed</li>
+        </ul>
+        <code>Speed Control</code>
+        <ul>
+          <li>Command Input: Step Speed</li>
+          <li>Output: Motor Speed</li>
+        </ul>
+        <code>Position Control</code>
+        <ul>
+          <li>
+            Command Input:
+            <ul>
+              <li>Step Position</li>
+              <li>Position with Trapezoidal Speed Profile</li>
+            </ul>
+          </li>
+          <li>Output: Motor Position</li>
+          <li>
+            Implementation of Trapezoidal Speed Motion Profile:
+            <code> <a href = "../crates/motor-control/src/motion_profile.rs">crates/motor-control/src/motion_profile.rs</a> </code>          
+          </li>
+        </ul>
+      </td>
+    </tr>                                  
 	</table>
 </div>
 
-## Time-Sampling
-One of the most important parameter on the discrete-time system is time-sampling or sampling frequency. Time sampling is a fundamental process in discrete systems, usually a `constant-value`, playing a critical role in converting continuous signals into discrete signals. This conversion is essential for various applications, particularly in digital control and signal processing. Ideally if we don't have any limit resources we can choose very high sampling frequency to represent the analog signal. But because we have some limited resources (e.g. computational limit) we need to design the proper time sampling without losing any information from the analog system. There are several requirements in designing the time-sampling such as:
+## Sampling Period
+The sampling period determines how often a discrete-time controller reads feedback and updates its output. A shorter period provides finer time resolution but leaves less processing time for each update. The sampling period must therefore balance the system dynamics and available computing resources. The following criteria guide the initial choice:
 - Nyquist-Shannon Sampling Theorem
 - Samples per Time Constant
 
 ### Nyquist-Shannon Sampling Theorem
-The Nyquist-Shannon sampling theorem states that for a band-limited measured signal whose highest frequency is $f_\text{max}$, Nyquist–Shannon requires $f_s > 2 \cdot f_\text{max}$. This requirement is to make sure that the signal that we process is correct for all frequency and avoid aliasing. As a starting point, idealized calculation, we can assume that the measured speed signal is band-limited to the motor bandwidth. The DC motor bandwidth refers to how quickly the motor can respond to changes in the input command, in this case the voltage input. 
+The Nyquist-Shannon sampling theorem requires $f_s > 2 \cdot f_\text{max}$ for ideal reconstruction of a band-limited signal whose highest frequency is $f_\text{max}$. For an illustrative calculation, assume that the measured speed signal is band-limited to the identified model bandwidth.
 
-Please take a note that the motor’s bandwidth alone does not establish this signal bandlimit. 
+The model bandwidth alone does not establish this signal bandlimit; frequency content above the bandwidth can still be present.
 
-If we refer to the DC motor first-order voltage to velocity transfer function model, the motor bandwidth can be calculated by using this formula:
+For the identified first-order model, the bandwidth is calculated as:
 
 $$ f_{bandwidth} = \frac{1}{2 \pi \tau } (Hz)$$
 
-Based on the system identification result the time-constant of the motor is `0.0265 s`, so the DC motor bandwidth is `6.01 Hz`. 
-By that calculation, Nyquist–Shannon requires $f_s > 12.02$ Hz or:
+Using the identified time constant of `0.0265 s` gives a model bandwidth of approximately `6.01 Hz`. This model describes the combined response from commanded PWM to filtered measured velocity, including the motor, driver, and velocity estimator. 
+Under the illustrative bandlimit assumption above, Nyquist–Shannon requires $f_s > 12.02$ Hz or:
 
 $$T_s < 83.19 \text{ ms}$$
 
 This is a `theoretical reconstruction limit`, not a recommended controller sampling period.
 
 ### Samples per Time Constant
-In the first order system, time-constant ($\tau$) is refer to the time for a system step response to reach 63.2% of it's steady-state value. This value also important to predict when the DC motor reach steady state, for 95% it will require $3\tau$ and for 98% it will require $4\tau$. In this DC motor case, for a step voltage input, the motor will reach 63.2% of it's steady-state speed in 26.5 ms after the identified delay. For this design, we choose at least ten controller updates per time constant as an initial time-resolution criterion:
+For a first-order system, the time constant ($\tau$) is the time required for the step response to complete 63.2% of its total change. The response reaches approximately 95% after $3\tau$ and 98% after $4\tau$. For the identified model, the filtered speed response reaches 63.2% of its total change in 26.5 ms after the identified delay. For this design, we choose at least ten controller updates per time constant as an initial time-resolution criterion:
 
 $$T_s \leq 2.65 \text{ ms}$$
 
-### Selecting Time Sampling
-For more safety and there's a room for on the RP2040 I choose the time sampling of `1 ms` or the sampling frequency of `1 kHz`. It satisfies the Nyquist requirement under the signal-bandlimit assumption stated above. We can estimate the additional phase lag under the following timing assumption. At a 1 ms sampling period, assuming an effective sampling/computation delay of $1.5T_s$, the additional phase lag at 6.01 Hz is approximately $3.25 \degree$. This satisfies a chosen $10 \degree$ budget for that contribution. Complete control-loop assessment must also include speed-estimator dynamics and actual update latency, evaluated at the controller’s gain crossover frequency. 
+### Selecting the Sampling Period
+This design uses a sampling period of `1 ms`, corresponding to a sampling frequency of `1 kHz`. It provides about 26.5 controller updates per identified time constant and satisfies the Nyquist requirement under the signal-bandlimit assumption stated above. At a 1 ms sampling period, assuming an effective sampling/computation delay of $1.5T_s$, the phase lag from that delay at 6.01 Hz is approximately $3.25^\circ$. This satisfies a chosen $10^\circ$ budget for that contribution. Complete control-loop assessment must account for speed-estimator dynamics and actual update latency at the controller’s gain crossover frequency, without counting effects already included in the identified model twice.
 
 Reference: [control-delay criterion](https://imperix.com/doc/help/discrete-control-delay)
 
@@ -137,47 +177,44 @@ Reference: [Embassy Ticker](https://docs.embassy.dev/embassy-time/0.5.1/default/
 
 ## Encoder Reading Method
 ### Position 
-We can measured the motor position by counting how much rotary encoder signal or pulse. We can convert the pulse to the other unit like angle or distance unit. This measurement method could be very instensive especially on high speed DC motor. For example, on our DC motor we have:
-- Rotary Encoder = 48.4 pulse/rotation
-- Maximum Physical Speed = 1500 RPM or 25 rotation/seconds
-- Rotary Encoder Maximum Frequency = `1210 pulse/seconds`
+Motor position is measured by accumulating rotary encoder counts, which can then be converted to angle or distance. Processing encoder events can become demanding as motor speed increases. For this motor:
+- Rotary Encoder = 48.4 pulses/rotation
+- Measured No-Load Speed = approximately 1500 RPM or 25 rotations/s
+- Encoder Count Rate at This Speed = approximately 1210 pulses/s
 
-To accomodate that, we can create a task just to keep counting for every position change. On the `embassy-rp` we can use the `PioEncoder` to read the rotary encoder position for both clockwise and counter clockwise direction. This will be useful to reduce the CPU load during reading two ditial pin of the rotary encoder. The example of the PioEncoder can be found [here](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/pio_rotary_encoder.rs). To avoid the data racing during read and write the current position, we can use `Atomic`, specifically for this project we use `AtomicI32`, which can be safely shared between threads (control, logger, etc). The code below shows the example how to updating the motor position by using AtomicI32 and PioEncoder. The complete code can be found on: [`firmware/main/src/tasks/dc_motor.rs`](../firmware/main/src/tasks/dc_motor.rs)
+The motor reached approximately 1500 RPM during a no-load measurement. This value is used here to estimate the encoder count rate and explain the speed-measurement design. It is not the configured control speed limit, and the achievable speed under load may be lower.
+
+$$
+\text{Encoder count rate} = 48.4 \times \frac{1500}{60} = 1210\text{ pulses/s}
+$$
+
+A dedicated task accumulates encoder counts for each position change. The `embassy-rp` crate provides `PioEncoder` to detect clockwise and counterclockwise rotation using PIO, reducing the CPU work required to monitor the two encoder pins. An example is available [here](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/pio_rotary_encoder.rs). This project uses `AtomicI32` so that the encoder task can publish the current position while the control and logger tasks read it. The simplified example below shows the loop inside the encoder task. Imports, shared-variable initialization, and task setup are omitted. The complete implementation is in [`firmware/main/src/tasks/dc_motor.rs`](../firmware/main/src/tasks/dc_motor.rs).
 
 
-```Rust
-// Measuring Motor Position from Rotary Encoder
+```rust
+// CURRENT_POS: AtomicI32 — shared encoder position [pulses]
+// Inside the encoder task:
+loop {
+    let step = match encoder.read().await {
+        Direction::Clockwise => 1,
+        Direction::CounterClockwise => -1,
+    };
 
-use core::sync::atomic::AtomicI32;
-use embassy_rp::pio_programs::rotary_encoder::Direction;
-
-pub static CURRENT_POS: AtomicI32 = AtomicI32::new(0);
-
-#[embassy_executor::task]
-async fn run_encoder_task() {
-    loop {
-        let step = match self.encoder.read().await {
-            Direction::Clockwise => 1,
-            Direction::CounterClockwise => -1,
-        };
-
-        let current_pos = CURRENT_POS.load(Ordering::Relaxed);
-
-        CURRENT_POS.store(current_pos.saturating_add(step), Ordering::Relaxed);
-    }
+    let current_pos = CURRENT_POS.load(Ordering::Relaxed);
+    CURRENT_POS.store(current_pos.saturating_add(step), Ordering::Relaxed);
 }
 ```
 
 ### Velocity
-To measure velocity of the motor, usually we have two options: (1) measuring how many pulse at a `constant-time` interval or (2) measuring time at a `constant-pulse` interval. Based on our control loop architecture, the `constant-time` method provides a straightforward implementation because it uses the position samples already available to the periodic control task. The formula for this implementation is shown on the equation below:
+Motor velocity can be estimated in two ways: (1) counting pulses over a fixed time interval or (2) measuring the time required for a fixed number of pulses. The fixed-time method fits this control-loop architecture because it uses the position samples already available to the periodic control task:
 
 $$v_{\text{raw}}[k]=\frac{p[k]-p[k-1]}{T_s}$$
 
-But the main problem with measuring pulse at a constant-time interval is a shorter measurement interval produces a larger velocity increment per encoder count, resulting in coarser velocity resolution. For example, with our 1 ms sampling time, each additional count changes the raw estimate by:
+A shorter measurement interval produces a larger velocity increment per encoder count, resulting in coarser velocity resolution. With a 1 ms sampling period, each additional count changes the raw estimate by:
 
 $$ \Delta v=\frac{1}{0.001}=1000\text{ pulse/s} $$
 
-Consequently, a constant physical velocity can produce readings of zero or 1000 pulse/s. Let's take a example at the case of a motor running constantly at 800 pulse/seconds and the encoder reading constant-time interval is 1 ms. 
+For example, a motor running at a constant 800 pulses/s can produce raw readings of zero or 1000 pulses/s when sampled every 1 ms.
 
 Assumptions:
 - Motor is on steady-state velocity.
@@ -186,7 +223,7 @@ Assumptions:
 - Counts occurring exactly at a sampling boundary are included in this example. 
 - The zero-time row represents initialization rather than a measured velocity.
 
-Then the measurement reading will be resulting something like this:
+Under these assumptions, the readings are:
 
 <div align="center">
 <table align="center">
@@ -275,9 +312,9 @@ self.current_speed_pps_fixed = current_speed_ticks * ticks_to_pps_per_windows;
 The RP2040 PID controller operates at a **1 kHz sampling frequency**, providing **1 ms between control updates**. On calculating PID, we will face intensive floating-point calculation that can create the computational overhead. To reduce computational overhead, the controller uses fixed-point arithmetic through Rust’s [`fixed`](https://crates.io/crates/fixed) crate instead of the RP2040 floating-point library on `bootROM`. Fixed-point represents fractional values as scaled integers, avoiding the exponent alignment and normalization required by software floating-point arithmetic. The speed controller uses `I16F16`, a 32-bit format with 16 fractional bits and a constant resolution of approximately $0.00001526$. As a reference baseline, a [Cornell RP2040 benchmark](https://people.ece.cornell.edu/land/courses/ece4760/RP2040/C_SDK_fixed_pt/index_fixed.html), running at **125 MHz** with **`-Ofast`** optimization, measured **138 µs for floating-point versus 40 µs for equivalent-format fixed-point** over 100 multiply-and-add iterations, including loop overhead. This represents approximately **3.4× faster execution**, or a **71% reduction in execution time** for that workload. If performed once per 1 ms control period, the benchmark workload would consume **13.8% versus 4.0% of one core’s processing time**, freeing 98 µs for other work. This illustrates how lower arithmetic overhead can increase the time available for sensor processing, filtering, and PWM updates. However, Cornell’s handwritten C benchmark is not a measurement of this Rust PID controller, which includes saturating arithmetic and additional control logic. The actual benefit must therefore be measured using the compiled implementation, while verifying that numerical range, quantization, and complete-loop execution time satisfy the controller’s requirements.
 
 ### PID Implementation
-The implementation of the PID by using the fixed-point arithmetic is shown on the code below. The PIDControl is designed to a generic fixed point because the `fixed` type of the speed and position control is different. Because the input range of speed control is approximately from ±1200 pulse/s, it's enough using the `I16F16` (32-bit fixed-point numbers) which has the range from $-32768$ to $32768-2^{-16}$ to accommodates the expected speed input range. The error, accumulated error, and gain products must also remain within the representable range to avoid unintended saturation.
+The code below shows the fixed-point PID implementation. `PIDController` is generic over the fixed-point type because the speed and position controllers use different formats. The expected speed input range of approximately ±1200 pulses/s fits within `I16F16`, a 32-bit format with a range from $-32768$ to $32768-2^{-16}$. The error, accumulated error, and gain products must also remain within the representable range to avoid unintended saturation.
 
-Position commands use signed 32-bit encoder counts. The position controller therefore uses `I32F32` (64-bit fixed-point numbers) to represent this count range while retaining fractional precision. By using this we can easily calculate the PID output by calling the `compute` function.
+Position commands use signed 32-bit encoder counts. The position controller therefore uses `I32F32` (64-bit fixed-point numbers) to represent this count range while retaining fractional precision. By using this we can easily calculate the PID output by calling the `compute` function. The complete implementation can be found on: [`crates/motor-control/src/pid_control.rs`](../crates/motor-control/src/pid_control.rs) 
 
 ```Rust
 pub struct PIDController<T: Fixed> {
@@ -321,11 +358,60 @@ $$
 
 Here, $T_s$ is expressed in seconds. At the nominal sampling period of $1\,\text{ms}$, these become $\texttt{ki}=0.001K_i$ and $\texttt{kd}=1000K_d$. The implementation stores and uses these discrete gains directly; it does not perform this conversion internally. Gains already tuned using this implementation should not be converted again. If the sampling period changes, the gains must be reconsidered to preserve the intended controller response.
 
-<!-- ### Speed Control
+## Motor Control Modes
+This project supports three motor control modes: `open loop`, `speed control`, and `position control`. Open loop and speed control accept step commands, while position control supports both step commands and firmware-generated motion profiles.
+
+### Open Loop
+The image below shows the block diagram of open-loop control. The input is a signed PWM command in timer ticks: its magnitude sets the PWM duty and its sign selects the rotation direction through the H-bridge. Motor speed is the observed output. This mode is used for system identification in the previous chapter. The encoder updates the reported position and speed but does not provide control feedback in this mode.
+
+<div align="center"> 
+  <img src="../assets/Control_Diagram/open-loop-control-dark.png" alt="Open-loop motor control block diagram" width="1000">
+</div>
+
+### Speed Control
+Speed control uses a closed-loop PID controller with estimated encoder speed as negative feedback. The input is a step speed command in pulses/s, and the PID generates the PWM command needed to track that speed. The image below shows the block diagram.
+
+<div align="center"> 
+  <img src="../assets/Control_Diagram/speed-control-dark.png" alt="Speed control block diagram" width="1000">
+</div>
+
 ### Position Control
-#### Step Motion Profile
-#### Trapezoidal Motion Profile
-## Firmware Logger Implementation -->
+Position control uses two cascaded PID loops. The position PID generates a target speed, and the speed PID generates the PWM command, as shown in the block diagram below. This control mode supports two input options: (1) a step position command and (2) a trapezoidal motion-profile command. A step command applies the target position directly as the position reference. A trapezoidal motion-profile command provides a target position (pulses), speed limit (pulses/s), and acceleration (pulses/s²), which the firmware uses to generate the position reference during each control cycle.
+
+<div align="center"> 
+  <img src="../assets/Control_Diagram/position-control-dark.png" alt="Cascaded position and speed control block diagram" width="1000">
+</div>
+
+The host can also generate motion profiles by streaming successive position targets. However, the timing of these updates depends on host scheduling and communication. If the command queue is full, the firmware returns an error to the host instead of silently dropping the command. Generating the profile in the firmware avoids the need to continuously stream position targets. When a trapezoidal motion command is received, the firmware creates a motion profile using the `current position`, `target position`, `speed limit`, and `acceleration`. It calculates the duration of the `acceleration`, `constant-speed`, and `deceleration` phases. If the travel distance is too short to reach the speed limit, it generates a `triangular velocity profile` instead. During each control cycle, the firmware advances the profile time and calculates a new position reference for the position PID. Once the profile ends, the reference remains at the target position. The generated profile assumes zero initial and final velocity. It uses the current position as its starting point but does not account for the motor’s current velocity.
+
+The following two code snippets show profile creation and reference updates. Configuration and error handling are omitted; profile parameters use `I32F32`. The profile calculations are implemented in [`crates/motor-control/src/motion_profile.rs`](../crates/motor-control/src/motion_profile.rs), and their integration into the control loop is in [`firmware/main/src/tasks/dc_motor.rs`](../firmware/main/src/tasks/dc_motor.rs).
+
+Create the profile when a new command arrives:
+
+```rust
+let profile = TrapezoidProfile::new(
+    current_position, // pulses
+    target_position,  // pulses
+    speed_limit,      // pulses/s; limited to the motor's maximum speed
+    acceleration,     // pulses/s²
+)?;
+
+let mut profile_time = I32F32::from_num(0);
+```
+Update the position reference during each control cycle:
+
+```rust
+profile_time += TIME_SAMPLING_S_FIXED;
+
+let position_reference = profile.position(profile_time).to_num::<i32>();
+
+let target_speed = position_control.compute(
+    position_reference,
+    current_position,
+);
+```
+Here, “trapezoidal” describes the profile’s velocity shape, while `profile.position(...)` supplies the position reference used by the controller.
+
 
 #
 <div align="center">
@@ -333,12 +419,12 @@ Here, $T_s$ is expressed in seconds. At the nominal sampling period of $1\,\text
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
   <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
   <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Speed-Control.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
+  <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
 </div>
 <div align="center">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="730" height="1">
-  Speed Control
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1">
+  Control Implementation
 </div>
     
 #
