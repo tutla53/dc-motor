@@ -9,7 +9,7 @@
 </div>
 <div align="center">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="650" height="1">
   Control Implementation
 </div>
     
@@ -423,7 +423,7 @@ Here, “trapezoidal” describes the profile’s velocity shape, while `profile
 </div>
 <div align="center">
   System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="700" height="1">
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="650" height="1">
   Control Implementation
 </div>
     
