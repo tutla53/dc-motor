@@ -352,6 +352,45 @@ impl<'d> DCMotor<'d> {
         }
     }
 
+    async fn initialize_control_loop( &mut self) {
+        self.trapz_time_s_fixed = I32F32::from_num(0);
+        self.current_active_cmd = MotorCommand::Stop;
+        self.filter.last_pos = self.motor.get_current_pos();
+        self.control_mode = ControlMode::Stop;
+        self.apply_pending_config().await;
+    }
+
+    async fn handle_motor_state(&mut self) -> bool {
+        if self.motor.take_disable_request() {
+            self.motor.set_motor_enabled(false);
+            self.move_motor(0);
+            self.current_active_cmd = MotorCommand::Stop;
+            self.control_mode = ControlMode::Stop;
+            self.motion_profile = None;
+            self.trapz_time_s_fixed = I32F32::from_num(0);
+            self.current_settle_ticks = 0;
+            self.command_just_received = false;
+            self.speed_control.reset();
+            self.position_control.reset();
+
+            while self.motor.get_motor_command().is_some() {}
+
+            return false;
+        }
+
+        self.apply_pending_config().await;
+
+        if !self.motor.is_motor_enabled() {
+            if self.motor.take_enable_request() {
+                self.motor.set_motor_enabled(true);
+            }
+
+            return false;
+        }
+
+        self.motor.is_motion_enabled()
+    }
+
     #[inline(always)]
     pub async fn run_motor_task(
         &mut self,
@@ -363,7 +402,7 @@ impl<'d> DCMotor<'d> {
         >,
     ) {
         /*
-            Available Mode
+            Available Motor Commands
             1. Stop
             2. SpeedControl     -> Step Only
             3. PositionControl  -> Step
@@ -372,53 +411,24 @@ impl<'d> DCMotor<'d> {
 
         let mut ticker = Ticker::every(Duration::from_micros(TIME_SAMPLING_US));
 
-        self.trapz_time_s_fixed = I32F32::from_num(0);
-        self.current_active_cmd = MotorCommand::Stop;
-        self.filter.last_pos = self.motor.get_current_pos();
-        self.control_mode = ControlMode::Stop;
-        self.apply_pending_config().await;
+        self.initialize_control_loop().await;
 
         loop {
             ticker.next().await;
 
-            if self.motor.take_disable_request() {
-                self.motor.set_motor_enabled(false);
-                self.move_motor(0);
-                self.current_active_cmd = MotorCommand::Stop;
-                self.control_mode = ControlMode::Stop;
-                self.motion_profile = None;
-                self.trapz_time_s_fixed = I32F32::from_num(0);
-                self.current_settle_ticks = 0;
-                self.command_just_received = false;
-                self.speed_control.reset();
-                self.position_control.reset();
-
-                while self.motor.get_motor_command().is_some() {}
-
-                continue;
-            }
-
-            self.apply_pending_config().await;
-
-            if !self.motor.is_motor_enabled() {
-                if self.motor.take_enable_request() {
-                    self.motor.set_motor_enabled(true);
-                }
-                continue;
-            }
-
-            self.motor.take_enable_request();
-
+            // Update Motor Position and Speed
             let current_pos_ticks = self.motor.get_current_pos();
             let current_speed_ticks = self.filter.calculate_speed(current_pos_ticks);
 
-            // Updating Motor Status
             self.current_pos_pulse_fixed = I32F32::from_num(current_pos_ticks);
             self.current_speed_pps_fixed = current_speed_ticks * self.ticks_to_pps_per_windows;
 
-            // Updating Motor Speed to Channel
             self.motor
                 .set_current_speed(self.current_speed_pps_fixed.to_num::<i32>());
+
+            // Check Motor State
+            let motor_ready = self.handle_motor_state().await;
+            if !motor_ready { continue; };
 
             // Update Motor Command
             self.update_motor_command(event_sender).await;
