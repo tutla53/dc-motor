@@ -315,6 +315,41 @@ For a reproducible comparison, record the speed and position PID gains and integ
 
 Compare the measured and simulated rise time, overshoot, settling time, steady-state error, and behavior in both directions. Speed plots use RPM and position plots use rotations, while the controller calculations use pulses/s and pulses. A close visual overlay is qualitative evidence for the displayed case, not proof of accuracy over the full operating range.
 
+### PID Parameters for the Comparison Tables
+
+The following settings were reported for motor 0 in the supplied device responses for these comparisons. The speed-control results use the speed PID; the position-control results use both controllers in cascade.
+
+<div align="center">
+  <table>
+    <tr align="center">
+      <th>Controller</th>
+      <th><code>kp</code></th>
+      <th><code>ki</code></th>
+      <th><code>kd</code></th>
+      <th><code>i_limit</code></th>
+      <th>Readback command</th>
+    </tr>
+    <tr align="center">
+      <td>Speed PID</td>
+      <td>2</td>
+      <td>0.16</td>
+      <td>0</td>
+      <td>26000</td>
+      <td><code>dev get_pid_motor_speed 0</code></td>
+    </tr>
+    <tr align="center">
+      <td>Position PID</td>
+      <td>15</td>
+      <td>0</td>
+      <td>0</td>
+      <td>887</td>
+      <td><code>dev get_pid_motor_pos 0</code></td>
+    </tr>
+  </table>
+</div>
+
+`i_limit` bounds the accumulated error before multiplication by `ki`; it is separate from the controller output limit. With `ki = 0` and `kd = 0`, the position controller contributes only proportional action for these settings.
+
 ### Speed Control Result
 <table>
   <tr align = "center">
@@ -326,173 +361,154 @@ Compare the measured and simulated rise time, overshoot, settling time, steady-s
   <tr>
     <td align="center"> 100 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_100.jpg">
+        <img src="../assets/02_Speed_Control/A_100.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_100.jpg">
+        <img  src="../assets/02_Speed_Control/B_100.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 200 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_200.jpg">
+        <img src="../assets/02_Speed_Control/A_200.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_200.jpg">
+        <img  src="../assets/02_Speed_Control/B_200.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 300 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_300.jpg">
+        <img src="../assets/02_Speed_Control/A_300.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_300.jpg">
+        <img  src="../assets/02_Speed_Control/B_300.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 400 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_400.jpg">
+        <img src="../assets/02_Speed_Control/A_400.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_400.jpg">
+        <img  src="../assets/02_Speed_Control/B_400.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 500 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_500.jpg">
+        <img src="../assets/02_Speed_Control/A_500.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_500.jpg">
+        <img  src="../assets/02_Speed_Control/B_500.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 600 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_600.jpg">
+        <img src="../assets/02_Speed_Control/A_600.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_600.jpg">
+        <img  src="../assets/02_Speed_Control/B_600.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 700 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_700.jpg">
+        <img src="../assets/02_Speed_Control/A_700.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_700.jpg">
+        <img  src="../assets/02_Speed_Control/B_700.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 800 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_800.jpg">
+        <img src="../assets/02_Speed_Control/A_800.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_800.jpg">
+        <img  src="../assets/02_Speed_Control/B_800.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 900 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_900.jpg">
+        <img src="../assets/02_Speed_Control/A_900.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_900.jpg">
+        <img  src="../assets/02_Speed_Control/B_900.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 1000 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_1000.jpg">
+        <img src="../assets/02_Speed_Control/A_1000.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_1000.jpg">
+        <img  src="../assets/02_Speed_Control/B_1000.png">
     </td>
   </tr>
 
   <tr>
     <td align="center"> 1100 </td>
     <td> 
-        <img src="../assets/02_Speed_Control/A_1100.jpg">
+        <img src="../assets/02_Speed_Control/A_1100.png">
     </td>
     <td> 
-        <img  src="../assets/02_Speed_Control/B_1100.jpg">
+        <img  src="../assets/02_Speed_Control/B_1100.png">
     </td>
   </tr>
 
-  <tr>
-    <td align="center"> 1200 </td>
-    <td> 
-        <img src="../assets/02_Speed_Control/A_1200.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/02_Speed_Control/B_1200.jpg">
-    </td>
-  </tr>
 
 </table>
 
 ### Position Control Result
 
+The speed and acceleration listed beneath each image pair apply to the negative-direction trapezoidal movement.
+
 <table>
   <tr align = "center">
     <th  align="center" width=50>Position (rotation)</th>
-    <th  align="center">Positive Direction</th>
-    <th  align="center">Negative Direction</th>
+    <th  align="center">Positive Direction (Step)</th>
+    <th  align="center">Negative Direction (Trapezoidal)</th>
   </tr>
 
   <tr>
     <td align="center"> 5 </td>
     <td> 
-        <img src="../assets/03_Position_Control/A_5.jpg">
+        <img src="../assets/03_Position_Control/A_5.png">
     </td>
     <td> 
-        <img  src="../assets/03_Position_Control/B_5.jpg">
+        <img  src="../assets/03_Position_Control/B_5.png">
     </td>
+  </tr>
+  <tr>
+    <td colspan="3" align="right">Trapezoidal: Speed: 750 RPM · Acceleration: 10000 pulses/s²</td>
   </tr>
 
   <tr>
     <td align="center"> 50 </td>
     <td> 
-        <img src="../assets/03_Position_Control/A_50.jpg">
+        <img src="../assets/03_Position_Control/A_50.png">
     </td>
     <td> 
-        <img  src="../assets/03_Position_Control/B_50.jpg">
+        <img  src="../assets/03_Position_Control/B_50.png">
     </td>
+  </tr>
+  <tr>
+    <td colspan="3" align="right">Trapezoidal: Speed: 750 RPM · Acceleration: 500 pulses/s²</td>
   </tr>
 
-  <tr>
-    <td align="center"> 200 </td>
-    <td> 
-        <img src="../assets/03_Position_Control/A_200.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/03_Position_Control/B_200.jpg">
-    </td>
-  </tr>
 
-  <tr>
-    <td align="center"> 1000 </td>
-    <td> 
-        <img src="../assets/03_Position_Control/A_1000.jpg">
-    </td>
-    <td> 
-        <img  src="../assets/03_Position_Control/B_1000.jpg">
-    </td>
-  </tr>
 
 </table>
 
