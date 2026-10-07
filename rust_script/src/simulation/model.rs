@@ -87,6 +87,11 @@ impl MotorSimulation {
         })
     }
 
+    fn clamp(&self, set_point: f64, max_speed_pps: u32) -> i32 {
+        let limit = max_speed_pps.min(i32::MAX as u32) as i32;
+        (set_point as i32).clamp(-limit, limit)
+    }
+
     fn interpolate_gain(&self, input_pwm: f64) -> f64 {
         let points = &self.identification;
 
@@ -194,16 +199,19 @@ impl MotorSimulation {
 
         /* ---------- Difference Equation ---------- */
         for k in 0..set_point.len() {
-            if (k as i32 - d as i32 - 1) < 0 {
-                continue;
+            if k > 0 {
+                // Update Motor Speed
+                if k > d {
+                    y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1]) * u[k - d - 1];
+                } else {
+                    y[k] = self.alpha * y[k - 1];
+                }
             }
 
             u[k] = self.speed_control.compute(
-                (set_point[k] as i32).clamp(-(max_speed_pps as i32), max_speed_pps as i32),
-                I16F16::from_num(y[k - 1]),
+                self.clamp(set_point[k], max_speed_pps),
+                I16F16::from_num(y[k]),
             ) as f64;
-
-            y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1]) * u[k - d - 1];
         }
 
         Ok(y)
@@ -231,20 +239,21 @@ impl MotorSimulation {
 
         /* ---------- Difference Equation ---------- */
         for k in 0..set_point.len() {
-            if (k as i32 - d as i32 - 1) < 0 {
-                continue;
+            if k > 0 {
+                // Update Motor Speed
+                if k > d {
+                    y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1]) * u[k - d - 1];
+                } else {
+                    y[k] = self.alpha * y[k - 1];
+                }
+
+                // Update Motor Position
+                x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S;
             }
 
-            let target_speed = self
-                .position_control
-                .compute(set_point[k] as i32, I32F32::from_num(x[k - 1]));
+            let target_speed = self.position_control.compute(set_point[k] as i32, I32F32::from_num(x[k]));
 
-            u[k] = self
-                .speed_control
-                .compute(target_speed, I16F16::from_num(y[k - 1])) as f64;
-
-            y[k] = self.alpha * y[k - 1] + self.beta(u[k - d - 1]) * u[k - d - 1]; // Updating Motor Speed
-            x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S; // Update Position
+            u[k] = self.speed_control.compute(target_speed, I16F16::from_num(y[k])) as f64;
         }
 
         Ok(x)

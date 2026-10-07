@@ -245,7 +245,9 @@ The following simplified examples use a constant gain `K`, with `beta = K * (1.0
 
 The examples omit imports, controller configuration, and array allocation. Arrays have the same length and are initialized before the loops: `y` starts at zero and `x` starts at the initial position. For open loop, `u` contains the supplied PWM inputs; for closed loop, `u` starts at zero and is filled by the controller. Set the speed PID output limit to the PWM limit and the position PID output limit to `max_speed_pps`. Speed setpoints and feedback use pulses/s; position uses pulses. Conversion to RPM and rotations is performed for plotting.
 
-The snippets below retain the current simulation's update order. The loops skip samples until the delayed input index is available. In closed-loop simulation, this also skips the initial PID calculations, leaving the initial PWM entries at zero and adding startup delay beyond the plant input delay. This is a known limitation of the current implementation. A future correction would run the PID every sample and apply dead time only to the plant input; that correction is not implemented here.
+The snippets below retain the current simulation's update order. In open-loop simulation, speed remains at its initialized value until the delayed input index is available (`k > d`). In closed-loop simulation, the PID runs every sample, including `k = 0`, when it uses the initial feedback values to calculate `u[0]`.
+
+For each later closed-loop sample, the simulation first updates speed `y[k]`. The delayed PWM input contributes only when `k > d`; before then, speed follows `y[k] = alpha * y[k - 1]`. Position control also updates `x[k]` by integrating the average of the previous and current speeds. The controllers then use the current feedback (`y[k]` and, for position control, `x[k]`) to calculate `u[k]`. The plant delay therefore affects when PWM changes the simulated speed, without skipping PID calculations.
 
 The identified model describes commanded PWM to filtered measured speed. Integrating that modeled speed for position is an approximation; these examples do not separately reproduce encoder quantization or every firmware state transition.
 
@@ -265,14 +267,20 @@ for k in 0..u.len() {
 ```rust
 /* ---------- Speed Control ---------- */
 for k in 0..set_point.len() {
-    if (k as i32 - d as i32 - 1) < 0 {
-        continue;
+    if k > 0 {
+        // Update Motor Speed
+        if k > d {
+            y[k] = alpha * y[k - 1] + beta * u[k - d - 1];
+        } else {
+            y[k] = alpha * y[k - 1];
+        }
     }
+    
+    let limit = max_speed_pps.min(i32::MAX as u32) as i32;
 
-    let target_speed = (set_point[k] as i32).clamp(-(max_speed_pps as i32), max_speed_pps as i32);
-    u[k] = speed_control.compute(target_speed, I16F16::from_num(y[k - 1])) as f64;
+    let target_speed = (set_point[k] as i32).clamp(-limit, limit);
 
-    y[k] = alpha * y[k - 1] + beta * u[k - d - 1];
+    u[k] = speed_control.compute(target_speed, I16F16::from_num(y[k])) as f64;
 }
 ```
 ### Position Control Simulation
@@ -280,15 +288,21 @@ for k in 0..set_point.len() {
 ```rust
 /* ---------- Position Control ---------- */
 for k in 0..set_point.len() {
-    if (k as i32 - d as i32 - 1) < 0 {
-        continue;
+    if k > 0 {
+        // Update Motor Speed
+        if k > d {
+            y[k] = alpha * y[k - 1] + beta * u[k - d - 1];
+        } else {
+            y[k] = alpha * y[k - 1];
+        }
+
+        // Update Motor Position
+        x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S;
     }
+    
+    let target_speed = position_control.compute(set_point[k] as i32, I32F32::from_num(x[k]));
 
-    let target_speed = position_control.compute(set_point[k] as i32, I32F32::from_num(x[k - 1]));
-    u[k] = speed_control.compute(target_speed, I16F16::from_num(y[k - 1])) as f64;
-
-    y[k] = alpha * y[k - 1] + beta * u[k - d - 1];
-    x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * DT_S;
+    u[k] = speed_control.compute(target_speed, I16F16::from_num(y[k])) as f64;
 }
 ```
 
