@@ -251,9 +251,13 @@ impl MotorSimulation {
                 x[k] = x[k - 1] + ((y[k - 1] + y[k]) / 2.0) * motor_config::DT_S;
             }
 
-            let target_speed = self.position_control.compute(set_point[k] as i32, I32F32::from_num(x[k]));
+            let target_speed = self
+                .position_control
+                .compute(set_point[k] as i32, I32F32::from_num(x[k]));
 
-            u[k] = self.speed_control.compute(target_speed, I16F16::from_num(y[k])) as f64;
+            u[k] = self
+                .speed_control
+                .compute(target_speed, I16F16::from_num(y[k])) as f64;
         }
 
         Ok(x)
