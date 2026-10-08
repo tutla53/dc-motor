@@ -419,6 +419,10 @@ The desktop application and the Python identification tool share two files:
 | [config/motor_config.toml](config/motor_config.toml) | Motor properties, unit conversions, sampling values, linear-model parameters, default PID settings, and host timeouts. |
 | [config/system_identification.csv](config/system_identification.csv) | Selected nonlinear-model data, embedded in the Rust application at build time. |
 
+TOML keys match the Rust constant names, such as `MAX_PWM_TICKS`, `DT_S`, and
+`D_STEPS`. PID tables use `DEFAULT_PID_POS_CONFIG` and `DEFAULT_PID_SPEED_CONFIG`,
+with Rust struct-field names `kp`, `ki`, `kd`, and `i_limit` inside them.
+
 All TOML values are stored explicitly. The formula comments are references, not
 calculations: update related values together when changing a setting. For example,
 changing the gear ratio also requires updating the pulse/rotation conversions and

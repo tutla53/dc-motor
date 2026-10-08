@@ -9,20 +9,8 @@ const PROGRAM_FILE: &str = "src/program/script.rs";
 const MOTOR_CONFIG_FILE: &str = "../config/motor_config.toml";
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)]
 struct MotorSettings {
-    motor: MotorProperties,
-    electronics: Electronics,
-    sampling: Sampling,
-    linear_model: LinearModel,
-    pid_position: PidSettings,
-    pid_speed: PidSettings,
-    host_timing: HostTiming,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MotorProperties {
     motor_id: u8,
     gear_ratio: f64,
     encoder_ppr: f64,
@@ -30,31 +18,21 @@ struct MotorProperties {
     rotation_per_pulse: f64,
     pulse_per_rotation: f64,
     max_speed_rpm: f64,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Electronics {
     system_freq_hz: u32,
     pwm_freq_hz: u32,
     max_pwm_ticks: u32,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Sampling {
     frequency_sampling_hz: u32,
     dt_s: f64,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct LinearModel {
     k_positive: f64,
     k_negative: f64,
     tau_s: f64,
-    delay_time_s: f64,
-    delay_steps: i32,
+    d_s: f64,
+    d_steps: i32,
+    default_timeout_ms: u64,
+    timeout_scale: u64,
+    timeout_offset_ms: u64,
+    default_pid_pos_config: PidSettings,
+    default_pid_speed_config: PidSettings,
 }
 
 #[derive(Deserialize)]
@@ -66,30 +44,17 @@ struct PidSettings {
     i_limit: f32,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct HostTiming {
-    default_timeout_ms: u64,
-    timeout_scale: u64,
-    timeout_offset_ms: u64,
-}
-
 fn generate_motor_constants() {
     println!("cargo:rerun-if-changed={MOTOR_CONFIG_FILE}");
     let content = fs::read_to_string(MOTOR_CONFIG_FILE).expect("Failed to read motor_config.toml");
     let settings: MotorSettings = toml::from_str(&content).expect("Invalid motor_config.toml");
-    let motor = settings.motor;
-    let electronics = settings.electronics;
-    let sampling = settings.sampling;
-    let model = settings.linear_model;
-    let timing = settings.host_timing;
     for (name, value) in [
-        ("gear_ratio", motor.gear_ratio),
-        ("encoder_ppr", motor.encoder_ppr),
-        ("pulse_per_rotation", motor.pulse_per_rotation),
-        ("rotation_per_pulse", motor.rotation_per_pulse),
-        ("dt_s", sampling.dt_s),
-        ("tau_s", model.tau_s),
+        ("GEAR_RATIO", settings.gear_ratio),
+        ("ENCODER_PPR", settings.encoder_ppr),
+        ("PULSE_PER_ROTATION", settings.pulse_per_rotation),
+        ("ROTATION_PER_PULSE", settings.rotation_per_pulse),
+        ("DT_S", settings.dt_s),
+        ("TAU_S", settings.tau_s),
     ] {
         assert!(
             value.is_finite() && value > 0.0,
@@ -97,26 +62,26 @@ fn generate_motor_constants() {
         );
     }
     for (name, value) in [
-        ("k_positive", model.k_positive),
-        ("k_negative", model.k_negative),
-        ("delay_time_s", model.delay_time_s),
-        ("max_speed_rpm", motor.max_speed_rpm),
+        ("K_POSITIVE", settings.k_positive),
+        ("K_NEGATIVE", settings.k_negative),
+        ("D_S", settings.d_s),
+        ("MAX_SPEED_RPM", settings.max_speed_rpm),
     ] {
         assert!(
             value.is_finite() && value >= 0.0,
             "{name} must be finite and nonnegative"
         );
     }
-    assert!(electronics.pwm_freq_hz > 0, "pwm_freq_hz must be positive");
+    assert!(settings.pwm_freq_hz > 0, "PWM_FREQ_HZ must be positive");
     assert!(
-        electronics.system_freq_hz > 0 && electronics.max_pwm_ticks > 0,
-        "system_freq_hz and max_pwm_ticks must be positive"
+        settings.system_freq_hz > 0 && settings.max_pwm_ticks > 0,
+        "SYSTEM_FREQ_HZ and MAX_PWM_TICKS must be positive"
     );
     assert!(
-        sampling.frequency_sampling_hz > 0,
-        "frequency_sampling_hz must be positive"
+        settings.frequency_sampling_hz > 0,
+        "FREQUENCY_SAMPLING_HZ must be positive"
     );
-    assert!(model.delay_steps >= 0, "delay_steps must be nonnegative");
+    assert!(settings.d_steps >= 0, "D_STEPS must be nonnegative");
 
     let mut code = String::from("// Generated from config/motor_config.toml; do not edit.\n");
     macro_rules! constant {
@@ -130,29 +95,32 @@ fn generate_motor_constants() {
             ));
         };
     }
-    constant!(MOTOR_ID, u8, motor.motor_id);
-    constant!(GEAR_RATIO, f64, motor.gear_ratio);
-    constant!(ENCODER_PPR, f64, motor.encoder_ppr);
-    constant!(MAX_SPEED_PPS, u32, motor.max_speed_pps);
-    constant!(SYSTEM_FREQ_HZ, u32, electronics.system_freq_hz);
-    constant!(PWM_FREQ_HZ, u32, electronics.pwm_freq_hz);
-    constant!(FREQUENCY_SAMPLING_HZ, u32, sampling.frequency_sampling_hz);
-    constant!(K_POSITIVE, f64, model.k_positive);
-    constant!(K_NEGATIVE, f64, model.k_negative);
-    constant!(TAU_S, f64, model.tau_s);
-    constant!(D_S, f64, model.delay_time_s);
-    constant!(DEFAULT_TIMEOUT_MS, u64, timing.default_timeout_ms);
-    constant!(TIMEOUT_SCALE, u64, timing.timeout_scale);
-    constant!(TIMEOUT_OFFSET_MS, u64, timing.timeout_offset_ms);
-    constant!(PULSE_PER_ROTATION, f64, motor.pulse_per_rotation);
-    constant!(ROTATION_PER_PULSE, f64, motor.rotation_per_pulse);
-    constant!(MAX_SPEED_RPM, f64, motor.max_speed_rpm);
-    constant!(MAX_PWM_TICKS, u32, electronics.max_pwm_ticks);
-    constant!(DT_S, f64, sampling.dt_s);
-    constant!(D_STEPS, i32, model.delay_steps);
+    constant!(MOTOR_ID, u8, settings.motor_id);
+    constant!(GEAR_RATIO, f64, settings.gear_ratio);
+    constant!(ENCODER_PPR, f64, settings.encoder_ppr);
+    constant!(MAX_SPEED_PPS, u32, settings.max_speed_pps);
+    constant!(SYSTEM_FREQ_HZ, u32, settings.system_freq_hz);
+    constant!(PWM_FREQ_HZ, u32, settings.pwm_freq_hz);
+    constant!(FREQUENCY_SAMPLING_HZ, u32, settings.frequency_sampling_hz);
+    constant!(K_POSITIVE, f64, settings.k_positive);
+    constant!(K_NEGATIVE, f64, settings.k_negative);
+    constant!(TAU_S, f64, settings.tau_s);
+    constant!(D_S, f64, settings.d_s);
+    constant!(DEFAULT_TIMEOUT_MS, u64, settings.default_timeout_ms);
+    constant!(TIMEOUT_SCALE, u64, settings.timeout_scale);
+    constant!(TIMEOUT_OFFSET_MS, u64, settings.timeout_offset_ms);
+    constant!(PULSE_PER_ROTATION, f64, settings.pulse_per_rotation);
+    constant!(ROTATION_PER_PULSE, f64, settings.rotation_per_pulse);
+    constant!(MAX_SPEED_RPM, f64, settings.max_speed_rpm);
+    constant!(MAX_PWM_TICKS, u32, settings.max_pwm_ticks);
+    constant!(DT_S, f64, settings.dt_s);
+    constant!(D_STEPS, i32, settings.d_steps);
     for (name, pid) in [
-        ("DEFAULT_PID_POS_CONFIG", settings.pid_position),
-        ("DEFAULT_PID_SPEED_CONFIG", settings.pid_speed),
+        ("DEFAULT_PID_POS_CONFIG", settings.default_pid_pos_config),
+        (
+            "DEFAULT_PID_SPEED_CONFIG",
+            settings.default_pid_speed_config,
+        ),
     ] {
         assert!(
             [pid.kp, pid.ki, pid.kd, pid.i_limit]

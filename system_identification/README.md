@@ -39,9 +39,9 @@ these columns:
 
 Values must be numeric and finite. Timestamps must increase and have uniform
 spacing within the input validator's numerical tolerance. The fitter derives
-its sample interval from each CSV, rather than using the configured `dt_s`.
+its sample interval from each CSV, rather than using the configured `DT_S`.
 Speed is converted to pulses per second using the configured
-`rotation_per_pulse`. Invalid files and unsuccessful fits are reported and
+`ROTATION_PER_PULSE`. Invalid files and unsuccessful fits are reported and
 skipped while the remaining files are processed.
 
 ## Shared configuration
@@ -49,6 +49,12 @@ skipped while the remaining files are processed.
 Edit [config/motor_config.toml](../config/motor_config.toml) for motor settings.
 [Config/Motor0.py](Config/Motor0.py) reads the stored values and exposes the
 existing Python names; it does not calculate derived values.
+
+The TOML keys match Rust constant names in `SCREAMING_SNAKE_CASE`, including
+`MOTOR_ID`, `D_S`, and `D_STEPS`. The Python loader also preserves the older
+`motor_id`, `DELAY_TIME_S`, and `DELAY_STEPS` aliases. PID tables are named
+`DEFAULT_PID_POS_CONFIG` and `DEFAULT_PID_SPEED_CONFIG`; their fields retain
+Rust's `kp`, `ki`, `kd`, and `i_limit` names.
 
 The formulas in the TOML are comments only. Update related values manually,
 including pulse/rotation conversions, maximum speed in RPM, PWM ticks, sample
@@ -77,7 +83,7 @@ result points are still plotted.
 Review the results before selecting them for simulation:
 
 1. Update the chosen linear-model values in `config/motor_config.toml`, including
-   the corresponding `delay_steps` value.
+   the corresponding `D_STEPS` value.
 2. To select a nonlinear dataset, copy the reviewed result CSV to
    [config/system_identification.csv](../config/system_identification.csv).
    The Rust loader requires at least two rows, strictly increasing unique PWM
