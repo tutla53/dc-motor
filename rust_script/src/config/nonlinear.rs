@@ -1,7 +1,7 @@
 use super::*;
 
 // Nonlinear Properties
-pub const IDENTIFICATION_CSV: &str = include_str!("system_identification.csv");
+pub const IDENTIFICATION_CSV: &str = include_str!("../../../config/system_identification.csv");
 
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
 pub struct IdentificationPoint {

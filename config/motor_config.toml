@@ -1,0 +1,46 @@
+# Shared settings for rust_script and system_identification.
+# Both applications read the stored values; formulas below are comments only.
+# Update related values together. Restart Python and rebuild rust_script after edits.
+# These settings do not update firmware defaults or device flash.
+
+[motor]
+motor_id = 0
+gear_ratio = 4.4
+encoder_ppr = 11.0
+max_speed_pps = 887
+rotation_per_pulse = 0.020661157024793386 # 1.0 / (gear_ratio * encoder_ppr)
+pulse_per_rotation = 48.400000000000006 # gear_ratio * encoder_ppr
+max_speed_rpm = 1099.586776859504 # max_speed_pps * rotation_per_pulse * 60.0
+
+[electronics]
+system_freq_hz = 133_000_000
+pwm_freq_hz = 25_000
+max_pwm_ticks = 5319 # floor(system_freq_hz / pwm_freq_hz) - 1
+
+[sampling]
+frequency_sampling_hz = 1000
+dt_s = 0.001 # 1.0 / frequency_sampling_hz
+
+[linear_model]
+k_positive = 0.2058678594254962  # pulses/s per PWM tick
+k_negative = 0.19629188012626667
+tau_s = 0.026508300557422464
+delay_time_s = 0.013976871626348452
+delay_steps = 13 # floor(delay_time_s / dt_s)
+
+[pid_position]
+kp = 25.0
+ki = 0.0
+kd = 5.0
+i_limit = 1500.0
+
+[pid_speed]
+kp = 2.0
+ki = 0.16
+kd = 25.0
+i_limit = 26_595.0
+
+[host_timing]
+default_timeout_ms = 20_000
+timeout_scale = 2
+timeout_offset_ms = 5_000

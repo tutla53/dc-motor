@@ -1,32 +1,33 @@
-# Motor Config
+"""Read the shared motor values directly from config/motor_config.toml."""
 
-motor_id = 0
+from pathlib import Path
+import tomllib
 
-# Mechanical Properties
-GEAR_RATIO              = 4.4
-ENCODER_PPR             = 11
-ROTATION_PER_PULSE      = 1/(GEAR_RATIO*ENCODER_PPR)
-MAX_SPEED_PPS           = 887
-MAX_SPEED_RPM           = MAX_SPEED_PPS * ROTATION_PER_PULSE * 60
+CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+IDENTIFICATION_CSV = CONFIG_DIR / "system_identification.csv"
+with (CONFIG_DIR / "motor_config.toml").open("rb") as _file:
+    _settings = tomllib.load(_file)
 
-# Electronic Properties
-SYSTEM_FREQ_HZ          = 133_000_000
-PWM_FREQ_HZ             = 25_000
-MAX_PWM_TICKS           = (SYSTEM_FREQ_HZ / PWM_FREQ_HZ) - 1; # 25kHz Period = (125_000_000 (Pico clock)/25_000(Frequency)) -1
+motor_id = _settings["motor"]["motor_id"]
 
-# System Properties Based on the System Identification
-FREQUENCY_SAMPLING_HZ   = 1000
-DT_S                    = 1/FREQUENCY_SAMPLING_HZ
+# Mechanical properties
+GEAR_RATIO = _settings["motor"]["gear_ratio"]
+ENCODER_PPR = _settings["motor"]["encoder_ppr"]
+ROTATION_PER_PULSE = _settings["motor"]["rotation_per_pulse"]
+PULSE_PER_ROTATION = _settings["motor"]["pulse_per_rotation"]
+MAX_SPEED_PPS = _settings["motor"]["max_speed_pps"]
+MAX_SPEED_RPM = _settings["motor"]["max_speed_rpm"]
 
-## Linear Model Properties
-K_POSITIVE              = 0.2058678594254962   # (pulse per seconds)/PWM_TICKS
-K_NEGATIVE              = 0.19629188012626667   # (pulse per seconds)/PWM_TICKS
-TAU_S                   = 0.026508300557422464  # seconds
-DELAY_TIME_S            = 0.013976871626348452  # seconds
-DELAY_STEPS             = int(DELAY_TIME_S / DT_S)
+# Electronic properties
+SYSTEM_FREQ_HZ = _settings["electronics"]["system_freq_hz"]
+PWM_FREQ_HZ = _settings["electronics"]["pwm_freq_hz"]
+MAX_PWM_TICKS = _settings["electronics"]["max_pwm_ticks"]
 
-# ## Nonlinear Model Properties
-# data        = pd.read_csv(base_url+"/Config/system_identification.csv")
-# PWM_LIST    = data["PWM"].values
-# K_LIST      = data["K"].values
-# TAU_LIST    = data["tau"].values
+# Sampling and linear-model properties
+FREQUENCY_SAMPLING_HZ = _settings["sampling"]["frequency_sampling_hz"]
+DT_S = _settings["sampling"]["dt_s"]
+K_POSITIVE = _settings["linear_model"]["k_positive"]
+K_NEGATIVE = _settings["linear_model"]["k_negative"]
+TAU_S = _settings["linear_model"]["tau_s"]
+DELAY_TIME_S = _settings["linear_model"]["delay_time_s"]
+DELAY_STEPS = _settings["linear_model"]["delay_steps"]

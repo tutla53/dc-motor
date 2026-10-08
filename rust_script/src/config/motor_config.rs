@@ -1,48 +1,5 @@
 #![allow(unused)]
 use super::*;
 
-pub const MOTOR_ID: u8 = 0;
-
-// Mechanical Properties
-pub const GEAR_RATIO: f64 = 4.4;
-pub const ENCODER_PPR: f64 = 11.0;
-pub const ROTATION_PER_PULSE: f64 = 1.0 / (GEAR_RATIO * ENCODER_PPR);
-pub const PULSE_PER_ROTATION: f64 = (GEAR_RATIO * ENCODER_PPR);
-pub const MAX_SPEED_PPS: u32 = 887;
-pub const MAX_SPEED_RPM: f64 = MAX_SPEED_PPS as f64 * ROTATION_PER_PULSE * 60.0;
-
-//  Electronic Properties
-pub const SYSTEM_FREQ_HZ: u32 = 133_000_000;
-pub const PWM_FREQ_HZ: u32 = 25_000;
-pub const MAX_PWM_TICKS: u32 = ((SYSTEM_FREQ_HZ / PWM_FREQ_HZ) - 1);
-
-// System Properties Based on the System Identification
-pub const FREQUENCY_SAMPLING_HZ: u32 = 1000;
-pub const DT_S: f64 = 1.0 / FREQUENCY_SAMPLING_HZ as f64;
-
-// Control Config
-pub const DEFAULT_PID_POS_CONFIG: PIDConfig = PIDConfig {
-    kp: 25.0,
-    ki: 0.0,
-    kd: 5.0,
-    i_limit: 1500.0,
-};
-
-pub const DEFAULT_PID_SPEED_CONFIG: PIDConfig = PIDConfig {
-    kp: 2.0,
-    ki: 0.16,
-    kd: 25.0,
-    i_limit: 26_595.0,
-};
-
-// Linear Model Properties
-pub const K_POSITIVE: f64 = 0.2058678594254962; // (pulse per seconds)/PWM_TICKS
-pub const K_NEGATIVE: f64 = 0.19629188012626667; // (pulse per seconds)/PWM_TICKS
-pub const TAU_S: f64 = 0.026508300557422464; // seconds
-pub const D_S: f64 = 0.013976871626348452; // Delay Time (seconds)
-pub const D_STEPS: i32 = (D_S / DT_S) as i32; // Delay Time (steps)
-
-// Move Motor Config
-pub const DEFAULT_TIMEOUT_MS: u64 = 20_000;
-pub const TIMEOUT_SCALE: u64 = 2;
-pub const TIMEOUT_OFFSET_MS: u64 = 5_000;
+// All values are stored in config/motor_config.toml; build.rs preserves these names.
+include!(concat!(env!("OUT_DIR"), "/motor_constants.rs"));
