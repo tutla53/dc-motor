@@ -318,11 +318,11 @@ The repository contains the RP2040 firmware, the Rust desktop application, and t
 .
 ├── assets
 ├── config                         	# Shared motor configuration
-│   ├── motor_config.toml           # Motor settings and formula comments
-│   └── system_identification.csv   # Selected nonlinear-model data
+│   ├── motor_config.toml           	# Motor settings and formula comments
+│   └── system_identification.csv   	# Selected nonlinear-model data
 ├── crates                         	# Motor control and USB communication libraries
 ├── DeviceOpFuncs
-│   └── DCMotor.toml                # Firmware API
+│   └── DCMotor.toml                	# Firmware API
 ├── docs
 ├── firmware                       	# Firmware code
 ├── rust_script                    	# Desktop application communicating with the RP2040
