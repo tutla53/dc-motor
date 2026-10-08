@@ -15,6 +15,28 @@
     
 #
 
+## Current Tool and Shared Configuration
+
+The current [Python tool](../system_identification/README.md) processes saved
+open-loop logs and offers `differential_evolution` and `least_square` through an
+arrow-key menu. Its README covers setup, required CSV columns, validation, and
+output files. The method description and figures below document the retained
+experiments; adding another fitting method does not rerun or replace those results.
+
+Both Python and the Rust desktop application use
+[config/motor_config.toml](../config/motor_config.toml). All values, including
+conversions and delay steps, are stored explicitly. Formula comments are for
+reference; related values must be updated together. Python reads the file at
+startup, while Rust embeds its values at build time. The fitter obtains its
+sample interval from each input CSV.
+
+Identification runs save dated results separately. After reviewing a result,
+update the selected linear-model settings in the TOML and, when appropriate,
+replace [config/system_identification.csv](../config/system_identification.csv)
+with the selected nonlinear dataset. Restart Python after TOML edits and rebuild
+Rust after either shared file changes. These edits do not update firmware
+defaults or device-persisted settings.
+
 ## Method
 
 After creating the mathematical model of the DC motor we will try to identify the parameters of the motor. This step is very useful to understand the dynamic and the stability of the motor or even we can move further to the simulation and implementing and tuning control system. We will not identify all motor parameters like $K_t$, $K_b$, $L$, $R$, $J$, and $B$ with detail but instead we will identify them from the `first-order system` form. The parameters that we will identify are:
@@ -264,6 +286,13 @@ The table below shows the summary of the system identification process:
 - Notes: pps = pulse per seconds
 
 ## Nonlinear Simulation Model
+
+The current Rust implementation embeds
+[config/system_identification.csv](../config/system_identification.csv) at build
+time. It interpolates the `K` column using signed PWM, while the time constant
+and delay come from the shared TOML. The selected CSV's `tau` and `L` columns
+are not used for per-sample interpolation.
+
 The nonlinear model interpolates the fitted gain as a function of signed PWM input. This allows the model to represent the observed variation in steady-state response while retaining the chosen time constant and delay. Interpolation adds a calculation to each simulation update, but its execution-time cost has not been measured here. Accuracy between measured operating points, during reversals, and under different loads requires validation; interpolation alone does not establish accuracy across the full input range.
 
 ## Verification

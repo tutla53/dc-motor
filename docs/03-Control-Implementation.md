@@ -241,6 +241,17 @@ MotorCommand::Stop => {
 
 ## Motor Simulation on `rust_script`
 
+Simulation settings and unit conversions are stored in
+[config/motor_config.toml](../config/motor_config.toml). The build script exposes
+these stored values through the existing `motor_config::...` constants; formula
+comments in the TOML are not executed. The nonlinear dataset is
+[config/system_identification.csv](../config/system_identification.csv), embedded
+at build time. Rebuild the desktop application after changing either file.
+These files supply host settings and simulation defaults, not firmware defaults
+or device-persisted configuration. As described in the comparison section below,
+the current closed-loop experiment routines read active PID settings and maximum
+speed from the device for their overlays.
+
 The following simplified examples use a constant gain `K`, with `beta = K * (1.0 - alpha)`, to explain the discrete model. The complete implementation uses separate positive and negative gains for `ModelKind::Linear`, or interpolates gain from signed PWM for `ModelKind::Nonlinear`. Sharing the PID implementation does not make the simulated response identical to the firmware and physical motor.
 
 The examples omit imports, controller configuration, and array allocation. Arrays have the same length and are initialized before the loops: `y` starts at zero and `x` starts at the initial position. For open loop, `u` contains the supplied PWM inputs; for closed loop, `u` starts at zero and is filled by the controller. Set the speed PID output limit to the PWM limit and the position PID output limit to `max_speed_pps`. Speed setpoints and feedback use pulses/s; position uses pulses. Conversion to RPM and rotations is performed for plotting.

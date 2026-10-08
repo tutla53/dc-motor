@@ -406,13 +406,39 @@ firmware\target\thumbv6m-none-eabi\release\
 
 For more detail on the development of firmware, you can go to this section: [Firmware Documentation](firmware/README.md).
 
+#### Shared Motor Configuration
+
+The desktop application and the Python identification tool share two files:
+
+| File | Purpose |
+| --- | --- |
+| [config/motor_config.toml](config/motor_config.toml) | Motor properties, unit conversions, sampling values, linear-model parameters, default PID settings, and host timeouts. |
+| [config/system_identification.csv](config/system_identification.csv) | Selected nonlinear-model data, embedded in the Rust application at build time. |
+
+All TOML values are stored explicitly. The formula comments are references, not
+calculations: update related values together when changing a setting. For example,
+changing the gear ratio also requires updating the pulse/rotation conversions and
+the configured maximum speed in RPM.
+
+Python reads the TOML when the script starts. Rust's build script reads it and
+generates the existing `motor_config::...` constants. After editing either shared
+file, rebuild the desktop application from the repository root:
+
+```powershell
+cargo build --release --manifest-path rust_script/Cargo.toml
+```
+
+Restart the Python script after changing the TOML. There is no generated TOML
+file or Python dependency in the Rust build. Editing these files does not update
+firmware defaults or settings stored on the device.
+
 #### Desktop Script
 - Move the active directory to `rust_script`
 	```
 	cd rust_script
 	```
 
-- Then build the script by using this command:
+- Build and launch the desktop application with this command:
 	```
 	cargo run --release
 	```
@@ -427,9 +453,21 @@ On the desktop script we can try using two useful commands:
 	- `run -a` : list all avaliable function on `rust_script/src/program/script.rs`
 	- `run <function> <arguments>` : call a function with it's arguments
 
-The list of commands from toml and script from the rust code is automatically generated at a compile time with the `build.rs` script. So, for the development we only need to changet the toml file and the script file. No need to update major rust_script code. The image below shows the interface of the rust_script on the host side.
+The `build.rs` script generates the API commands from
+`DeviceOpFuncs/DCMotor.toml`, the routine dispatch from
+`rust_script/src/program/script.rs`, and the motor constants from
+`config/motor_config.toml` at compile time. Existing references such as
+`motor_config::DT_S` remain available.
 
 For more detail on the development of rust_script, you can go to this section: [Desktop Apps Documentation](rust_script/README.md).
+
+#### Python System Identification
+
+The [system identification tool](system_identification/README.md) fits motor
+models to saved open-loop CSV logs using `differential_evolution` or
+`least_square`. It runs offline and saves dated results separately from the
+shared configuration. Its README covers setup, input columns, method selection,
+and selecting results for later simulation.
 
 ## Project Example
 We've created a sample script to test the basic movement of the DC motor and record the sensor value at 1 kHz sampling rate as shown on the images below:
