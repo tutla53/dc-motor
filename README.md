@@ -312,17 +312,21 @@ We can see the GPIO pin list on the `firmware/main/src/resources/gpio_list.rs`
 
 ## Build the Project
 ### Project Structure
-We have two main directories: `firmware` and `rust_script` as shown on the graph below. To start with this project you can clone this repository and follows the instruction below.
+The repository contains the RP2040 firmware, the Rust desktop application, and the offline Python identification tool. The desktop and Python tools share the settings and selected model data in `config/`.
 
-```bash
+```text
 .
 ├── assets
-├── crates					# Motor Control and USB Communication Library
+├── config                         	# Shared motor configuration
+│   ├── motor_config.toml           # Motor settings and formula comments
+│   └── system_identification.csv   # Selected nonlinear-model data
+├── crates                         	# Motor control and USB communication libraries
 ├── DeviceOpFuncs
-│   └── DCMotor.toml		# Firmware API
+│   └── DCMotor.toml                # Firmware API
 ├── docs
-├── firmware				# Firmware Code
-└── rust_script				# Script to communicate with the RP2040
+├── firmware                       	# Firmware code
+├── rust_script                    	# Desktop application communicating with the RP2040
+└── system_identification          	# Offline Python motor identification
 ```
 
 ### Software Dependencies
