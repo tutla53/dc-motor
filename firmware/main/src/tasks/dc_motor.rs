@@ -352,7 +352,7 @@ impl<'d> DCMotor<'d> {
         }
     }
 
-    async fn initialize_control_loop( &mut self) {
+    async fn initialize_control_loop(&mut self) {
         self.trapz_time_s_fixed = I32F32::from_num(0);
         self.current_active_cmd = MotorCommand::Stop;
         self.filter.last_pos = self.motor.get_current_pos();
@@ -428,7 +428,9 @@ impl<'d> DCMotor<'d> {
 
             // Check Motor State
             let motor_ready = self.handle_motor_state().await;
-            if !motor_ready { continue; };
+            if !motor_ready {
+                continue;
+            };
 
             // Update Motor Command
             self.update_motor_command(event_sender).await;

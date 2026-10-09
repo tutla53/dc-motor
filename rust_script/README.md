@@ -1,10 +1,5 @@
 # Rust Script — DC Motor Host
 
-<div align="center">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <br>DC Motor Desktop Application
-</div>
-
 ## Project Overview
 
 `rust_script` is the desktop application to communicate with the RP2040 through
