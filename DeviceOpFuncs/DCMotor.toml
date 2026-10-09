@@ -131,7 +131,7 @@ command = "move_motor_open_loop"
 desc = """
             Motor Speed Control with Open Loop Mode
             Argument(s)
-            - pwm: pwm duty cycle from 0 - 1000
+            - pwm: pwm duty cycle
         """
 op = 13
 ret = {}
