@@ -21,6 +21,7 @@ use crate::program::macros::MutexExt;
 use crate::simulation::model::ModelKind;
 use crate::simulation::model::MotorSimulation;
 use crate::tool::csv_processing::CsvProcessing;
+use crate::tool::generator::SineGenerator;
 use crate::try_lock;
 
 /* ------------------------ Library --------------------------- */

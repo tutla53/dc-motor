@@ -523,7 +523,20 @@ The speed and acceleration listed beneath each image pair apply to the negative-
     <td colspan="3" align="right">Trapezoidal: Speed: 750 RPM · Acceleration: 500 pulses/s²</td>
   </tr>
 
-
+  <tr>
+    <td align="center"> 10 </td>
+    <td> 
+        <img src="../assets/03_Position_Control/sine_position_2.5s.png">
+    </td>
+    <td> 
+        <img  src="../assets/03_Position_Control/sine_position_5s.png">
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+    <td align="center">Sine Wave with 2.5s Period</td>
+    <td align="center">Sine Wave with 5.0s Period</td>
+  </tr>
 
 </table>
 

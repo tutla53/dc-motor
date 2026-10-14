@@ -258,3 +258,78 @@ pub fn speed_move(target_speed: f64) -> DefaultResult<()> {
 
     Ok(())
 }
+
+pub fn sine_pos_move(amplitude_rotation: f64, frequency: f64, number_of_waves: u64) -> DefaultResult<()> {
+    let shared = SHARED.get().expect("Shared resources not initialized!");
+
+    /* ---------- Config ---------- */
+    let log_mask = LogMask::CommandedPosition | LogMask::MotorPosition;
+    let time_sampling = 1;
+    let sine_generator_time_sampling_ms = 10.0;
+    let chart_title = "Sine Wave Position Control";
+    let y_label = "Position (Rotation)";
+
+    /* ---------- Gathering Motor Info ---------- */
+    let initial_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    let pid_speed_config = try_lock!(shared.m0 => get_pid_motor_speed())??;
+    let pid_pos_config = try_lock!(shared.m0 => get_pid_motor_pos())??;
+    let max_speed_pps = try_lock!(shared.m0 => get_motor_max_speed())??;
+
+    /* ---------- Display Motor Info ---------- */
+    println!("  [INFO] - Initial Pos: {initial_pos}");
+
+    /* ---------- Signal Generator ---------- */
+    let duration_ms = (number_of_waves as f64 / frequency * 1000.0) as u64;
+    let mut sine_wave = SineGenerator::new(amplitude_rotation, frequency, sine_generator_time_sampling_ms);
+
+    /* ---------- Move Motor ---------- */
+    try_lock!(shared.m0 => clear_motor_event())?;
+    try_lock!(shared.logger=> start(log_mask, time_sampling))??;
+    wait_ms(300);
+
+    let move_status = (|| -> DefaultResult<()> {
+        let sample_interval = Duration::from_millis(sine_generator_time_sampling_ms as u64);
+        for _ in 0..(duration_ms / sine_generator_time_sampling_ms as u64) {
+            let sample_start = std::time::Instant::now();
+
+            let target_rotation = sine_wave.next_sample();
+
+            try_lock!(
+                shared.m0 => move_motor_pos_step(Position::from_rotation(target_rotation))
+            )??;
+            std::thread::sleep(sample_interval.saturating_sub(sample_start.elapsed()));
+        }
+
+        try_lock!(shared.m0 => wait_move_done(Duration::from_millis(3_000)))??;
+        wait_ms(300);
+
+        Ok(())
+    })();
+
+    let (log_dir, file_dir) = finalize_motor_routine(&shared.m0, &shared.logger, move_status)?;
+
+    /* ---------- Get Motor Pos ---------- */
+    let current_pos = try_lock!(shared.m0 => get_motor_pos())??;
+    println!("  [INFO] - Final Pos: {current_pos}");
+
+    /* ---------- Plot Firmware Log ---------- */
+    let csv_log = CsvProcessing::extract_information(
+        &file_dir,
+        TIMESTAMP_INDEX,
+        motor_config::DT_S as f32,
+        Y_AXIS_OFFSET,
+    )?;
+
+    let simulation = MotorSimulation::simulate_position_control(
+        &csv_log,
+        ModelKind::Nonlinear,
+        initial_pos.pulse,
+        max_speed_pps,
+        &pid_speed_config,
+        &pid_pos_config,
+    )?;
+
+    plot::plot_log(&log_dir, &csv_log, chart_title, y_label, &[simulation])?;
+
+    Ok(())
+}
