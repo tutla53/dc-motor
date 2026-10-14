@@ -12,7 +12,7 @@
   </tr>
   <tr>
     <td align="left"></td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">DC Motor Research Documentation</td>
   </tr>
 </table>
@@ -543,7 +543,7 @@ We've created a sample script to test the basic movement of the DC motor and rec
   </tr>
   <tr>
     <td align="left"></td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">DC Motor Research Documentation</td>
   </tr>
 </table>

@@ -12,7 +12,7 @@
   </tr>
   <tr>
     <td align="left">Control Design</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right"></td>
   </tr>
 </table>
@@ -540,7 +540,7 @@ The speed and acceleration listed beneath each image pair apply to the negative-
   </tr>
   <tr>
     <td align="left">Control Design</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right"></td>
   </tr>
 </table>

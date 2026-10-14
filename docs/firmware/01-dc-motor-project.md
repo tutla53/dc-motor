@@ -12,7 +12,7 @@
   </tr>
   <tr>
     <td align="left">Firmware Guide</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right"></td>
   </tr>
 </table>
@@ -353,7 +353,7 @@ timing or hardware performance.
   </tr>
   <tr>
     <td align="left">Firmware Guide</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right"></td>
   </tr>
 </table>

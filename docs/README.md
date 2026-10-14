@@ -14,7 +14,7 @@
   </tr>
   <tr>
     <td align="left">Project Architecture</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">System Identification</td>
   </tr>
 </table>
@@ -84,7 +84,7 @@ By using that difference equation we can construct the algorithm to simulate the
   </tr>
   <tr>
     <td align="left">Project Architecture</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">System Identification</td>
   </tr>
 </table>

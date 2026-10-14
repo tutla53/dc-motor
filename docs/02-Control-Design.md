@@ -14,7 +14,7 @@
   </tr>
   <tr>
     <td align="left">System Identification</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">Control Implementation</td>
   </tr>
 </table>
@@ -434,7 +434,7 @@ Here, “trapezoidal” describes the profile’s velocity shape, while `profile
   </tr>
   <tr>
     <td align="left">System Identification</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">Control Implementation</td>
   </tr>
 </table>

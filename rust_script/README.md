@@ -14,7 +14,7 @@
   </tr>
   <tr>
     <td align="left">Firmware Guide</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">System Identification Tool</td>
   </tr>
 </table>
@@ -314,7 +314,7 @@ handling is maintained separately.
   </tr>
   <tr>
     <td align="left">Firmware Guide</td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">System Identification Tool</td>
   </tr>
 </table>

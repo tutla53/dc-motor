@@ -12,7 +12,7 @@
   </tr>
   <tr>
     <td align="left"></td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">DC Motor Tasks</td>
   </tr>
 </table>
@@ -261,7 +261,7 @@ version. Rebuild the desktop application after changing the contract.
   </tr>
   <tr>
     <td align="left"></td>
-    <td align="center"></td>
+    <td width="9999" align="center"></td>
     <td align="right">DC Motor Tasks</td>
   </tr>
 </table>
