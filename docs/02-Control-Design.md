@@ -1,17 +1,23 @@
 # Control System Design
 
-<div align="center">
-  <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="650" height="1">
-  Control Implementation
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">System Identification</td>
+    <td align="center"></td>
+    <td align="right">Control Implementation</td>
+  </tr>
+</table>
     
 #
 
@@ -414,17 +420,23 @@ Here, “trapezoidal” describes the profile’s velocity shape, while `profile
 
 
 #
-<div align="center">
-  <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  System Identification
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="650" height="1">
-  Control Implementation
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="01-System-Identification.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="03-Control-Implementation.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">System Identification</td>
+    <td align="center"></td>
+    <td align="right">Control Implementation</td>
+  </tr>
+</table>
     
 #

@@ -1,5 +1,24 @@
 # System Identification
 
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../rust_script/README.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../docs/01-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">Rust Host Application</td>
+    <td align="center"></td>
+    <td align="right">System Identification Theory</td>
+  </tr>
+</table>
+
 Fit a first-order motor model with delay to saved open-loop CSV logs. This is an
 offline tool: it does not connect to or command the motor.
 
@@ -96,3 +115,22 @@ and delay rather than interpolating the CSV's `tau` or `L` columns.
 
 See [System Identification](../docs/01-System-Identification.md) for the model,
 historical experiment results, and simulation comparisons.
+
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../rust_script/README.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../docs/01-System-Identification.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">Rust Host Application</td>
+    <td align="center"></td>
+    <td align="right">System Identification Theory</td>
+  </tr>
+</table>

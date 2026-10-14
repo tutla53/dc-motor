@@ -1,15 +1,21 @@
 # DC Motor Project
 
-<div align="center">
-  <a href="../../firmware/README.md"><img src="../../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="../../firmware/README.md"><img src="../../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-</div>
-<div align="center">
-  Firmware Documentation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="800" height="1">
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../../firmware/README.md"><img src="../../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../../README.md"><img src="../../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right"></td>
+  </tr>
+  <tr>
+    <td align="left">Firmware Guide</td>
+    <td align="center"></td>
+    <td align="right"></td>
+  </tr>
+</table>
 
 ## Overview
 
@@ -335,13 +341,19 @@ timing or hardware performance.
 
 #
 
-<div align="center">
-  <a href="../../firmware/README.md"><img src="../../assets/logo/left-chevron.png" alt="<< Prev" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-  <a href="../../firmware/README.md"><img src="../../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="450" height="1">
-</div>
-<div align="center">
-  Firmware Documentation
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"" width="800" height="1">
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../../firmware/README.md"><img src="../../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../../README.md"><img src="../../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right"></td>
+  </tr>
+  <tr>
+    <td align="left">Firmware Guide</td>
+    <td align="center"></td>
+    <td align="right"></td>
+  </tr>
+</table>

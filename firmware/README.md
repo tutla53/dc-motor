@@ -1,15 +1,21 @@
 # RP2040 Firmware Documentation
 
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="../docs/firmware/01-dc-motor-project.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="730" height="1">
-  Project's Features
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left"></td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../docs/firmware/01-dc-motor-project.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="right">DC Motor Tasks</td>
+  </tr>
+</table>
 	
 #
 
@@ -243,15 +249,21 @@ version. Rebuild the desktop application after changing the contract.
 - [Control Implementation](../docs/03-Control-Implementation.md)
 
 #
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="../docs/firmware/01-dc-motor-project.md"><img src="../assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="730" height="1">
-  Project's Features
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left"></td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../docs/firmware/01-dc-motor-project.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="right">DC Motor Tasks</td>
+  </tr>
+</table>
 	
 #

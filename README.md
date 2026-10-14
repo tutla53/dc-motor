@@ -1,15 +1,21 @@
 # DC Motor PID Control
 
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="500" height="1">
-  DC Motor Research Documentation
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left"></td>
+    <td width="34%" align="center">
+      <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="right">DC Motor Research Documentation</td>
+  </tr>
+</table>
 	
 #
 
@@ -518,16 +524,28 @@ We've created a sample script to test the basic movement of the DC motor and rec
   </tr>
 </table>
 
+## Further Documentation
+
+- [Firmware](firmware/README.md)
+- [Rust Host Application](rust_script/README.md)
+- [System Identification](system_identification/README.md)
+
 #
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="350" height="1">
-  <a href="/docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next >>" height="30"></a>
-</div>
-<div align="center">
-  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="500" height="1">
-  DC Motor Research Documentation
-</div>
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left"></td>
+    <td width="34%" align="center">
+      <a href="README.md"><img src="assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="docs/README.md"><img src="assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="right">DC Motor Research Documentation</td>
+  </tr>
+</table>
 	
 #

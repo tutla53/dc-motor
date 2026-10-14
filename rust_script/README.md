@@ -1,5 +1,24 @@
 # Rust Script — DC Motor Host
 
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../firmware/README.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../system_identification/README.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">Firmware Guide</td>
+    <td align="center"></td>
+    <td align="right">System Identification Tool</td>
+  </tr>
+</table>
+
 ## Project Overview
 
 `rust_script` is the desktop application to communicate with the RP2040 through
@@ -280,3 +299,22 @@ dataset.
 When adding a firmware command, update `DCMotor.toml` and the firmware handler
 together. The host generates its API from the TOML, while firmware command
 handling is maintained separately.
+
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="left">
+      <a href="../firmware/README.md"><img src="../assets/logo/left-chevron.png" alt="Previous" height="30"></a>
+    </td>
+    <td width="34%" align="center">
+      <a href="../README.md"><img src="../assets/logo/home-button.png" alt="Home" height="30"></a>
+    </td>
+    <td width="33%" align="right">
+      <a href="../system_identification/README.md"><img src="../assets/logo/right-chevron.png" alt="Next" height="30"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="left">Firmware Guide</td>
+    <td align="center"></td>
+    <td align="right">System Identification Tool</td>
+  </tr>
+</table>
